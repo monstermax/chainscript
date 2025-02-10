@@ -1,7 +1,7 @@
 // blockchain.ts
 
 import { blockReward, chainId, networkVersion } from './config';
-import { asserts, computeHash } from './utils';
+import { asserts, computeHash, now } from './utils';
 import { StateManager } from './stateManager';
 import { Transaction } from './transaction';
 import { Account } from './account';
@@ -36,7 +36,7 @@ export class Blockchain {
 
     /** 📤 Charge les blocks depuis le stockage */
     loadBlockchain() {
-        console.log(`[Blockchain.loadBlockchain]`);
+        console.log(`[${now()}][Blockchain.loadBlockchain]`);
 
         const metadata = this.stateManager.loadMetadata();
 
@@ -98,7 +98,7 @@ export class Blockchain {
         }
 
 
-        console.log(`Blockchain chargée : ${metadata.totalBlocks} blocks, ${metadata.totalAccounts} comptes.`);
+        console.log(`[${now()}]Blockchain chargée : ${metadata.totalBlocks} blocks, ${metadata.totalAccounts} comptes.`);
     }
 
 
@@ -137,7 +137,7 @@ export class Blockchain {
 
     /** 📥 Retourne un block complet en chargeant le fichier JSON */
     getBlock(blockHeight: number): Block | null {
-        console.log(`[Blockchain.getBlock]`, blockHeight);
+        console.log(`[${now()}][Blockchain.getBlock]`, blockHeight);
 
         if (this.memoryState.blocks[blockHeight]) {
             // cherche dans les blocks en memoire
@@ -219,7 +219,7 @@ export class Blockchain {
 
 
     increaseSupply(amount: bigint) {
-        console.log(`[Blockchain.increaseSupply]`);
+        console.log(`[${now()}][Blockchain.increaseSupply]`);
 
         asserts(typeof amount === 'bigint', "[Blockchain.increaseSupply] invalid amount type");
         asserts(amount > 0, "[Blockchain.increaseSupply] invalid amount");
@@ -229,7 +229,7 @@ export class Blockchain {
 
 
     decreaseSupply(amount: bigint) {
-        console.log(`[Blockchain.decreaseSupply]`);
+        console.log(`[${now()}][Blockchain.decreaseSupply]`);
 
         asserts(typeof amount === 'bigint', "[Blockchain.decreaseSupply] invalid amount type");
         asserts(amount > 0, "[Blockchain.decreaseSupply] invalid amount");
@@ -240,7 +240,7 @@ export class Blockchain {
 
 
     transfer(emitterAddress: AccountAddress, recipientAddress: AccountAddress, amount: bigint): void {
-        console.log(`[Blockchain.transfer]`);
+        console.log(`[${now()}][Blockchain.transfer]`);
 
         asserts(typeof emitterAddress === 'string', "[Blockchain.transfer] invalid emitterAddress type");
         asserts(typeof recipientAddress === 'string', "[Blockchain.transfer] invalid recipientAddress type");
@@ -295,7 +295,7 @@ export class Blockchain {
 
 
     async createBlock(minerAddress: AccountAddress): Promise<{ block: Block, receipt: BlockReceipt }> {
-        console.log(`[Blockchain.createBlock]`);
+        console.log(`[${now()}][Blockchain.createBlock]`);
 
         // Load last block
         const lastBlock = this.blockHeight > -1 ? this.getBlock(this.blockHeight) : { blockHeight: -1, hash: '0x' as BlockHash };
@@ -314,12 +314,17 @@ export class Blockchain {
 
         block.transactions = transactions;
 
+        transactions.forEach(tx => {
+            tx.blockHeight = block.blockHeight;
+            tx.blockHash = block.hash;
+        });
+
         return this.addBlock(block);
     }
 
 
     async addBlock(block: Block): Promise<{ block: Block, receipt: BlockReceipt }> {
-        console.log(`[Blockchain.addBlock]`);
+        console.log(`[${now()}][Blockchain.addBlock]`);
 
         // Load last block
         const lastBlock = this.blockHeight > -1 ? this.getBlock(this.blockHeight) : { blockHeight: -1, hash: '0x' as BlockHash };
@@ -349,7 +354,7 @@ export class Blockchain {
 
 
     async executeBlock(block: Block, transactions: Transaction[]): Promise<BlockReceipt> {
-        console.log(`[Blockchain.executeBlock]`);
+        console.log(`[${now()}][Blockchain.executeBlock]`);
 
         let currentBlockReward = blockReward;
 
@@ -358,7 +363,7 @@ export class Blockchain {
         let transactionIndex = -1;
         for (const tx of transactions) {
             transactionIndex++;
-            console.log(`[Blockchain.executeBlock] add tx ${transactionIndex+1}/${transactions.length} => "${tx.hash}"`);
+            console.log(`[${now()}][Blockchain.executeBlock] add tx ${transactionIndex+1}/${transactions.length} => "${tx.hash}"`);
 
             const txReceipt = await block.executeTransaction(this, tx);
             block.receipts.push(txReceipt);
@@ -391,14 +396,14 @@ export class Blockchain {
             reward: currentBlockReward,
         };
 
-        console.log(`[Blockchain.executeBlock] execution completed`);
+        console.log(`[${now()}][Blockchain.executeBlock] execution completed`);
 
         return blockReceipt;
     }
 
 
     saveBlockchainAfterNewBlock(block: Block): void {
-        console.log(`[Blockchain.saveBlockchainAfterNewBlock]`);
+        console.log(`[${now()}][Blockchain.saveBlockchainAfterNewBlock]`);
 
         asserts(block.blockHeight === this.blockHeight + 1, `invalid blockHeight`);
 

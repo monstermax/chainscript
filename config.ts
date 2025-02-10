@@ -27,3 +27,7 @@ export const networkVersion = 1;
 
 export const rpcPort = 8545;
 export const p2pPort = 6001;
+
+export const blockDelayMin = 10_000; // pas plus d'un bloc toutes les 10 secondes
+export const blockDelayMax = 60_000; // au moins un bloc toutes les 60 secondes
+

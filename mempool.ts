@@ -1,6 +1,6 @@
 // mempool.ts
 
-import { asserts, computeHash } from './utils';
+import { asserts, computeHash, now } from './utils';
 import { Blockchain } from './blockchain';
 import { Transaction } from './transaction';
 
@@ -18,6 +18,13 @@ export class Mempool {
     }
 
 
+    toJSON() {
+        return Object.fromEntries(
+            Object.entries(this.transactions).map(entry => [entry[0], Transaction.toJSON(entry[1])])
+        );
+    }
+
+
     /** 📥 Ajouter une transaction au mempool */
     addTransaction(tx: Transaction) {
         tx.hash = tx.computeHash();
@@ -32,7 +39,7 @@ export class Mempool {
         }
 
         this.transactions.set(tx.hash, tx);
-        console.log(`[Mempool] Transaction ajoutée: ${tx.hash}`);
+        console.log(`[${now()}][Mempool] Transaction ajoutée: ${tx.hash}`);
     }
 
 
@@ -48,7 +55,7 @@ export class Mempool {
             asserts(tx.hash, `missing transaction hash`)
             this.transactions.delete(tx.hash);
         }
-        console.log(`[Mempool] Nettoyage: ${transactionsIncluded.length} transactions supprimées.`);
+        console.log(`[${now()}][Mempool] Nettoyage: ${transactionsIncluded.length} transactions supprimées.`);
     }
 
 }

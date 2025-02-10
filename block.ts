@@ -74,7 +74,7 @@ export class Block {
             baseFeePerGas: '0x',
             difficulty: '0x',
             extraData: '0x',
-            gasLimit: '0x',
+            gasLimit: '0xf4240', // 1_000_000
             gasUsed: '0x', // TODO: a recuperer dans le blockReceipt
             hash: block.hash,
             logsBloom: '0x',

@@ -4,13 +4,14 @@ import * as ethereumjsTx from '@ethereumjs/tx';
 import * as ethereumjsUtil from '@ethereumjs/util';
 
 import { chainId } from './config';
-import { asserts, bufferToHex, computeHash, hexToUint8Array, toHex } from './utils';
+import { asserts, bufferToHex, computeHash, hexToUint8Array, now, toHex } from './utils';
 import { Blockchain } from './blockchain';
 import { Block } from './block';
 import { execVm } from './vm';
 
 import type { AccountAddress, CodeAbi } from './types/account.types';
 import type { TransactionData, TransactionHash, TransactionInstruction, TransactionInstructionCall, TransactionInstructionCreate, TransactionInstructionMint, TransactionInstructionTransfer, TransactionReceipt, TransactionReceiptData, TransactionReceiptRpc, TransactionRpc } from './types/transaction.types';
+import { BlockHash } from './types/block.types';
 
 
 /* ######################################################### */
@@ -23,6 +24,7 @@ export class Transaction {
     public instructions: TransactionInstruction[] = [];
     public nonce: bigint;
     public blockHeight: number | null = null;
+    public blockHash: BlockHash | null = null;
 
 
     constructor(emitter: AccountAddress, amount: bigint=0n, nonce=0n) {
@@ -102,6 +104,8 @@ export class Transaction {
             hash: tx.hash,
             amount: tx.amount,
             instructions: tx.instructions,
+            blockHeight: typeof tx.blockHeight === 'number' ? tx.blockHeight : undefined,
+            blockHash: tx.blockHash ?? undefined,
         };
 
         return transactionData;
@@ -310,7 +314,7 @@ export async function executeTransaction(blockchain: Blockchain, tx: Transaction
 /** ✅ Décode une transaction Ethereum en un objet TransactionData */
 export function decodeTx(raw_tx: string): TransactionData {
     try {
-        console.log(`[decodeTx] 🔄 Début décodage de: ${raw_tx}`);
+        console.log(`[${now()}][decodeTx] 🔄 Début décodage de: ${raw_tx}`);
 
         const rawBuffer = hexToUint8Array(raw_tx);
         let tx: ethereumjsTx.FeeMarketEIP1559Transaction | ethereumjsTx.LegacyTransaction;

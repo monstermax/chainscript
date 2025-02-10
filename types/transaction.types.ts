@@ -18,6 +18,7 @@ export type TransactionData = {
     nonce: bigint;
     amount: bigint;
     blockHeight?: number;
+    blockHash?: BlockHash;
     //to: AccountAddress;
     //gasPrice: bigint;
     //gasLimit: bigint;

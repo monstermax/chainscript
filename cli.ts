@@ -3,7 +3,7 @@
 import fs from 'fs';
 
 import { fullcoin, METADATA_FILE, p2pPort, rpcPort, STATE_DIR } from './config';
-import { asserts } from "./utils";
+import { asserts, now } from "./utils";
 import { Blockchain } from "./blockchain";
 import { Transaction } from "./transaction";
 import { rpcListen } from './rpc';
@@ -42,7 +42,7 @@ async function main() {
         if (fs.existsSync(STATE_DIR)) {
 
             if (fs.existsSync(METADATA_FILE) && ! process.argv.includes('--force')) {
-                console.warn(`Cannot init a not-empty blockchain. Use --force option to force`);
+                console.warn(`[${now()}][main] Cannot init a not-empty blockchain. Use --force option to force`);
                 return;
             }
 
@@ -61,8 +61,8 @@ async function main() {
         // Create the Genesis Block
         const { block, receipt } = await blockchain.createGenesisBlock();
 
-        console.log('block:', block);
-        console.log('receipt:', receipt);
+        console.log(`[${now()}][main] block:`, block);
+        console.log(`[${now()}][main] receipt:`, receipt);
     }
 
 
@@ -76,15 +76,15 @@ async function main() {
 
 
     if (process.argv.includes('--dump-blocks')) {
-        console.log('blocks: ', blockchain.stateManager.dumpBlocks());
+        console.log(`[${now()}][main] blocks: `, blockchain.stateManager.dumpBlocks());
     }
 
     if (process.argv.includes('--dump-memories')) {
-        console.log('memories: ', blockchain.stateManager.dumpAccountsMemories());
+        console.log(`[${now()}][main] memories: `, blockchain.stateManager.dumpAccountsMemories());
     }
 
     if (process.argv.includes('--dump-accounts')) {
-        console.log('accounts: ', blockchain.stateManager.dumpAccountsBalances(true));
+        console.log(`[${now()}][main] accounts: `, blockchain.stateManager.dumpAccountsBalances(true));
     }
 
 
@@ -128,8 +128,8 @@ async function testsTransactions(blockchain: Blockchain) {
 
         const { block, receipt } = await blockchain.createBlock(minerAddress);
 
-        console.log('block:', block)
-        console.log('receipt:', receipt)
+        console.log(`[${now()}][main] block:`, block)
+        console.log(`[${now()}][main] receipt:`, receipt)
     }
 
     if (process.argv.includes('--tx-transfer')) {
@@ -212,7 +212,7 @@ async function testsTransactions(blockchain: Blockchain) {
         blockchain.mempool.addTransaction(tx);
     }
 
-    console.log('mempool:', blockchain.mempool);
+    console.log(`[${now()}][main] mempool:`, blockchain.mempool.toJSON());
 }
 
 

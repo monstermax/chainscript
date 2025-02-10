@@ -2,7 +2,7 @@
 
 import http from 'http';
 
-import { asserts, fromHex, jsonReplacerForRpc, toHex } from './utils';
+import { asserts, fromHex, jsonReplacerForRpc, now, toHex } from './utils';
 import { Blockchain } from "./blockchain";
 import { Block } from "./block";
 import { Account } from './account';
@@ -56,7 +56,7 @@ export async function rpcListen(blockchain: Blockchain, rpcPort: number) {
                 }
 
                 const { jsonrpc, id, method, params } = JSON.parse(body);
-                console.log(`[Server] 📩 Requête RPC reçue: ${method}`, params);
+                console.log(`[${now()}][Server] 📩 Requête RPC reçue: ${method}`, params);
 
                 let result;
                 switch (method) {
@@ -198,7 +198,7 @@ export async function rpcListen(blockchain: Blockchain, rpcPort: number) {
                         // https://docs.metamask.io/services/reference/ethereum/json-rpc-methods/eth_estimategas/
                         const [args] = params as [args: { from: AccountAddress, value: HexNumber, gasPrice: HexNumber, data: HexNumber, to: AccountAddress }];
 
-                        result = '0x5cec';
+                        result = '0x5208';
                         break;
                     }
 
@@ -248,14 +248,14 @@ export async function rpcListen(blockchain: Blockchain, rpcPort: number) {
                 }
                 , jsonReplacerForRpc);
 
-                console.log(`[Server] ✅ Réponse envoyée:`, json);
+                console.log(`[${now()}][Server] ✅ Réponse envoyée:`, json);
 
                 res.writeHead(200, { 'Content-Type': 'application/json' });
 
                 res.end(json);
 
             } catch (err: any) {
-                console.log(`[Server] ❌ Erreur:`, err.message);
+                console.log(`[${now()}][Server] ❌ Erreur:`, err.message);
 
                 if (!res.headersSent) {
                     res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -270,7 +270,7 @@ export async function rpcListen(blockchain: Blockchain, rpcPort: number) {
         });
 
         req.on('close', () => {
-            console.log(`[Server] Connexion RPC terminée`, "\n");
+            //console.log(`[${now()}][Server] Connexion RPC terminée`, "\n");
         });
 
         req.on('error', (err) => {
@@ -284,6 +284,6 @@ export async function rpcListen(blockchain: Blockchain, rpcPort: number) {
     });
 
     // 2. listen for new transactions (from rpc)
-    server.listen(rpcPort, () => console.log(`🚀 RPC Server running on http://0.0.0.0:${rpcPort}`));
+    server.listen(rpcPort, () => console.log(`[${now()}]🚀 RPC Server running on http://0.0.0.0:${rpcPort}`));
 }
 

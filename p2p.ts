@@ -4,6 +4,7 @@ import WebSocket, { WebSocketServer } from 'ws';
 
 import { Blockchain } from './blockchain';
 import { Transaction } from './transaction';
+import { now } from './utils';
 
 
 /* ######################################################### */
@@ -39,11 +40,11 @@ export class P2PNode {
         const server = new WebSocketServer({ port: this.port });
 
         server.on('connection', (ws) => {
-            console.log(`[P2P] 🌐 Nouvelle connexion`);
+            console.log(`[${now()}][P2P] 🌐 Nouvelle connexion`);
             this.initSocket(ws);
         });
 
-        console.log(`[P2P] 🚀 Serveur P2P démarré sur ws://0.0.0.0:${this.port}`);
+        console.log(`[${now()}][P2P] 🚀 Serveur P2P démarré sur ws://0.0.0.0:${this.port}`);
     }
 
 
@@ -52,7 +53,7 @@ export class P2PNode {
         const ws = new WebSocket(peerUrl);
 
         ws.on('open', () => {
-            console.log(`[P2P] 🔗 Connecté à ${peerUrl}`);
+            console.log(`[${now()}][P2P] 🔗 Connecté à ${peerUrl}`);
             this.initSocket(ws);
         });
 
@@ -73,7 +74,7 @@ export class P2PNode {
     private async handleMessage(ws: WebSocket, message: string) {
         try {
             const { type, data }: P2PMessage = JSON.parse(message);
-            console.log(`[P2P] 📩 Message reçu: ${type}`);
+            console.log(`[${now()}][P2P] 📩 Message reçu: ${type}`);
 
             switch (type) {
                 case 'NEW_BLOCK':
@@ -105,14 +106,14 @@ export class P2PNode {
 
     /** 📤 Diffuse un nouveau block */
     broadcastBlock(block: any) {
-        console.log(`[P2P] 📢 Diffusion d'un nouveau block`);
+        console.log(`[${now()}][P2P] 📢 Diffusion d'un nouveau block`);
         this.broadcast({ type: 'NEW_BLOCK', data: block });
     }
 
 
     /** 📤 Diffuse une nouvelle transaction */
     broadcastTransaction(transaction: Transaction) {
-        console.log(`[P2P] 📢 Diffusion d'une nouvelle transaction`);
+        console.log(`[${now()}][P2P] 📢 Diffusion d'une nouvelle transaction`);
         this.broadcast({ type: 'NEW_TRANSACTION', data: transaction });
     }
 
@@ -125,10 +126,10 @@ export class P2PNode {
 
     /** 🔄 Gère la réception d'un nouveau block */
     private async handleNewBlock(block: any) {
-        console.log(`[P2P] ⛓️ Nouveau block reçu`);
+        console.log(`[${now()}][P2P] ⛓️ Nouveau block reçu`);
 
         if (this.blockchain.blockHeight < block.blockHeight) {
-            console.log(`[P2P] 🔄 Mise à jour de la blockchain`);
+            console.log(`[${now()}][P2P] 🔄 Mise à jour de la blockchain`);
 
             const receipt = await this.blockchain.addBlock(block);
         }
@@ -137,7 +138,7 @@ export class P2PNode {
 
     /** 🔄 Gère la réception d'une nouvelle transaction */
     private handleNewTransaction(transaction: Transaction) {
-        console.log(`[P2P] 💰 Nouvelle transaction reçue`);
+        console.log(`[${now()}][P2P] 💰 Nouvelle transaction reçue`);
 
         // TODO: verifier si present dans l'index des transactions (deja minées)
 

@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 
 import { ACCOUNTS_DIR, ACCOUNTS_INDEX_FILE, BLOCKS_DIR, BLOCKS_INDEX_FILE, METADATA_FILE, TRANSACTIONS_INDEX_FILE } from './config';
-import { asserts, dumpAccountsBalances, dumpAccountsMemories, dumpBlocks, ensureDirectory } from './utils';
+import { asserts, dumpAccountsBalances, dumpAccountsMemories, dumpBlocks, ensureDirectory, now } from './utils';
 import { Blockchain } from './blockchain';
 import { Block } from './block';
 import { Account } from './account';
@@ -46,7 +46,7 @@ export class StateManager {
 
     /** 📥 Charge l'état général et vérifie l'intégrité */
     loadMetadata(): BlockchainMetadata {
-        console.log(`[StateManager.loadMetadata]`);
+        console.log(`[${now()}][StateManager.loadMetadata]`);
 
         if (!fs.existsSync(METADATA_FILE)) {
             console.warn("⚠️ Aucun état trouvé, démarrage avec un blockchain vide.");
@@ -82,7 +82,7 @@ export class StateManager {
 
     /** 📥 Sauvegarde l'état général */
     saveMetadata(): void {
-        console.log(`[StateManager.saveMetadata]`);
+        console.log(`[${now()}][StateManager.saveMetadata]`);
 
         const metadata: BlockchainMetadata = {
             totalAccounts: Object.keys(this.accountsIndex).length,
@@ -105,7 +105,7 @@ export class StateManager {
 
     /** 🔄 Charge l'index des blocks */
     loadBlocksIndex(): number {
-        console.log(`[StateManager.loadBlocksIndex]`);
+        console.log(`[${now()}][StateManager.loadBlocksIndex]`);
 
         if (fs.existsSync(BLOCKS_INDEX_FILE)) {
             const blocksIndex = fs.readFileSync(BLOCKS_INDEX_FILE).toString();
@@ -121,7 +121,7 @@ export class StateManager {
 
     /** 💾 Sauvegarde l’index des blocks */
     saveBlocksIndex(): void {
-        console.log(`[StateManager.saveBlocksIndex]`);
+        console.log(`[${now()}][StateManager.saveBlocksIndex]`);
 
         fs.writeFileSync(BLOCKS_INDEX_FILE, JSON.stringify(this.blocksIndex, null, 4));
     }
@@ -130,7 +130,7 @@ export class StateManager {
 
     /** 🔄 Charge l'index des transactions */
     loadTransactionsIndex(): number {
-        console.log(`[StateManager.loadTransactionsIndex]`);
+        console.log(`[${now()}][StateManager.loadTransactionsIndex]`);
 
         if (fs.existsSync(TRANSACTIONS_INDEX_FILE)) {
             const transactionsIndex = fs.readFileSync(TRANSACTIONS_INDEX_FILE).toString();
@@ -146,7 +146,7 @@ export class StateManager {
 
     /** 💾 Sauvegarde l’index des transactions */
     saveTransactionsIndex(): void {
-        console.log(`[StateManager.saveTransactionsIndex]`);
+        console.log(`[${now()}][StateManager.saveTransactionsIndex]`);
 
         fs.writeFileSync(TRANSACTIONS_INDEX_FILE, JSON.stringify(this.transactionsIndex, null, 4));
     }
@@ -155,7 +155,7 @@ export class StateManager {
 
     /** 📤 Charge un block et vérifie son intégrité */
     loadBlock(blockHeight: number): Block | null {
-        console.log(`[StateManager.loadBlock]`, blockHeight);
+        console.log(`[${now()}][StateManager.loadBlock]`, blockHeight);
 
         const blockPath = path.join(BLOCKS_DIR, `${blockHeight.toString().padStart(15, '0')}.json`);
         asserts(fs.existsSync(blockPath), `block "${blockHeight}" not found in database`);
@@ -196,7 +196,7 @@ export class StateManager {
 
     /** 📥 Sauvegarde un block et met à jour le hash incrémental */
     saveBlock(block: Block): void {
-        console.log(`[StateManager.saveBlock]`, block.blockHeight);
+        console.log(`[${now()}][StateManager.saveBlock]`, block.blockHeight);
 
         const blockPath = path.join(BLOCKS_DIR, `${block.blockHeight.toString().padStart(15, '0')}.json`);
 
@@ -209,7 +209,7 @@ export class StateManager {
 
     /** 🔄 Charge l'index des accounts */
     loadAccountsIndex(): number {
-        console.log(`[StateManager.loadAccountsIndex]`);
+        console.log(`[${now()}][StateManager.loadAccountsIndex]`);
 
         if (fs.existsSync(ACCOUNTS_INDEX_FILE)) {
             const accountsIndex = fs.readFileSync(ACCOUNTS_INDEX_FILE).toString();
@@ -225,7 +225,7 @@ export class StateManager {
 
     /** 💾 Sauvegarde l’index des accounts */
     saveAccountsIndex(): void {
-        console.log(`[StateManager.saveAccountsIndex]`);
+        console.log(`[${now()}][StateManager.saveAccountsIndex]`);
 
         fs.writeFileSync(ACCOUNTS_INDEX_FILE, JSON.stringify(this.accountsIndex, null, 4));
     }
@@ -233,7 +233,7 @@ export class StateManager {
 
     /** 📤 Charge un compte et vérifie son intégrité */
     loadAccount(address: AccountAddress): Account | null {
-        console.log(`[StateManager.loadAccount]`, address);
+        console.log(`[${now()}][StateManager.loadAccount]`, address);
 
         const addressLower = address.toLowerCase() as AccountAddress;
 
@@ -272,7 +272,7 @@ export class StateManager {
 
     /** 📥 Sauvegarde un compte et met à jour le hash incrémental */
     saveAccount(account: Account): void {
-        console.log(`[StateManager.saveAccount]`, account.address);
+        console.log(`[${now()}][StateManager.saveAccount]`, account.address);
 
         const accountPath = path.join(ACCOUNTS_DIR, `${account.address.toLowerCase()}.json`);
 
