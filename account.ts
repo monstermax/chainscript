@@ -1,12 +1,11 @@
 // account.ts
 
-import { asserts } from './utils';
+import { asserts, computeHash } from './utils';
 
-import type { AccountAddress, AccountData, AccountHash, CodeAbi, ContractMemory } from './types';
+import type { AccountAddress, AccountData, AccountHash, CodeAbi, ContractMemory } from './types/account.types';
 
 
 /* ######################################################### */
-
 
 
 export class Account {
@@ -17,6 +16,8 @@ export class Account {
     public memory: ContractMemory | null = null;
     public transactionsCount: number = 0;
     public hash: AccountHash | null = null;
+    //public lastBlockUpdate: number | null = null; // TODO: indiquer le blockHeight de la derniere modif du compte
+
 
     constructor(address: AccountAddress, balance=0n, abi: CodeAbi | null=null, code: string | null=null, transactionsCount=0, memory: ContractMemory | null=null, hash: AccountHash | null=null) {
         this.address = address;
@@ -35,7 +36,7 @@ export class Account {
 
     public burn(amount: bigint) {
         asserts(amount > 0, `[Account.burn] invalid amount`);
-        asserts(this.balance >= amount, `[Account.burn] insufficient balance for ${this.address}`);
+        asserts(this.balance >= amount, `[Account.burn] insufficient balance for ${this.address}. ${this.balance} < ${amount}`);
         this.balance -= amount;
     }
 
@@ -49,7 +50,7 @@ export class Account {
     }
 
 
-    static format(account: Account): AccountData {
+    static toJSON(account: Account): AccountData {
         const accountData: AccountData = {
             address: account.address,
             balance: account.balance,
@@ -62,6 +63,15 @@ export class Account {
 
         return accountData;
     }
+
+
+    computeHash(): AccountHash {
+        const accountFormatted = Account.toJSON(this);
+        const accountHash: AccountHash = computeHash(accountFormatted);
+
+        return accountHash;
+    }
+
 };
 
 

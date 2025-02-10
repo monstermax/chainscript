@@ -3,22 +3,24 @@
 import fs from 'fs';
 import path from 'path';
 
-import { Block, Blockchain } from './blockchain';
+import { ACCOUNTS_DIR, ACCOUNTS_INDEX_FILE, BLOCKS_DIR, BLOCKS_INDEX_FILE, METADATA_FILE, TRANSACTIONS_INDEX_FILE } from './config';
+import { asserts, dumpAccountsBalances, dumpAccountsMemories, dumpBlocks, ensureDirectory } from './utils';
+import { Blockchain } from './blockchain';
+import { Block } from './block';
 import { Account } from './account';
-import { asserts, computeHash, ensureDirectory } from './utils';
-import { ACCOUNTS_DIR, BLOCKS_DIR, decimals, fullcoin, STATE_DIR } from './config';
 
-import type { AccountAddress, AccountData, AccountHash, Accounts, AccountsIndex, BlockchainMetadata, BlockData, BlockHash, Blocks, BlocksIndex, ContractMemory, HexNumber } from './types';
+import type { HexNumber } from './types/types';
+import type { AccountAddress, AccountData, AccountHash, Accounts, AccountsIndex, ContractMemory } from './types/account.types';
+import type { BlockData, BlockHash, Blocks, BlocksIndex } from './types/block.types';
+import type { BlockchainMetadata } from './types/blockchain.types';
+import { TransactionsIndex } from './types/transaction.types';
 
 
 /* ######################################################### */
 
-const BLOCKS_INDEX_FILE = path.join(STATE_DIR, 'blocksIndex.json');
-const ACCOUNTS_INDEX_FILE = path.join(STATE_DIR, 'accountsIndex.json');
-const METADATA_FILE = path.join(STATE_DIR, 'metadata.json');
-
 const emptyBlocksHash = "0x44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a";
 const emptyAccountsHash = "0x44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a";
+const emptyTransactionsHash = "0x44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a";
 
 /* ######################################################### */
 
@@ -27,9 +29,11 @@ export class StateManager {
     public blockchain: Blockchain;
     public accountsHash: HexNumber = '0x';
     public blocksHash: HexNumber = '0x';
+    public transactionsHash: HexNumber = '0x';
     public lastBlockHash: HexNumber = '0x';
     public blocksIndex: BlocksIndex = []; // Tableau où l’index représente `blockHeight` et la valeur est `blockHash`
     public accountsIndex: AccountsIndex = {}; // Tableau où l’index représente `address` et la valeur est `accountHash`
+    public transactionsIndex: TransactionsIndex = {}; // Tableau où l’index représente `transactionHash` et la valeur est `blockHeight`
 
 
     constructor(blockchain: Blockchain) {
@@ -50,7 +54,9 @@ export class StateManager {
             const metadata: BlockchainMetadata = {
                 totalAccounts: 0,
                 totalBlocks: 0,
+                totalTransactions: 0,
                 blocksHash: emptyBlocksHash,
+                transactionsHash: emptyTransactionsHash,
                 accountsHash: emptyAccountsHash,
                 lastBlockHash: '0x',
                 totalSupply: 0n,
@@ -64,9 +70,11 @@ export class StateManager {
 
         asserts(typeof metadata.blocksHash === 'string', `metadata corrupted. invalid blocksHash. found: ${metadata.blocksHash}`);
         asserts(typeof metadata.accountsHash === 'string', `metadata corrupted. invalid accountsHash. found: ${metadata.accountsHash}`);
+        asserts(typeof metadata.transactionsHash === 'string', `metadata corrupted. invalid transactionsHash. found: ${metadata.transactionsHash}`);
         asserts(typeof metadata.lastBlockHash === 'string', `metadata corrupted. invalid lastBlockHash. found: ${metadata.lastBlockHash}`);
         asserts(typeof metadata.totalAccounts === 'number', `metadata corrupted. invalid totalAccounts. found: ${metadata.totalAccounts}`);
         asserts(typeof metadata.totalBlocks === 'number', `metadata corrupted. invalid totalBlocks. found: ${metadata.totalBlocks}`);
+        asserts(typeof metadata.totalTransactions === 'number', `metadata corrupted. invalid totalTransactions. found: ${metadata.totalTransactions}`);
 
         return metadata;
     }
@@ -77,10 +85,12 @@ export class StateManager {
         console.log(`[StateManager.saveMetadata]`);
 
         const metadata: BlockchainMetadata = {
-            totalAccounts: Object.keys(this.accountsIndex).length, // fs.readdirSync(ACCOUNTS_DIR).length,
-            totalBlocks: this.blocksIndex.length, // fs.readdirSync(BLOCKS_DIR).length,
+            totalAccounts: Object.keys(this.accountsIndex).length,
+            totalBlocks: this.blocksIndex.length,
+            totalTransactions: Object.keys(this.transactionsIndex).length,
             blocksHash: this.blocksHash,
             accountsHash: this.accountsHash,
+            transactionsHash: this.transactionsHash,
             lastBlockHash: this.lastBlockHash,
             totalSupply: this.blockchain.totalSupply,
         };
@@ -117,18 +127,68 @@ export class StateManager {
     }
 
 
+
+    /** 🔄 Charge l'index des transactions */
+    loadTransactionsIndex(): number {
+        console.log(`[StateManager.loadTransactionsIndex]`);
+
+        if (fs.existsSync(TRANSACTIONS_INDEX_FILE)) {
+            const transactionsIndex = fs.readFileSync(TRANSACTIONS_INDEX_FILE).toString();
+            this.transactionsIndex = JSON.parse(transactionsIndex) as TransactionsIndex;
+
+        } else {
+            this.transactionsIndex = {}; // Initialisation vide
+        }
+
+        return Object.keys(this.transactionsIndex).length;
+    }
+
+
+    /** 💾 Sauvegarde l’index des transactions */
+    saveTransactionsIndex(): void {
+        console.log(`[StateManager.saveTransactionsIndex]`);
+
+        fs.writeFileSync(TRANSACTIONS_INDEX_FILE, JSON.stringify(this.transactionsIndex, null, 4));
+    }
+
+
+
     /** 📤 Charge un block et vérifie son intégrité */
     loadBlock(blockHeight: number): Block | null {
         console.log(`[StateManager.loadBlock]`, blockHeight);
 
-        const blockPath = path.join(BLOCKS_DIR, `${blockHeight}.json`);
-        if (!fs.existsSync(blockPath)) return null;
+        const blockPath = path.join(BLOCKS_DIR, `${blockHeight.toString().padStart(15, '0')}.json`);
+        asserts(fs.existsSync(blockPath), `block "${blockHeight}" not found in database`);
+        //if (!fs.existsSync(blockPath)) return null;
 
         const raw = fs.readFileSync(blockPath, 'utf-8');
         const blockData: BlockData = JSON.parse(raw, jsonReviverForLoadBlock);
 
+        const blockHash = this.blocksIndex[blockHeight];
+        asserts(blockHash, `block "${blockHeight}" not found in blocksIndex`);
+
         const block = new Block(blockData.blockHeight, blockData.parentBlockHash);
         Object.assign(block, blockData);
+
+        // Vérifier la présence du champ `hash`
+        if (!block.hash) {
+            console.warn(`⚠️ Block ${blockHeight} ne contient pas de hash`);
+            throw new Error(`⚠️ Block ${blockHeight} ne contient pas de hash`);
+        }
+
+        if (block.hash !== blockHash) {
+            console.warn(`⚠️ Block ${blockHeight} contient un hash incoherent. (Expected: "${blockHash}" / Found: "${block.hash}")`);
+            throw new Error(`⚠️ Block ${blockHeight} contient un hash incoherent. (Expected: "${blockHash}" / Found: "${block.hash}")`);
+        }
+
+        // Vérifier l'intégrité du block
+        const expectedHash: BlockHash = block.computeHash();
+
+        if (expectedHash !== blockHash) {
+            debugger;
+            console.warn(`⚠️ Intégrité compromise pour le block ${blockHeight}. (Expected: "${blockHash}" / Found: "${expectedHash}")`);
+            throw new Error(`[Blockchain.getBlock] invalid block hash`);
+        }
 
         return block;
     }
@@ -138,10 +198,10 @@ export class StateManager {
     saveBlock(block: Block): void {
         console.log(`[StateManager.saveBlock]`, block.blockHeight);
 
-        const blockPath = path.join(BLOCKS_DIR, `${block.blockHeight}.json`);
+        const blockPath = path.join(BLOCKS_DIR, `${block.blockHeight.toString().padStart(15, '0')}.json`);
 
         // Sauvegarde du block
-        const blockData = Block.format(block);
+        const blockData = Block.toJSON(block);
         fs.writeFileSync(blockPath, JSON.stringify(blockData, jsonReplacerForSaveBlock, 4));
     }
 
@@ -175,22 +235,38 @@ export class StateManager {
     loadAccount(address: AccountAddress): Account | null {
         console.log(`[StateManager.loadAccount]`, address);
 
-        const accountPath = path.join(ACCOUNTS_DIR, `${address}.json`);
-        if (!fs.existsSync(accountPath)) return null;
+        const addressLower = address.toLowerCase() as AccountAddress;
+
+        const accountPath = path.join(ACCOUNTS_DIR, `${addressLower}.json`);
+        asserts(fs.existsSync(accountPath), `address "${address}" not found in database`);
+        //if (!fs.existsSync(accountPath)) return null;
 
         const raw = fs.readFileSync(accountPath, 'utf-8');
-        const accountData = JSON.parse(raw, jsonReviverForLoadAccount);
+        const accountData: AccountData = JSON.parse(raw, jsonReviverForLoadAccount);
 
+        const accountHash = this.accountsIndex[addressLower];
+        asserts(accountHash, `address "${address}" not found in accountsIndex`);
 
-        return new Account(
-            address,
-            BigInt(accountData.balance),
+        const account = new Account(
+            accountData.address,
+            accountData.balance,
             accountData.abi,
             accountData.code,
             accountData.transactionsCount,
             accountData.memory,
             accountData.hash,
         );
+
+        // Vérifier l'intégrité du compte
+        const expectedHash: AccountHash = account.computeHash();
+
+        if (expectedHash !== accountHash) {
+            console.warn(`⚠️ Intégrité compromise pour le compte ${address}. Expected: "${expectedHash}" / Found: "${accountHash}"`);
+            debugger;
+            throw new Error(`[Blockchain.getAccount] invalid account hash`);
+        }
+
+        return account;
     }
 
 
@@ -198,13 +274,56 @@ export class StateManager {
     saveAccount(account: Account): void {
         console.log(`[StateManager.saveAccount]`, account.address);
 
-        const accountPath = path.join(ACCOUNTS_DIR, `${account.address}.json`);
+        const accountPath = path.join(ACCOUNTS_DIR, `${account.address.toLowerCase()}.json`);
 
         // Sauvegarde du compte sur le disque
-        const accountData: AccountData = Account.format(account);
+        const accountData: AccountData = Account.toJSON(account);
         fs.writeFileSync(accountPath, JSON.stringify(accountData, jsonReplacerForSaveAccount, 4));
     }
 
+
+    dumpAccountsBalances(asFullCoin = false): { [address: string]: bigint | string } {
+        const accounts: Accounts = Object.fromEntries(
+            Array.from(this.getAccountsGenerator())
+                .map(account => [account.address, account])
+        );
+        return dumpAccountsBalances(accounts, asFullCoin);
+    }
+
+    dumpAccountsMemories(): { [address: string]: ContractMemory | null } {
+        const accounts: Accounts = Object.fromEntries(
+            Array.from(this.getAccountsGenerator())
+                .map(account => [account.address, account])
+        );
+        return dumpAccountsMemories(accounts);
+    }
+
+
+    dumpBlocks(): { [blockHeight: number]: BlockData } {
+        const blocks: Blocks = Object.fromEntries(
+            Array.from(this.getBlocksGenerator())
+                .map(block => [block.blockHeight, block])
+        )
+        return dumpBlocks(blocks);
+    }
+
+
+    * getAccountsGenerator(): Generator<Account> {
+        for (const address in this.accountsIndex) {
+            const account: Account = this.blockchain.getAccount(address as AccountAddress);
+            yield account;
+        }
+    }
+
+
+    * getBlocksGenerator(): Generator<Block> {
+        for (const key in Object.keys(this.blocksIndex)) {
+            const blockHeight = Number(key);
+            const block: Block | null = this.blockchain.getBlock(blockHeight);
+            asserts(block, `block "${blockHeight}" not found`);
+            yield block;
+        }
+    }
 }
 
 
@@ -217,39 +336,15 @@ export class MemoryState {
 
 
     dumpAccountsBalances(asFullCoin = false): { [address: string]: bigint | string } {
-        return Object.fromEntries(
-            Object.keys(this.accounts).map(address => {
-                return asFullCoin
-                    ? [address, Number(this.accounts[address].balance / fullcoin).toFixed(decimals)] // Approximatif (division entiere)
-                    : [address, this.accounts[address].balance];
-            })
-        );
+        return dumpAccountsBalances(this.accounts, asFullCoin);
     }
-
 
     dumpAccountsMemories(): { [address: string]: ContractMemory | null } {
-        return Object.fromEntries(
-            Object.keys(this.accounts).map(address => [address, this.accounts[address].memory])
-        );
+        return dumpAccountsMemories(this.accounts);
     }
 
-
-    dumpAccountsState() {
-        const entries = Object.entries(this.accounts);
-        const state: { [address: string]: any } = {};
-
-        for (const entry of entries) {
-            const [address, account] = entry;
-
-            state[address] = {
-                balance: account.balance,
-                abi: account.abi,
-                memory: account.memory,
-                transactionsCount: account.transactionsCount,
-            }
-        }
-
-        return state;
+    dumpBlocks() {
+        return dumpBlocks(this.blocks);
     }
 
 }
@@ -266,7 +361,13 @@ const jsonReplacerForSaveMetadata = function (key: string, value: any): any {
 }
 
 
-const jsonReviverForLoadMetadata = (key: string, value: any) => value;
+const jsonReviverForLoadMetadata = function (key: string, value: any): any {
+    if (typeof value === 'object' && value && value._jsonReplace && value.type === 'bigint') {
+        return BigInt(value.value);
+    }
+
+    return value;
+}
 
 
 const jsonReplacerForSaveBlock = function (key: string, value: any): any {

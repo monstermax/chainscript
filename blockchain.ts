@@ -1,13 +1,18 @@
 // blockchain.ts
 
+import { blockReward, chainId, networkVersion } from './config';
+import { asserts, computeHash } from './utils';
 import { StateManager } from './stateManager';
-import { executeTransaction, Transaction } from './transaction';
+import { Transaction } from './transaction';
 import { Account } from './account';
 import { MemoryState } from './stateManager';
-import { asserts, computeHash, computeStrHash } from './utils';
-import { blockReward } from './config';
+import { Mempool } from './mempool';
+import { Block } from './block';
 
-import type { AccountAddress, AccountHash, BlockData, BlockHash, BlockReceipt, HexNumber, TransactionReceipt } from './types';
+import type { TransactionHash } from './types/transaction.types';
+import type { BlockHash, BlockReceipt } from './types/block.types';
+import type { AccountAddress } from './types/account.types';
+
 
 
 /* ######################################################### */
@@ -16,6 +21,7 @@ import type { AccountAddress, AccountHash, BlockData, BlockHash, BlockReceipt, H
 export class Blockchain {
     public memoryState: MemoryState;
     public stateManager: StateManager;
+    public mempool: Mempool = new Mempool(this);
     public totalSupply: bigint = 0n;
 
 
@@ -36,7 +42,9 @@ export class Blockchain {
 
         this.stateManager.blocksHash = metadata.blocksHash;
         this.stateManager.accountsHash = metadata.accountsHash;
+        this.stateManager.transactionsHash = metadata.transactionsHash;
         this.stateManager.lastBlockHash = metadata.lastBlockHash;
+        this.totalSupply = metadata.totalSupply;
 
 
         // Vérifier la cohérence du nb de blocks
@@ -44,6 +52,23 @@ export class Blockchain {
 
         if (metadata?.totalBlocks !== totalBlocks) {
             console.warn(`⚠️ Le nombre de blocks a été modifié ! (expected: "${metadata?.totalBlocks}" found: "${totalBlocks}")`);
+        }
+
+
+        // Vérifier la cohérence du nb de transactions
+        const totalTransactions = this.stateManager.loadTransactionsIndex();
+
+        if (metadata?.totalTransactions !== totalTransactions) {
+            console.warn(`⚠️ Le nombre de transactions a été modifié ! (expected: "${metadata?.totalTransactions}" found: "${totalTransactions}")`);
+        }
+
+
+        // Vérifier la cohérence du hash blocks
+        const transactionsHash = computeHash(this.stateManager.transactionsIndex);
+
+        if (transactionsHash !== this.stateManager.transactionsHash) {
+            console.warn(`⚠️ Le transactionsHash a été modifié ! (expected: "${transactionsHash}" found: "${this.stateManager.transactionsHash}")`);
+            debugger;
         }
 
 
@@ -77,6 +102,15 @@ export class Blockchain {
     }
 
 
+    getChainId(): number {
+        return chainId;
+    }
+
+
+    getNetworkVersion(): number {
+        return networkVersion;
+    }
+
 
     /** 📤 Retourne le hash d’un block à partir de son height */
     getBlockHash(blockHeight: number): string | null {
@@ -84,59 +118,20 @@ export class Blockchain {
     }
 
 
-    async addBlock(block: Block): Promise<BlockReceipt> {
-        console.log(`[Blockchain.addBlock]`, block.blockHeight);
+    getTransactionByHash(txHash: TransactionHash): Transaction | null {
+        const blockHeight = this.stateManager.transactionsIndex[txHash];
+        //asserts(typeof blockHeight === 'number', `transaction "${txHash}" not found`)
+        if (typeof blockHeight !== 'number') return null;
 
-        // check parent height
-        const previousBlockHeight: number = this.blockHeight;
-        asserts(block.blockHeight === previousBlockHeight + 1, `[Blockchain.addBlock] invalid block height. expected: "${previousBlockHeight + 1}". found: "${block.blockHeight}"`);
+        const block = this.getBlock(blockHeight);
+        asserts(block, `block "${blockHeight}" not found for transaction "${txHash}"`);
+        //if (! block) return null;
 
-        // check parent hash
-        const previousBlockHash: BlockHash = this.stateManager.blocksIndex.length ? this.stateManager.blocksIndex[previousBlockHeight] : '0x';
-        asserts(block.parentBlockHash === previousBlockHash, `[Blockchain.addBlock] parentBlockHash mismatch. found: "${block.parentBlockHash}" expected: "${previousBlockHash}"`)
+        const transactionIndex = block.transactions.findIndex(_tx => _tx.hash === txHash);
+        asserts(transactionIndex > -1, `transaction "${txHash}" not found in block "${blockHeight}"`);
+        //if (transactionIndex === -1) return null;
 
-        //this.blocks.push(block);
-
-
-        try {
-            const blockReceipt = await block.mine(this);
-
-            // Enregistre le block sur le disque
-            asserts(block.hash, `[StateManager.saveBlock] missing block hash`);
-
-            // Sauvegarde du block sur le disque
-            this.stateManager.saveBlock(block);
-
-            // Ajout du block à blocksIndex
-            this.stateManager.lastBlockHash = block.hash;
-            this.stateManager.blocksIndex.push(block.hash);
-
-            // Sauvegarde des accounts modifiés pendant le block
-            for (const address in this.memoryState.accounts) {
-                const account = this.memoryState.accounts[address];
-                account.hash = computeHash(Account.format(account));
-
-                this.stateManager.saveAccount(account);
-                this.stateManager.accountsIndex[address as AccountAddress] = account.hash;
-
-                // TODO: mettre à jour la totalSupply
-            }
-
-            // Calcul des nouveaux hashes
-            this.stateManager.accountsHash = computeHash(this.stateManager.accountsIndex);
-            this.stateManager.blocksHash = computeHash(this.stateManager.blocksIndex);
-
-            // Sauvegarde des métadonnées & indexes de la blockchain
-            this.stateManager.saveAccountsIndex();
-            this.stateManager.saveBlocksIndex();
-            this.stateManager.saveMetadata();
-
-            return blockReceipt;
-
-        } catch (err: any) {
-            console.error("❌ Erreur dans l'exécution du block", err);
-            throw err;
-        }
+        return block.transactions[transactionIndex];
     }
 
 
@@ -149,14 +144,16 @@ export class Blockchain {
             return this.memoryState.blocks[blockHeight];
         }
 
+        // Vérifier si le block existe dans l'index
         const blockHash = this.stateManager.blocksIndex[blockHeight];
 
-        let block: Block | undefined;
-
-        if (! block && ! blockHash) {
+        if (! blockHash) {
             // block inconnu
-            throw new Error(`unknown block at height "${blockHeight}"`);
+            console.warn(`[Blockchain.getBlock] Block ${blockHeight} introuvable`);
+            throw new Error(`[Blockchain.getBlock] unknown block at height "${blockHeight}"`);
         }
+
+        let block: Block | undefined;
 
         if (! block) {
             // cherche dans les blocks sur disque
@@ -164,27 +161,6 @@ export class Blockchain {
 
             if (block) {
                 this.memoryState.blocks[blockHeight] = block;
-
-                // Vérifier la présence du champ `hash`
-                if (!block.hash) {
-                    console.warn(`⚠️ Block ${blockHeight} ne contient pas de hash`);
-                    throw new Error(`⚠️ Block ${blockHeight} ne contient pas de hash`);
-                }
-
-                if (block.hash !== blockHash) {
-                    console.warn(`⚠️ Block ${blockHeight} contient un hash incoherent. (Expected: "${blockHash}" / Found: "${block.hash}")`);
-                    throw new Error(`⚠️ Block ${blockHeight} contient un hash incoherent. (Expected: "${blockHash}" / Found: "${block.hash}")`);
-                }
-
-                // Vérifier l'intégrité du block
-                const expectedHash: BlockHash = computeHash(Block.format(block));
-
-                if (expectedHash !== blockHash) {
-                    debugger;
-                    console.warn(`⚠️ Intégrité compromise pour le block ${blockHeight}. (Expected: "${blockHash}" / Found: "${expectedHash}")`);
-                    throw new Error(`[Blockchain.getBlock] invalid block hash`);
-                }
-
             }
         }
 
@@ -197,20 +173,26 @@ export class Blockchain {
 
 
     getAccount(address: AccountAddress): Account {
+        asserts(typeof address === 'string', `invalid address type for address "${address}"`);
+        asserts(address.startsWith('0x'), `invalid address format for address "${address}"`);
+        asserts(address === '0x' || address.length === 42, `invalid address length for address "${address}"`);
+        asserts(address === '0x' || /^0x[a-fA-F0-9]{40}$/.test(address), `invalid address for address "${address}"`);
 
-        if (this.memoryState.accounts[address]) {
+        const addressLower = address.toLowerCase() as AccountAddress;
+
+        if (this.memoryState.accounts[addressLower]) {
             // cherche dans les accounts en memoire
-            return this.memoryState.accounts[address];
+            return this.memoryState.accounts[addressLower];
         }
 
-        const accountHash = this.stateManager.accountsIndex[address];
+        const accountHash = this.stateManager.accountsIndex[addressLower];
 
         let account: Account | undefined;
 
-        if (! account && ! accountHash) {
-            // account inconnu
+        if (! accountHash) {
+            // account inconnu => charge un account vide
             account = new Account(address);
-            this.memoryState.accounts[address] = account;
+            this.memoryState.accounts[addressLower] = account;
         }
 
         if (! account) {
@@ -218,17 +200,7 @@ export class Blockchain {
             account = this.stateManager.loadAccount(address) ?? undefined;
 
             if (account) {
-
-                // Vérifier l'intégrité du compte
-                const expectedHash: AccountHash = computeHash(Account.format(account));
-
-                if (expectedHash !== accountHash) {
-                    console.warn(`⚠️ Intégrité compromise pour le compte ${address}. Expected: "${expectedHash}" / Found: "${accountHash}"`);
-                    debugger;
-                    throw new Error(`[Blockchain.getAccount] invalid account hash`);
-                }
-
-                this.memoryState.accounts[address] = account;
+                this.memoryState.accounts[addressLower] = account;
             }
         }
 
@@ -249,7 +221,9 @@ export class Blockchain {
     increaseSupply(amount: bigint) {
         console.log(`[Blockchain.increaseSupply]`);
 
-        asserts(amount > 0, "[Blockchain.increaseSupply] invalid amount")
+        asserts(typeof amount === 'bigint', "[Blockchain.increaseSupply] invalid amount type");
+        asserts(amount > 0, "[Blockchain.increaseSupply] invalid amount");
+
         this.totalSupply += amount;
     }
 
@@ -257,14 +231,20 @@ export class Blockchain {
     decreaseSupply(amount: bigint) {
         console.log(`[Blockchain.decreaseSupply]`);
 
-        asserts(amount > 0, "[Blockchain.decreaseSupply] invalid amount")
+        asserts(typeof amount === 'bigint', "[Blockchain.decreaseSupply] invalid amount type");
+        asserts(amount > 0, "[Blockchain.decreaseSupply] invalid amount");
         asserts(this.totalSupply >= amount, '[Blockchain.decreaseSupply] insufficient supply');
+
         this.totalSupply -= amount;
     }
 
 
     transfer(emitterAddress: AccountAddress, recipientAddress: AccountAddress, amount: bigint): void {
         console.log(`[Blockchain.transfer]`);
+
+        asserts(typeof emitterAddress === 'string', "[Blockchain.transfer] invalid emitterAddress type");
+        asserts(typeof recipientAddress === 'string', "[Blockchain.transfer] invalid recipientAddress type");
+        asserts(typeof amount === 'bigint', "[Blockchain.transfer] invalid amount type");
 
         const emitter = this.getAccount(emitterAddress);
         const recipient = this.getAccount(recipientAddress);
@@ -276,6 +256,8 @@ export class Blockchain {
 
 
     public burn(account: Account, amount: bigint) {
+        asserts(typeof account === 'object' && account.constructor.name === 'Account', "[Blockchain.burn] invalid account type");
+        asserts(typeof amount === 'bigint', "[Blockchain.burn] invalid amount type");
         asserts(amount > 0, `[Blockchain.burn] invalid amount`);
         asserts(account.balance >= amount, `[Account.burn] insufficient balance for ${account.address}`);
 
@@ -286,6 +268,8 @@ export class Blockchain {
 
 
     public mint(account: Account, amount: bigint) {
+        asserts(typeof account === 'object' && account.constructor.name === 'Account', "[Blockchain.mint] invalid account type");
+        asserts(typeof amount === 'bigint', "[Blockchain.mint] invalid amount type");
         asserts(amount > 0, `[Blockchain.mint] invalid amount`);
 
         account.mint(amount);
@@ -293,122 +277,179 @@ export class Blockchain {
         this.increaseSupply(amount)
     }
 
-}
 
 
+    async createGenesisBlock(): Promise<{ block: Block, receipt: BlockReceipt }> {
+        asserts(this.blockHeight === -1, `[Blockchain.addGenesisBlock] invalid block height`);
 
-export class Block {
-    public blockHeight: number;
-    public parentBlockHash: BlockHash;
-    public miner: AccountAddress = '0x';
-    public nonce: bigint = 0n;
-    public hash: BlockHash | undefined;
-    public transactions: Transaction[] = [];
+        // Créer nouveau block
+        const block = new Block(0, '0x');
+        block.timestamp = Date.now();
 
+        // Ajouter a la blockchain
+        const { receipt } = await this.addBlock(block);
+        asserts(receipt.hash, `[Blockchain.addGenesisBlock] missing block hash`);
 
-    constructor(blockHeight: number, parentBlockHash: BlockHash) {
-        this.blockHeight = blockHeight;
-        this.parentBlockHash = parentBlockHash;
+        return { block, receipt };
     }
 
 
-    addTransaction(transaction: Transaction) {
-        this.transactions.push(transaction);
+    async createBlock(minerAddress: AccountAddress): Promise<{ block: Block, receipt: BlockReceipt }> {
+        console.log(`[Blockchain.createBlock]`);
+
+        // Load last block
+        const lastBlock = this.blockHeight > -1 ? this.getBlock(this.blockHeight) : { blockHeight: -1, hash: '0x' as BlockHash };
+        asserts(lastBlock, 'parent block not found');
+        asserts(lastBlock.hash, 'empty parent block hash');
+
+
+        // Créer nouveau block
+        const block = new Block(lastBlock.blockHeight + 1, lastBlock.hash);
+        block.miner = minerAddress;
+        block.timestamp = Date.now();
+
+
+        // Choisi des transactions dans la mempool
+        const transactions: Transaction[] = this.mempool.getPendingTransactions();
+
+        block.transactions = transactions;
+
+        return this.addBlock(block);
     }
 
 
-    async mine(blockchain: Blockchain): Promise<BlockReceipt> {
-        console.log(`[Block.executeTransactions]`);
+    async addBlock(block: Block): Promise<{ block: Block, receipt: BlockReceipt }> {
+        console.log(`[Blockchain.addBlock]`);
+
+        // Load last block
+        const lastBlock = this.blockHeight > -1 ? this.getBlock(this.blockHeight) : { blockHeight: -1, hash: '0x' as BlockHash };
+        asserts(lastBlock, 'parent block not found');
+        asserts(lastBlock.hash, 'empty parent block hash');
+
+
+        // Selectionne les transactions du block
+        const transactions: Transaction[] = block.transactions;
+
+        // Execute le block
+        const blockHashOld = block.hash;
+        const blockReceipt = await this.executeBlock(block, transactions);
+
+        if (blockHashOld) {
+            asserts(blockHashOld === block.hash, `blockHash mismatch`);
+        }
+
+        // Ajoute le block à la blockchain
+        this.saveBlockchainAfterNewBlock(block);
+
+        // Supprime les transactions de la mempool
+        this.mempool.clearMempool(transactions);
+
+        return { block, receipt: blockReceipt };
+    }
+
+
+    async executeBlock(block: Block, transactions: Transaction[]): Promise<BlockReceipt> {
+        console.log(`[Blockchain.executeBlock]`);
 
         let currentBlockReward = blockReward;
-        let txHashes: HexNumber = '0x';
-
-        for (const tx of this.transactions) {
-
-            // TRANSACTION START //
-
-            let txFees: bigint = 0n;
-            let error: string | null = null;
-            let signature: string = '';
-
-            const txReceipt: TransactionReceipt = await executeTransaction(blockchain, tx)
-                .then((receipt: TransactionReceipt) => {
-                    txFees = receipt.fees;
-
-                    return receipt;
-                })
-                .catch((err: any) => {
-                    error = err.message;
-                    txFees = err.fees;
-
-                    // revert accounts modifications
-                    console.warn(`TX REVERTED: ${error}`);
-
-                    throw err;
-                })
-                .finally(() => {
-                    // pay transaction fees
-                    console.log('txFees:', txFees);
-
-                    if (txFees > 0) {
-                        blockchain.getAccount(tx.emitter).burn(txFees);
-                        blockchain.getAccount(tx.emitter).incrementTransactions();
-                    }
-                })
 
 
-            signature = txReceipt.signature;
-            currentBlockReward += txFees;
-            txHashes = computeStrHash(`${txHashes}:${signature}`)
+        // execute transactions...
+        let transactionIndex = -1;
+        for (const tx of transactions) {
+            transactionIndex++;
+            console.log(`[Blockchain.executeBlock] add tx ${transactionIndex+1}/${transactions.length} => "${tx.hash}"`);
 
-            //await accountsManager.saveState();
+            const txReceipt = await block.executeTransaction(this, tx);
+            block.receipts.push(txReceipt);
 
-            // TRANSACTION END //
+            // Add transaction fees to block reward
+            currentBlockReward += txReceipt.fees;
         }
 
-        if (this.miner && this.miner !== '0x' && currentBlockReward > 0n) {
-            const minerAccount = blockchain.getAccount(this.miner);
-            blockchain.mint(minerAccount, currentBlockReward);
+
+        // add a mint transaction
+        if (! block.hash && block.miner && block.miner !== '0x' && currentBlockReward > 0n) {
+            const tx = new Transaction('0x', currentBlockReward, BigInt(this.blockHeight))
+                .mint(block.miner, currentBlockReward);
+
+            tx.hash = tx.computeHash();
+
+            block.transactions.push(tx);
+
+            const txReceipt = await block.executeTransaction(this, tx);
+            block.receipts.push(txReceipt);
         }
 
-        const hash: BlockHash = computeHash(Block.format(this))
 
-        this.hash = hash;
+        const blockHash: BlockHash = block.computeHash();
+        block.hash = blockHash;
 
 
         const blockReceipt: BlockReceipt = {
-            hash,
+            hash: blockHash,
             reward: currentBlockReward,
         };
+
+        console.log(`[Blockchain.executeBlock] execution completed`);
 
         return blockReceipt;
     }
 
 
-    static format(block: Block): BlockData {
-        const blockData: BlockData = {
-            blockHeight: block.blockHeight,
-            parentBlockHash: block.parentBlockHash,
-            miner: block.miner,
-            hash: block.hash,
-            transactions: block.transactions.map(tx => Transaction.format(tx)),
-            nonce: block.nonce,
-        };
+    saveBlockchainAfterNewBlock(block: Block): void {
+        console.log(`[Blockchain.saveBlockchainAfterNewBlock]`);
 
-        return blockData;
+        asserts(block.blockHeight === this.blockHeight + 1, `invalid blockHeight`);
+
+        const parentBlockHash = this.getBlockHash(block.blockHeight - 1) ?? '0x';
+        asserts(block.parentBlockHash === parentBlockHash, `invalid parentBlockHash. Expected "${parentBlockHash}" / Found: "${block.parentBlockHash}"`);
+
+        asserts(block.hash, `missing block hash`);
+
+
+        // Ajout des transactions à transactionsIndex
+        for (const tx of block.transactions) {
+            const txHash = tx.hash;
+            asserts(txHash, `missing transaction hash`);
+
+            asserts(! (txHash in this.stateManager.transactionsIndex), `transaction already mined`);
+            this.stateManager.transactionsIndex[txHash] = block.blockHeight;
+        }
+
+        // Sauvegarde du block sur le disque
+        this.stateManager.saveBlock(block);
+
+        // Ajout du block à blocksIndex
+        this.stateManager.lastBlockHash = block.hash;
+        this.stateManager.blocksIndex.push(block.hash);
+
+        // Sauvegarde des accounts modifiés pendant le block
+        for (const address in this.memoryState.accounts) {
+            const addressLower = address.toLowerCase() as AccountAddress;
+            const account = this.memoryState.accounts[addressLower];
+
+            // Recalcul du nouveau hash du compte
+            account.hash = account.computeHash();
+
+            // Sauvegarde du compte sur le disque
+            this.stateManager.saveAccount(account);
+            this.stateManager.accountsIndex[addressLower] = account.hash;
+        }
+
+        // Calcul des nouveaux hashes
+        this.stateManager.accountsHash = computeHash(this.stateManager.accountsIndex);
+        this.stateManager.blocksHash = computeHash(this.stateManager.blocksIndex);
+        this.stateManager.transactionsHash = computeHash(this.stateManager.transactionsIndex);
+
+        // Sauvegarde des métadonnées & indexes de la blockchain
+        this.stateManager.saveAccountsIndex();
+        this.stateManager.saveBlocksIndex();
+        this.stateManager.saveTransactionsIndex();
+        this.stateManager.saveMetadata();
     }
-}
-
-
-export class GenesisBlock extends Block {
-
-    constructor() {
-        super(0, '0x');
-        this.miner = '0x';
-    }
 
 }
-
 
 
 

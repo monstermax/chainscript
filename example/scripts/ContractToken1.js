@@ -1,18 +1,35 @@
-// 0xcontract_token_1.js
-
+// ContractToken1.js
 
 
 class ContractToken1 {
 
-    #name = "Token de Test";
-    #symbol = "TOK";
-    #decimals = 9;
-
     #memory = memory({
-        supply: 10_000_000_000n * BigInt(Math.pow(10, this.#decimals)),
-        accounts: { '0x0000000000000000000000000000000000000010': 10_000_000_000n * BigInt(Math.pow(10, this.#decimals)) },
+        supply: 10_000_000_000n * this.fulltoken,
+        accounts: {
+            [this.owner]: 10_000_000_000n * this.fulltoken,
+        },
     });
 
+    get name() {
+        return 'Test Token';
+    }
+
+    get symbol() {
+        return 'TOK';
+    }
+
+    get decimals() {
+        return 9;
+    }
+
+    get owner() {
+        return '0x0000000000000000000000000000000000000010';
+    }
+
+
+    get fulltoken() {
+        return BigInt(Math.pow(10, this.decimals));
+    }
 
     #mint(_address, amount) {
         this.#memory.supply += amount;
@@ -27,6 +44,10 @@ class ContractToken1 {
         asserts(this.#memory.accounts[_address] >= amount, `insufficient token balance : ${this.#memory.accounts[_address]} < ${amount}`);
         this.#memory.accounts[_address] -= amount;
         this.#memory.supply -= amount;
+    }
+
+    balanceOf(_address) {
+        return this.#memory.accounts[_address] ?? 0n;
     }
 
     transfer(recipient, amount) {
