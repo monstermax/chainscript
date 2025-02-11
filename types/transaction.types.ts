@@ -116,6 +116,7 @@ export type TransactionInstructionCreate = {
     type: 'create',
     abi: CodeAbi,
     code: string,
+    amount?: bigint,
 }
 
 

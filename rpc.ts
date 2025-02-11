@@ -93,6 +93,7 @@ export async function rpcListen(blockchain: Blockchain, rpcPort: number) {
 
                     case 'eth_getBalance': {
                         // https://docs.metamask.io/services/reference/ethereum/json-rpc-methods/eth_getBalance/
+                        // https://docs.metamask.io/wallet/reference/json-rpc-methods/eth_getbalance/
                         const [address, blockNumber] = params as [AccountAddress, HexNumber];
 
                         const account = blockchain.getAccount(address);
@@ -224,6 +225,14 @@ export async function rpcListen(blockchain: Blockchain, rpcPort: number) {
                         // https://docs.metamask.io/services/reference/ethereum/json-rpc-methods/eth_getCode/
                         const [address, blockNumber] = params as [address: AccountAddress, blockNumber: HexNumber];
 
+                        result = '0x';
+                        break;
+                    }
+
+                    case 'eth_getLogs': {
+                        // https://docs.metamask.io/services/reference/ethereum/json-rpc-methods/eth_getlogs/
+                        // https://docs.metamask.io/wallet/reference/json-rpc-methods/eth_getlogs/
+                        // TODO
                         result = '0x';
                         break;
                     }

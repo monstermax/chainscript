@@ -26,6 +26,13 @@ ethereum.request({
 ```bash
 curl -X POST http://127.0.0.1:8545 \
   -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"eth_getBalance","params":["0xee5392913a7930c233aa711263f715f616114e9b", "latest"]}'
+```
+
+
+```bash
+curl -X POST http://127.0.0.1:8545 \
+  -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"eth_call","params":[{"to":"0x0000000000000000000000000000000000000030","data":"0x60fe47b1"}, "latest"]}'
 ```
 
@@ -40,6 +47,19 @@ ethereum.request({ method: 'eth_requestAccounts' })
 ```
 
 
+
+
+# GET BALANCE
+
+```js
+ethereum.request({
+    method: "eth_getBalance",
+    params: [
+        "0xee5392913a7930c233aa711263f715f616114e9b",
+        "latest"
+    ],
+});
+```
 
 
 # GET TRANSACTION RECEIPT
@@ -78,3 +98,46 @@ ethereum.request({
 }).then(console.log).catch(console.error);
 ```
 
+
+# ADD CHAIN TO METAMASK
+
+```js
+await window.ethereum.request({
+    "method": "wallet_addEthereumChain",
+    "params": [
+    {
+        chainId: "0x64",
+        chainName: "Gnosis",
+        rpcUrls: [
+            "https://rpc.gnosischain.com"
+        ],
+        iconUrls: [
+            "https://xdaichain.com/fake/example/url/xdai.svg",
+            "https://xdaichain.com/fake/example/url/xdai.png"
+        ],
+        nativeCurrency: {
+            name: "XDAI",
+            symbol: "XDAI",
+            decimals: 18
+        },
+        blockExplorerUrls: [
+            "https://blockscout.com/poa/xdai/"
+        ]
+    }
+],
+});
+```
+
+
+# SWITCH TO CHAIN
+
+```js
+await window.ethereum.request({
+    "method": "wallet_switchEthereumChain",
+    "params": [
+    {
+        chainId: "0x2540be3ff"
+    }
+],
+});
+```

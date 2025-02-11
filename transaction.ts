@@ -1,11 +1,12 @@
 // transaction.ts
 
 import fs from 'fs';
+import ethers from 'ethers'
 
 import * as ethereumjsTx from '@ethereumjs/tx';
 import * as ethereumjsUtil from '@ethereumjs/util';
 
-import { chainId } from './config';
+import { chainId, devPrivateKey } from './config';
 import { asserts, bufferToHex, computeHash, hexToUint8Array, jsonReplacer, now, toHex } from './utils';
 import { Blockchain } from './blockchain';
 import { Block } from './block';
@@ -68,11 +69,12 @@ export class Transaction {
     }
 
 
-    public create(abi: CodeAbi, code: string): this {
+    public create(abi: CodeAbi, code: string, amount=0n): this {
         const instruction: TransactionInstructionCreate = {
             type: 'create',
             abi,
             code,
+            amount,
         };
 
         this.instructions.push(instruction);
@@ -231,7 +233,7 @@ export class Transaction {
 
         const transactionHash: TransactionHash = computeHash(transactionFormatted);
 
-        if (true) {
+        if (false && fs.existsSync('/tmp/debug')) {
             // DEBUG
             const debugFile = `/tmp/debug/tx-${Date.now()}-${transactionHash}.json`;
             fs.writeFileSync(debugFile, JSON.stringify(transactionFormatted, jsonReplacer, 4));
@@ -293,6 +295,11 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
                 contractAccount.code = instruction.code;
                 contractAccount.memory = {};
 
+                {
+                    // TODO => Deploy contract => voir https://evmjs.dev/tools/deploy
+                }
+
+
                 txFees += 1000n; // 1000 microcoins for token creation
 
 
@@ -324,6 +331,8 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
 
         } else {
             asserts(tx.from === '0x', `invalid emitter for transaction without fees. Expected: "0x" / Found: ${tx.from}`);
+
+            // TODO: gérer les annulations de transactions (pas de fees ?)
         }
 
         // Increment account transactions count
