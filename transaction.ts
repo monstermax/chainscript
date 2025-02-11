@@ -1,17 +1,19 @@
 // transaction.ts
 
+import fs from 'fs';
+
 import * as ethereumjsTx from '@ethereumjs/tx';
 import * as ethereumjsUtil from '@ethereumjs/util';
 
 import { chainId } from './config';
-import { asserts, bufferToHex, computeHash, hexToUint8Array, now, toHex } from './utils';
+import { asserts, bufferToHex, computeHash, hexToUint8Array, jsonReplacer, now, toHex } from './utils';
 import { Blockchain } from './blockchain';
 import { Block } from './block';
 import { execVm } from './vm';
 
 import type { AccountAddress, CodeAbi } from './types/account.types';
 import type { TransactionData, TransactionHash, TransactionInstruction, TransactionInstructionCall, TransactionInstructionCreate, TransactionInstructionMint, TransactionInstructionTransfer, TransactionReceipt, TransactionReceiptData, TransactionReceiptRpc, TransactionRpc } from './types/transaction.types';
-import { BlockHash } from './types/block.types';
+import type { BlockHash } from './types/block.types';
 
 
 /* ######################################################### */
@@ -27,10 +29,16 @@ export class Transaction {
     public blockHash: BlockHash | null = null;
 
 
-    constructor(emitter: AccountAddress, amount: bigint=0n, nonce=0n) {
-        this.from = emitter;
+    constructor(from: AccountAddress, amount: bigint=0n, nonce=0n) {
+        this.from = from;
         this.amount = amount;
         this.nonce = nonce;
+    }
+
+    static from(txData: TransactionData) {
+        const tx = new Transaction(txData.from, txData.amount, txData.nonce);
+        Object.assign(tx, txData);
+        return tx;
     }
 
 
@@ -88,7 +96,9 @@ export class Transaction {
     }
 
 
-    static toJSON(tx: Transaction): TransactionData {
+    toData(): TransactionData {
+        const tx: Transaction = this;
+
         asserts(typeof tx.nonce === 'bigint', `invalid transaction nonce "${tx.nonce}"`);
         if (typeof tx.from !== 'string') debugger;
         asserts(typeof tx.from === 'string', `invalid transaction emitter type "${tx.from}"`);
@@ -96,19 +106,34 @@ export class Transaction {
         asserts(tx.from === '0x' || tx.from.length === 42, `invalid transaction emitter "${tx.nonce}"`);
 
         const transactionData: TransactionData = {
+            from: tx.from,
             nonce: tx.nonce,
+            amount: tx.amount,
+            instructions: tx.instructions,
             //to: '0x',
             //gasPrice: 0n,
             //gasLimit: 0n,
-            from: tx.from,
-            hash: tx.hash,
-            amount: tx.amount,
-            instructions: tx.instructions,
-            blockHeight: typeof tx.blockHeight === 'number' ? tx.blockHeight : undefined,
-            blockHash: tx.blockHash ?? undefined,
         };
 
+
+        if (typeof tx.blockHeight === 'number') {
+            transactionData.blockHeight = tx.blockHeight;
+        }
+
+        if (tx.hash) {
+            transactionData.hash = tx.hash;
+        }
+
+        if (tx.blockHash) {
+            transactionData.blockHash = tx.blockHash;
+        }
+
         return transactionData;
+    }
+
+
+    toJSON(): string {
+        return JSON.stringify(this.toData(), jsonReplacer, 4);
     }
 
 
@@ -124,7 +149,7 @@ export class Transaction {
         const transactionIndex = block.transactions.findIndex(_tx => _tx.hash === tx.hash);
         asserts(transactionIndex > -1, `[Transaction.formatForRpc] transaction not found`);
 
-        const transactionData: TransactionRpc = {
+        const transactionRpc: TransactionRpc = {
             accessList: [],
             blockHash: block.hash,
             blockNumber: toHex(block.blockHeight),
@@ -147,11 +172,11 @@ export class Transaction {
             //yParity: "0x1",
         };
 
-        return transactionData;
+        return transactionRpc;
     }
 
 
-    static toReceiptJSON(receipt: TransactionReceipt): TransactionReceiptData {
+    static toReceiptData(receipt: TransactionReceipt): TransactionReceiptData {
         const receiptData: TransactionReceiptData = {
             success: receipt.success,
             fees: receipt.fees,
@@ -172,7 +197,7 @@ export class Transaction {
         const transactionIndex = block.transactions.findIndex(_tx => _tx.hash === tx.hash);
         asserts(transactionIndex > -1, `[Transaction.formatForRpc] transaction not found`);
 
-        const receiptData: TransactionReceiptRpc = {
+        const receiptRpc: TransactionReceiptRpc = {
             blockHash: block.hash,
             blockNumber: toHex(block.blockHeight),
             contractAddress: null,
@@ -189,13 +214,19 @@ export class Transaction {
             type: "0x2"
           };
 
-        return receiptData;
+        return receiptRpc;
     }
 
 
     computeHash(): TransactionHash {
-        const transactionFormatted = Transaction.toJSON(this);
+        const transactionFormatted: TransactionData = this.toData();
         const transactionHash: TransactionHash = computeHash(transactionFormatted);
+
+        if (true) {
+            // DEBUG
+            const debugFile = `/tmp/debug/tx-${this.blockHeight?.toString().padStart(5, '0') || 'XXX'}-${transactionHash}.${Date.now()}.json`;
+            fs.writeFileSync(debugFile, JSON.stringify(transactionFormatted, jsonReplacer, 4));
+        }
 
         return transactionHash;
     }
@@ -203,11 +234,15 @@ export class Transaction {
 }
 
 
-
-
-export async function executeTransaction(blockchain: Blockchain, tx: Transaction): Promise<TransactionReceipt> {
+export async function executeTransaction(blockchain: Blockchain, block: Block, tx: Transaction): Promise<TransactionReceipt> {
     let txFees: bigint = 0n;
     let amountUsed: bigint = 0n;
+
+
+    // Vérifie le hash de la transaction
+    const computedTxHash = tx.computeHash();
+    asserts(computedTxHash === tx.hash, `transaction hash mismatch`);
+
 
     const emitterAccount = blockchain.getAccount(tx.from);
     asserts(emitterAccount, `[executeTransaction] emitterAccount "${tx.from}" not found`);
@@ -255,18 +290,12 @@ export async function executeTransaction(blockchain: Blockchain, tx: Transaction
             } else if (instruction.type === 'call') {
                 // Execute script
 
-                // Start time measure
-                performance.mark("script-start")
-
                 // Load source code
-                await execVm(blockchain, tx.from, instruction.scriptAddress, instruction.scriptClass, instruction.scriptMethod, instruction.scriptArgs)
-
-                // Stop time measure
-                performance.mark("script-end");
-                const measure = performance.measure("script", "script-start", "script-end")
+                const vmMonitor = { counter: 0 };
+                await execVm(blockchain, tx.from, instruction.scriptAddress, instruction.scriptClass, instruction.scriptMethod, instruction.scriptArgs, vmMonitor)
 
                 // Calculate fees
-                txFees += BigInt(Math.ceil(100 * measure.duration)); // 100 microCoins per milliseconds
+                txFees += BigInt(Math.ceil(100 * vmMonitor.counter)); // 100 microCoins per call
 
             } else {
                 throw new Error(`unknown instruction type`);
@@ -289,13 +318,10 @@ export async function executeTransaction(blockchain: Blockchain, tx: Transaction
         emitterAccount.incrementTransactions();
 
     } catch (err: any) {
-        console.warn(`[executeTransaction] ERROR. ${err.message}`);
+        console.warn(`[${now()}][executeTransaction] ERROR. ${err.message}`);
         err.fees = txFees;
         throw err;
     }
-
-
-    asserts(tx.hash, `missing transaction hash`)
 
 
     const receipt: TransactionReceipt = {
@@ -322,18 +348,18 @@ export function decodeTx(raw_tx: string): TransactionData {
         try {
             if (rawBuffer[0] === 2) {
                 // EIP-1559 Transaction
-                console.log("[decodeTx] 🆕 Transaction EIP-1559 détectée.");
+                console.log(`[${now()}][decodeTx] 🆕 Transaction EIP-1559 détectée.`);
                 tx = ethereumjsTx.FeeMarketEIP1559Transaction.fromSerializedTx(rawBuffer) as ethereumjsTx.FeeMarketEIP1559Transaction;
 
             } else {
                 // Legacy Transaction
-                console.log("[decodeTx] 🔄 Transaction Legacy détectée.");
+                console.log(`[${now()}][decodeTx] 🔄 Transaction Legacy détectée.`);
                 tx = ethereumjsTx.LegacyTransaction.fromSerializedTx(rawBuffer) as ethereumjsTx.LegacyTransaction;
             }
 
         } catch (err: any) {
-            console.error("[decodeTx] ❌ Impossible de décoder la transaction:", err);
-            throw new Error("[decodeTx] Invalid transaction format");
+            console.error(`[${now()}][decodeTx] ❌ Impossible de décoder la transaction:`, err);
+            throw new Error(`[decodeTx] Invalid transaction format`);
         }
 
         const amount = BigInt(tx.value.toString());
@@ -378,11 +404,11 @@ export function decodeTx(raw_tx: string): TransactionData {
             });
         }
 
-        console.log("[decodeTx] ✅ Transaction décodée:", txData);
+        console.log(`[${now()}][decodeTx] ✅ Transaction décodée:`, txData);
         return txData;
 
     } catch (err: any) {
-        console.warn(`[decodeTx ERR] ❌ ${err.message}`);
+        console.warn(`[${now()}][decodeTx] ❌ ${err.message}`);
         throw err;
     }
 }

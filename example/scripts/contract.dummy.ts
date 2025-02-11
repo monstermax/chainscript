@@ -32,7 +32,12 @@ function memory(initialValues: ContractMemory): ContractMemory { return {} };
 
 function asserts(condition: boolean, message?: string): asserts condition {};
 
-function getBlock(blockHeight: number): Block { return {}; }
-function getBlockHash(blockHeight: number): BlockHash { return '0x'; }
-function getBlockByHash(blockHash: BlockHash): Block { return {}; }
+
+function getBlock(blockHeight: number): Block { return {}; };
+
+function getBlockHash(blockHeight: number): BlockHash { return '0x'; };
+
+function getBlockHeight(blockHash: BlockHash): number | null { return 0 };
+
+function getBlockByHash(blockHash: BlockHash): Block { return {}; };
 

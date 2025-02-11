@@ -1,6 +1,6 @@
 // account.ts
 
-import { asserts, computeHash } from './utils';
+import { asserts, computeHash, jsonReplacer } from './utils';
 
 import type { AccountAddress, AccountData, AccountHash, CodeAbi, ContractMemory } from './types/account.types';
 
@@ -50,7 +50,9 @@ export class Account {
     }
 
 
-    static toJSON(account: Account): AccountData {
+    toData(): AccountData {
+        const account: Account = this;
+
         const accountData: AccountData = {
             address: account.address,
             balance: account.balance,
@@ -65,8 +67,13 @@ export class Account {
     }
 
 
+    toJSON(): string {
+        return JSON.stringify(this.toData(), jsonReplacer, 4);
+    }
+
+
     computeHash(): AccountHash {
-        const accountFormatted = Account.toJSON(this);
+        const accountFormatted: AccountData = this.toData();
         const accountHash: AccountHash = computeHash(accountFormatted);
 
         return accountHash;

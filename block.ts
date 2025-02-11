@@ -2,7 +2,7 @@
 
 import fs from 'fs';
 
-import { asserts, computeHash, jsonReplacer, toHex } from './utils';
+import { asserts, computeHash, jsonReplacer, now, toHex } from './utils';
 import { Blockchain } from './blockchain';
 import { executeTransaction, Transaction } from './transaction';
 
@@ -34,18 +34,23 @@ export class Block {
     }
 
 
-    async executeTransaction(blockchain: Blockchain, tx: Transaction): Promise<TransactionReceipt> {
+    static from(blockData: BlockData) {
+        const block = new Block(blockData.blockHeight, blockData.parentBlockHash);
+        Object.assign(block, blockData);
+
+        block.transactions = blockData.transactions.map(txData => Transaction.from(txData));
+
+        return block;
+    }
+
+
+    async executeTransaction(blockchain: Blockchain, block: Block, tx: Transaction): Promise<TransactionReceipt> {
         asserts(tx.hash, `missing transaction hash`);
-        //tx.hash = tx.hash ?? tx.computeHash();
 
-        //if (this.receipts.map(tx => tx.hash).includes(tx.hash)) {
-        //    throw new Error(`transaction "${tx.hash}" already in block "${this.blockHeight}"`);
-        //}
-
-        const txReceipt: TransactionReceipt = await executeTransaction(blockchain, tx)
+        const txReceipt: TransactionReceipt = await executeTransaction(blockchain, block, tx)
             .catch((err: any) => {
                 // revert transaction
-                console.warn(`TX REVERTED: ${err.message}`);
+                console.warn(`[${now()}][Block.executeTransaction] TX REVERTED: ${err.message}`);
                 throw err;
             });
 
@@ -53,19 +58,28 @@ export class Block {
     }
 
 
-    static toJSON(block: Block): BlockData {
+    toData(): BlockData {
+        const block: Block = this;
+
         const blockData: BlockData = {
             blockHeight: block.blockHeight,
             parentBlockHash: block.parentBlockHash,
             miner: block.miner,
             hash: block.hash,
             timestamp: block.timestamp ?? 0,
-            transactions: block.transactions.map(tx => Transaction.toJSON(tx)),
-            receipts: block.receipts.map(receipt => Transaction.toReceiptJSON(receipt)),
+            transactions: block.transactions.map(tx => tx.toData()),
+            receipts: block.receipts.map(receipt => Transaction.toReceiptData(receipt)),
             nonce: block.nonce,
         };
 
         return blockData;
+    }
+
+
+    toJSON(): string {
+        const blockData = this.toData();
+
+        return JSON.stringify(blockData, jsonReplacer, 4);
     }
 
 
@@ -111,13 +125,13 @@ export class Block {
 
 
     computeHash(): BlockHash {
-        const blockFormatted = Block.toJSON(this);
+        const blockFormatted: BlockData = this.toData();
         const blockHash: BlockHash = computeHash(blockFormatted);
 
         if (true) {
             // DEBUG
-            const debugFile = `/tmp/debug/block-${blockFormatted.blockHeight}.${Date.now()}.json`;
-            fs.writeFileSync(debugFile, JSON.stringify(blockFormatted, jsonReplacer, 4))
+            const debugFile = `/tmp/debug/block-${this.blockHeight}.${Date.now()}.json`;
+            fs.writeFileSync(debugFile, JSON.stringify(blockFormatted, jsonReplacer, 4));
         }
 
         return blockHash;

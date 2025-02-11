@@ -17,6 +17,8 @@ export class BlocksMiner {
     constructor(blockchain: Blockchain, minerAddress: AccountAddress) {
         this.blockchain = blockchain;
         this.minerAddress = minerAddress;
+
+        this.start();
     }
 
 
@@ -33,11 +35,11 @@ export class BlocksMiner {
 
 
     async tryToMine() {
-        console.log(`[${now()}][BlocksMiner.tryToMine]`);
+        console.log(`[${now()}][Miner.tryToMine]`);
 
         const lastBlock = this.blockchain.getBlock(this.blockchain.blockHeight);
-        asserts(lastBlock, `[BlocksMiner.tryToMine] lastBlock not found`);
-        asserts(lastBlock.timestamp, `[BlocksMiner.tryToMine] lastBlock has no timestamp`);
+        asserts(lastBlock, `[Miner.tryToMine] lastBlock not found`);
+        asserts(lastBlock.timestamp, `[Miner.tryToMine] lastBlock has no timestamp`);
 
         const lastBlockAge = Date.now() - lastBlock.timestamp;
         asserts(lastBlockAge > 0, `lastBlock is in the future`);
@@ -47,7 +49,7 @@ export class BlocksMiner {
         if (lastBlockAge < blockDelayMin) return;
 
         if (mempoolSize > 0 || lastBlockAge > blockDelayMax) {
-            await this.blockchain.createBlock(this.minerAddress);
+            await this.blockchain.createNewBlock(this.minerAddress);
         }
 
     }

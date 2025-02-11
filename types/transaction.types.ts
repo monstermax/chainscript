@@ -19,11 +19,11 @@ export type TransactionData = {
     amount: bigint;
     blockHeight?: number;
     blockHash?: BlockHash;
+    instructions: TransactionInstruction[];
+    hash?: TransactionHash | null;
     //to: AccountAddress;
     //gasPrice: bigint;
     //gasLimit: bigint;
-    instructions: TransactionInstruction[];
-    hash: TransactionHash | null;
 }
 
 

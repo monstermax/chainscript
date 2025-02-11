@@ -1,9 +1,10 @@
 // cli.ts
 
+import path from 'path';
 import fs from 'fs';
 
-import { fullcoin, METADATA_FILE, p2pPort, rpcPort, STATE_DIR } from './config';
-import { asserts, now } from "./utils";
+import { defaultStateDir, fullcoin, defaultP2pPort, defaultRpcPort } from './config';
+import { asserts, ensureDirectory, getOpt, hasOpt, now } from "./utils";
 import { Blockchain } from "./blockchain";
 import { Transaction } from "./transaction";
 import { rpcListen } from './rpc';
@@ -17,56 +18,73 @@ import { BlocksMiner } from './miner';
 
 /*
 
-ts-node cli.ts --init
-ts-node cli.ts --test --mine
-ts-node cli.ts --listen --mine
+# Initialization
+ts-node cli.ts --init                  # initiialize the blockchain (including genesis block)
+ts-node cli.ts --test --mine           # mine an empty block and get the reward
+ts-node cli.ts --listen --mine         # listen for rpc & p2p transactions
 
+# Tests
 ts-node cli.ts --test --tx-transfer
 ts-node cli.ts --test --tx-create-contract-1
 ts-node cli.ts --test --tx-exec-contract-1
 ts-node cli.ts --test --tx-create-token-1
 ts-node cli.ts --test --tx-exec-token-1
 
+# Monitoring
 ts-node cli.ts --dump-accounts --dump-memories --dump-blocks
 
+# Options
+ts-node cli.ts --dir ~/.blockchain-js --rpc 8545 --p2p 6001 [your other options...]
+
+# Example : 2nd instance with P2P
+ts-node cli.ts --dir ~/.blockchain-js --rpc -1 --p2p 6002 --listen
 */
 
 /* ######################################################### */
 
 
 async function main() {
+    const stateDir: string = getOpt('--dir') || defaultStateDir;
+    ensureDirectory(stateDir);
 
-    if (process.argv.includes('--init')) {
+    const rpcPort: number = Number(getOpt('--rpc')) || defaultRpcPort; // -1 to disable rpc
+    const p2pPort: number = Number(getOpt('--p2p')) || defaultP2pPort; // -1 to disable p2p
+
+
+    if (hasOpt('--init')) {
         // Initialize a new Blockchain
 
-        if (fs.existsSync(STATE_DIR)) {
+        if (fs.existsSync(stateDir)) {
+            const metadataFilepath = path.join(stateDir, 'metadata.json');
 
-            if (fs.existsSync(METADATA_FILE) && ! process.argv.includes('--force')) {
-                console.warn(`[${now()}][main] Cannot init a not-empty blockchain. Use --force option to force`);
+            if (fs.existsSync(metadataFilepath) && ! hasOpt('--force')) {
+                console.warn(`[${now()}][cli][main] Cannot init a not-empty blockchain. Use --force option to force`);
                 return;
             }
 
-            fs.rmSync(STATE_DIR, { recursive: true });
+            // Drop the state directory
+            fs.rmSync(stateDir, { recursive: true });
         }
 
-        fs.mkdirSync(STATE_DIR);
+        // (re)-create the state directory
+        fs.mkdirSync(stateDir);
     }
 
 
     // Load the Blockchain
-    const blockchain = new Blockchain;
+    const blockchain = new Blockchain(stateDir);
 
 
-    if (process.argv.includes('--init')) {
+    if (hasOpt('--init')) {
         // Create the Genesis Block
-        const { block, receipt } = await blockchain.createGenesisBlock();
+        const { block, blockReceipt } = await blockchain.createGenesisBlock();
 
-        console.log(`[${now()}][main] block:`, block);
-        console.log(`[${now()}][main] receipt:`, receipt);
+        console.log(`[${now()}][cli][main] block:`, block);
+        console.log(`[${now()}][cli][main] blockReceipt:`, blockReceipt);
     }
 
 
-    if (process.argv.includes('--test')) {
+    if (hasOpt('--test')) {
         await testsTransactions(blockchain);
     }
 
@@ -75,37 +93,41 @@ async function main() {
 
 
 
-    if (process.argv.includes('--dump-blocks')) {
-        console.log(`[${now()}][main] blocks: `, blockchain.stateManager.dumpBlocks());
+    if (hasOpt('--dump-blocks')) {
+        console.log(`[${now()}][cli][main] blocks: `, blockchain.stateManager.dumpBlocks());
     }
 
-    if (process.argv.includes('--dump-memories')) {
-        console.log(`[${now()}][main] memories: `, blockchain.stateManager.dumpAccountsMemories());
+    if (hasOpt('--dump-memories')) {
+        console.log(`[${now()}][cli][main] memories: `, blockchain.stateManager.dumpAccountsMemories());
     }
 
-    if (process.argv.includes('--dump-accounts')) {
-        console.log(`[${now()}][main] accounts: `, blockchain.stateManager.dumpAccountsBalances(true));
+    if (hasOpt('--dump-accounts')) {
+        console.log(`[${now()}][cli][main] accounts: `, blockchain.stateManager.dumpAccountsBalances(true));
     }
 
 
-    if (process.argv.includes('--listen')) {
+    if (hasOpt('--listen')) {
         // Wait for transactions...
 
-        // Load the P2P
-        const p2pNode = new P2PNode(blockchain, p2pPort);
-        p2pNode.startServer();
-
-
-        // Load miner
-        if (process.argv.includes('--mine')) {
-            const minerAddress: AccountAddress = '0xee5392913a7930c233Aa711263f715f616114e9B'; // addressTest1
-
-            const miner = new BlocksMiner(blockchain, minerAddress);
-            miner.start();
+        // Load the P2P => Wait for transactions from P2P
+        if (p2pPort > 0) {
+            blockchain.p2p = new P2PNode(blockchain, p2pPort);
         }
 
-        // Load RPC
-        await rpcListen(blockchain, rpcPort);
+
+        // Load RPC => Wait for transactions from RPC
+        if (rpcPort > 0) {
+            blockchain.rpc = await rpcListen(blockchain, rpcPort);
+            console.log('rpc started')
+        }
+
+
+        // Start local miner
+        if (hasOpt('--mine')) {
+            const minerAddress: AccountAddress = '0xee5392913a7930c233Aa711263f715f616114e9B'; // addressTest1
+
+            blockchain.miner = new BlocksMiner(blockchain, minerAddress);
+        }
     }
 }
 
@@ -123,16 +145,20 @@ async function testsTransactions(blockchain: Blockchain) {
     const addressToken1: AccountAddress = '0xc9e4facb4b3c1248cbf71203b568ab617453981e';
 
 
-    if (process.argv.includes('--mine')) {
+    if (hasOpt('--mine')) {
         const minerAddress: AccountAddress = '0xee5392913a7930c233Aa711263f715f616114e9B'; // addressTest1
 
-        const { block, receipt } = await blockchain.createBlock(minerAddress);
+        const miningResult = await blockchain.createNewBlock(minerAddress);
 
-        console.log(`[${now()}][main] block:`, block)
-        console.log(`[${now()}][main] receipt:`, receipt)
+        if (miningResult) {
+            const { block, blockReceipt } = miningResult;
+
+            console.log(`[${now()}][cli][main] block:`, block)
+            console.log(`[${now()}][cli][main] blockReceipt:`, blockReceipt)
+        }
     }
 
-    if (process.argv.includes('--tx-transfer')) {
+    if (hasOpt('--tx-transfer')) {
         // 1. Create a transaction
         const txExecutorAddress = addressTest1;
         const txAmount = 10n * fullcoin;
@@ -140,11 +166,11 @@ async function testsTransactions(blockchain: Blockchain) {
         const tx = new Transaction(txExecutorAddress, txAmount)
             .transfer(addressContract1, txAmount); // TRANSFER AMOUNT
 
-        // 2. Add transaction to the block
+        // 2. Add transaction to the mempool
         blockchain.mempool.addTransaction(tx);
     }
 
-    if (process.argv.includes('--tx-create-contract-1')) {
+    if (hasOpt('--tx-create-contract-1')) {
         // 1. Create a transaction
         const txExecutorAddress = addressTest1;
 
@@ -154,11 +180,11 @@ async function testsTransactions(blockchain: Blockchain) {
         const tx = new Transaction(txExecutorAddress)
             .create(abi, code); // CREATE CONTRACT
 
-        // 2. Add transaction to the block
+        // 2. Add transaction to the mempool
         blockchain.mempool.addTransaction(tx);
     }
 
-    if (process.argv.includes('--tx-exec-contract-1')) {
+    if (hasOpt('--tx-exec-contract-1')) {
         // 1. Create a transaction
         const txExecutorAddress = addressTest1;
         const txAmount = 10n * fullcoin;
@@ -167,11 +193,11 @@ async function testsTransactions(blockchain: Blockchain) {
             .transfer(addressContract1, txAmount) // TRANSFER AMOUNT
             .call(addressContract1, 'ContractTest1', 'test_vm_1'); // CALL CONTRACT
 
-        // 2. Add transaction to the block
+        // 2. Add transaction to the mempool
         blockchain.mempool.addTransaction(tx);
     }
 
-    if (process.argv.includes('--tx-create-contract-2')) {
+    if (hasOpt('--tx-create-contract-2')) {
         // 1. Create a transaction
         const txExecutorAddress = addressTest1;
 
@@ -181,11 +207,11 @@ async function testsTransactions(blockchain: Blockchain) {
         const tx = new Transaction(txExecutorAddress)
             .create(abi, code); // CREATE TOKEN
 
-        // 2. Add transaction to the block
+        // 2. Add transaction to the mempool
         blockchain.mempool.addTransaction(tx);
     }
 
-    if (process.argv.includes('--tx-create-token-1')) {
+    if (hasOpt('--tx-create-token-1')) {
         // 1. Create a transaction
         const txExecutorAddress = addressTest1;
 
@@ -195,11 +221,11 @@ async function testsTransactions(blockchain: Blockchain) {
         const tx = new Transaction(txExecutorAddress)
             .create(abi, code); // CREATE TOKEN
 
-        // 2. Add transaction to the block
+        // 2. Add transaction to the mempool
         blockchain.mempool.addTransaction(tx);
     }
 
-    if (process.argv.includes('--tx-exec-token-1')) {
+    if (hasOpt('--tx-exec-token-1')) {
         // 1. Create a transaction
         const txExecutorAddress = addressTest1;
         const txAmount = 0n * fullcoin;
@@ -208,11 +234,11 @@ async function testsTransactions(blockchain: Blockchain) {
         const tx = new Transaction(txExecutorAddress, txAmount)
             .call(addressToken1, 'ContractToken1', 'transfer', ['0x0000000000000000000000000000000000000020', 600n * fulltoken]); // CALL TOKEN
 
-        // 2. Add transaction to the block
+        // 2. Add transaction to the mempool
         blockchain.mempool.addTransaction(tx);
     }
 
-    console.log(`[${now()}][main] mempool:`, blockchain.mempool.toJSON());
+    console.log(`[${now()}][cli][main] mempool:`, blockchain.mempool.toJSON());
 }
 
 

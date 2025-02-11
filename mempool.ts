@@ -20,7 +20,7 @@ export class Mempool {
 
     toJSON() {
         return Object.fromEntries(
-            Object.entries(this.transactions).map(entry => [entry[0], Transaction.toJSON(entry[1])])
+            Object.entries(this.transactions).map(entry => [entry[0], entry[1].toJSON()])
         );
     }
 
@@ -30,16 +30,16 @@ export class Mempool {
         tx.hash = tx.computeHash();
 
         const emitterAccount = this.blockchain.getAccount(tx.from);
-        asserts(emitterAccount, `emitter account not found`);
+        asserts(emitterAccount, `[Mempool][addTransaction] emitter account not found`);
 
         tx.nonce = BigInt(emitterAccount.transactionsCount);
 
         if (this.transactions.has(tx.hash)) {
-            throw new Error(`[Mempool] Transaction ${tx.hash} déjà en attente.`);
+            throw new Error(`[Mempool][addTransaction] Transaction ${tx.hash} déjà en attente.`);
         }
 
         this.transactions.set(tx.hash, tx);
-        console.log(`[${now()}][Mempool] Transaction ajoutée: ${tx.hash}`);
+        console.log(`[${now()}][Mempool][addTransaction] Transaction ajoutée: ${tx.hash}`);
     }
 
 
@@ -55,7 +55,8 @@ export class Mempool {
             asserts(tx.hash, `missing transaction hash`)
             this.transactions.delete(tx.hash);
         }
-        console.log(`[${now()}][Mempool] Nettoyage: ${transactionsIncluded.length} transactions supprimées.`);
+
+        //console.log(`[${now()}][Mempool][clearMempool] Nettoyage: ${transactionsIncluded.length} transactions supprimées.`);
     }
 
 }

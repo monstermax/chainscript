@@ -7,14 +7,17 @@ import { decimals, fullcoin } from './config';
 import { Blockchain } from './blockchain';
 
 import type { AccountAddress, ContractMemory } from "./types/account.types";
+import { Block } from "./block";
+import { BlockData, BlockHash } from "./types/block.types";
 
 
 
 /* ######################################################### */
 
 
-export async function execVm(blockchain: Blockchain, executorAddress: AccountAddress, scriptAddress: AccountAddress, scriptClass: string, scriptMethod: string, scriptArgs: any[], parentContext?: Context) {
+export async function execVm(blockchain: Blockchain, executorAddress: AccountAddress, scriptAddress: AccountAddress, scriptClass: string, scriptMethod: string, scriptArgs: any[], vmMonitor: { counter: number }) {
     console.log(`[execVm] txSigner = ${executorAddress} | script: ${scriptAddress} | class = ${scriptClass} | method = ${scriptMethod}`)
+    vmMonitor.counter++;
 
     asserts(scriptAddress && scriptAddress.startsWith('0x'), "[execVm] missing script address");
 
@@ -50,7 +53,7 @@ export async function execVm(blockchain: Blockchain, executorAddress: AccountAdd
         },
         call: async (calledScriptAddress: AccountAddress, calledScriptClass: string, calledScriptMethod: string, args: any[]): Promise<void> => {
             console.log(`[call] => caller = ${scriptAddress} | script = ${calledScriptAddress} | class = ${calledScriptClass} | method = ${calledScriptMethod}`)
-            await execVm(blockchain, scriptAddress, calledScriptAddress, calledScriptClass, calledScriptMethod, args, vmContext);
+            await execVm(blockchain, scriptAddress, calledScriptAddress, calledScriptClass, calledScriptMethod, args, vmMonitor);
         },
         balance: (address: AccountAddress) => blockchain.getAccount(address)?.balance ?? 0n,
         memory: (initialValues: ContractMemory): ContractMemory => {
@@ -67,9 +70,10 @@ export async function execVm(blockchain: Blockchain, executorAddress: AccountAdd
             return memory;
         },
         asserts,
-        //getBlock: (blockHeight: number): Block => {}, // TODO
-        //getBlockHash: (blockHeight: number): BlockHash => {}, // TODO
-        //getBlockByHash: (blockHash: BlockHash): Block => {}, // TODO
+        getBlock: (blockHeight: number): BlockData | null => blockchain.getBlock(blockHeight)?.toData() ?? null,
+        getBlockHash: (blockHeight: number): BlockHash | null => blockchain.getBlock(blockHeight)?.hash ?? null,
+        getBlockHeight: (blockHash: BlockHash): number | null => blockchain.getBlockHeight(blockHash) ?? null,
+        getBlockByHash: (blockHash: BlockHash): BlockData | null => blockchain.getBlockByHash(blockHash)?.toData() ?? null,
     }
 
     const sandboxData: { [method: string]: any } = {
@@ -80,7 +84,6 @@ export async function execVm(blockchain: Blockchain, executorAddress: AccountAdd
     }
 
     const sandbox = {
-        //...parentContext,
         ...sandboxUtils,
         ...sandboxData,
     };

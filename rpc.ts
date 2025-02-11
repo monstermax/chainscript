@@ -56,7 +56,7 @@ export async function rpcListen(blockchain: Blockchain, rpcPort: number) {
                 }
 
                 const { jsonrpc, id, method, params } = JSON.parse(body);
-                console.log(`[${now()}][Server] 📩 Requête RPC reçue: ${method}`, params);
+                console.log(`[${now()}][RPC] 📩 Requête RPC reçue: ${method}`, params);
 
                 let result;
                 switch (method) {
@@ -111,10 +111,7 @@ export async function rpcListen(blockchain: Blockchain, rpcPort: number) {
                         // https://docs.metamask.io/services/reference/ethereum/json-rpc-methods/eth_getBlockByHash/
                         const [blockHash, showTransactionsDetails] = params as [BlockHash, showTransactionsDetails?: boolean];
 
-                        const blockHeight = blockchain.stateManager.blocksIndex.findIndex((_blockHash: BlockHash) => _blockHash === blockHash);
-                        asserts(blockHeight > -1, `block not found for block "${blockHeight}"`);
-
-                        const block = blockchain.getBlock(blockHeight);
+                        const block = blockchain.getBlockByHash(blockHash);
                         asserts(block, `block not found for block "${blockHash}"`);
 
                         result = Block.formatForRpc(block);
@@ -138,8 +135,7 @@ export async function rpcListen(blockchain: Blockchain, rpcPort: number) {
                         // https://docs.metamask.io/services/reference/ethereum/json-rpc-methods/eth_gettransactionbyblockhashandindex/
                         const [blockHash, transactionIndex] = params as [blockHash: BlockHash, transactionIndex: number];
 
-                        const blockHeight = blockchain.stateManager.blocksIndex.findIndex((_blockHash: BlockHash) => _blockHash === blockHash);
-                        const block = blockchain.getBlock(blockHeight);
+                        const block = blockchain.getBlockByHash(blockHash);
                         asserts(block, `block not found for transaction "${transactionIndex}" of block "${blockHash}"`);
 
                         const tx = block.transactions[transactionIndex];
@@ -196,6 +192,9 @@ export async function rpcListen(blockchain: Blockchain, rpcPort: number) {
 
                     case 'eth_estimateGas': {
                         // https://docs.metamask.io/services/reference/ethereum/json-rpc-methods/eth_estimategas/
+
+                        // Warning: To prevent abuse of the API, the gas parameter in this eth_estimateGas method and in eth_call is capped at 10x (1000%) the current block gas limit
+
                         const [args] = params as [args: { from: AccountAddress, value: HexNumber, gasPrice: HexNumber, data: HexNumber, to: AccountAddress }];
 
                         result = '0x5208';
@@ -215,7 +214,7 @@ export async function rpcListen(blockchain: Blockchain, rpcPort: number) {
 
                         const txData: TransactionData = decodeTx(txRawData.slice(2));
 
-                        const tx = new Transaction(txData.from, txData.amount, txData.nonce);
+                        const tx = Transaction.from(txData);
                         tx.instructions = txData.instructions;
 
                         blockchain.mempool.addTransaction(tx);
@@ -226,14 +225,14 @@ export async function rpcListen(blockchain: Blockchain, rpcPort: number) {
                     case 'debug_getAccount': {
                         const account: Account = blockchain.getAccount(params[0]);
 
-                        result = Account.toJSON(account);
+                        result = account.toJSON();
                         break;
                     }
 
                     case 'debug_getBlock': {
                         const block: Block | null = blockchain.getBlock(params[0]);
 
-                        result = block ? Block.toJSON(block) : null;
+                        result = block ? block.toJSON() : null;
                         break;
                     }
 
@@ -248,14 +247,14 @@ export async function rpcListen(blockchain: Blockchain, rpcPort: number) {
                 }
                 , jsonReplacerForRpc);
 
-                console.log(`[${now()}][Server] ✅ Réponse envoyée:`, json);
+                console.log(`[${now()}][RPC] ✅ Réponse envoyée:`, json);
 
                 res.writeHead(200, { 'Content-Type': 'application/json' });
 
                 res.end(json);
 
             } catch (err: any) {
-                console.log(`[${now()}][Server] ❌ Erreur:`, err.message);
+                console.log(`[${now()}][RPC] ❌ Erreur:`, err.message);
 
                 if (!res.headersSent) {
                     res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -270,11 +269,11 @@ export async function rpcListen(blockchain: Blockchain, rpcPort: number) {
         });
 
         req.on('close', () => {
-            //console.log(`[${now()}][Server] Connexion RPC terminée`, "\n");
+            //console.log(`[${now()}][RPC] Connexion RPC terminée`, "\n");
         });
 
         req.on('error', (err) => {
-            console.error('[Server] ❌ Erreur requête:', err.message);
+            console.error(`[${now()}][RPC] ❌ Erreur requête:`, err.message);
 
             if (!res.headersSent) {
                 res.writeHead(500, { 'Content-Type': 'application/json', 'Connection': 'close' });
@@ -284,6 +283,8 @@ export async function rpcListen(blockchain: Blockchain, rpcPort: number) {
     });
 
     // 2. listen for new transactions (from rpc)
-    server.listen(rpcPort, () => console.log(`[${now()}]🚀 RPC Server running on http://0.0.0.0:${rpcPort}`));
+    server.listen(rpcPort, () => console.log(`[${now()}][RPC] 🚀 RPC Server running on http://0.0.0.0:${rpcPort}`));
+
+    return server;
 }
 

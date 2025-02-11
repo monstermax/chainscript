@@ -57,7 +57,5 @@ export type BlockRpc = {
 
 export type BlockReceipt = {
     hash: BlockHash,
-    reward: bigint,
-}
-
-
+    transactionsReceipts: TransactionReceipt[],
+};
