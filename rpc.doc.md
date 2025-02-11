@@ -1,0 +1,80 @@
+
+```bash
+curl -X POST http://127.0.0.1:8545 -H "Content-Type: application/json" -d '{
+    "jsonrpc": "2.0",
+    "method": "eth_call",
+    "params": [{
+        "to": "0xCONTRACT_ADDRESS",
+        "data": "0xMETHOD_SIGNATURE"
+    }],
+    "id": 1
+  }'
+```
+
+
+```js
+ethereum.request({
+    method: 'eth_call',
+    params: [{
+        to: "0xCONTRACT_ADDRESS",
+        data: "0xMETHOD_SIGNATURE"
+    }]
+}).then(console.log).catch(console.error);
+```
+
+
+```bash
+curl -X POST http://127.0.0.1:8545 \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"eth_call","params":[{"to":"0x0000000000000000000000000000000000000030","data":"0x60fe47b1"}, "latest"]}'
+```
+
+
+
+
+```js
+// Demander l'autorisation à Metamask
+ethereum.request({ method: 'eth_requestAccounts' })
+    .then(accounts => console.log("Comptes autorisés :", accounts))
+    .catch(error => console.error("Erreur Metamask :", error));
+```
+
+
+
+
+# GET TRANSACTION RECEIPT
+
+```js
+ethereum.request({
+    method: 'eth_getTransactionReceipt',
+    params: ["0x8d32f7705420ca65a11f81771d3d2d7603edd6aac82127be0460a0c814b11446"]
+}).then(console.log).catch(console.error);
+```
+
+
+# CREATE CONTRACT (TODO)
+
+```js
+ethereum.request({
+    method: 'eth_sendTransaction',
+    params: [{
+        from: '0xee5392913a7930c233Aa711263f715f616114e9B',
+        data: "0x6080604052348015600f57600080fd5b5060a08061001d6000396000f3fe6080604052600080fdfea264697066735822122058b9272e1a5a845e2792a87cf8cf0b92b30e48756c9d32e11db598f96d61162064736f6c63430008040033",
+        gas: "0x27100",  // 100000 (en hexadécimal)
+    }]
+}).then(console.log).catch(console.error);
+```
+
+
+# CALL CONTRACT (OK)
+
+```js
+ethereum.request({
+    method: 'eth_call',
+    params: [{
+        to: "0xdc0c7f994d58af4e7346ebe8fb0917af55d6ca45", // ContractTest1
+        data: "0xa594bdbb", // test_vm_1
+    }, "latest"]
+}).then(console.log).catch(console.error);
+```
+

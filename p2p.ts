@@ -14,21 +14,21 @@ import type { BlockData, BlockHash, BlockReceipt } from './types/block.types';
 
 /* ######################################################### */
 
-type MessageType = 'NODE_METADATA' | 'NODE_METADATA_ACK' | 'NEW_BLOCK' | 'NEW_TRANSACTION' | 'REQUEST_BLOCK';
+export type MessageType = 'NODE_METADATA' | 'NODE_METADATA_ACK' | 'NEW_BLOCK' | 'NEW_TRANSACTION' | 'REQUEST_BLOCK';
 
 
-type P2PMessage = {
+export type P2PMessage = {
     type: MessageType;
     data: any;
 }
 
 
-type Peer = {
+export type Peer = {
     ws: WebSocket;
     metadata?: PeerMetadata;
 }
 
-type PeerMetadata = {
+export type PeerMetadata = {
     chainId: number;
     nodeId: string;
     nodeVersion: string;
@@ -36,7 +36,7 @@ type PeerMetadata = {
     blockHash: BlockHash;
 }
 
-type Peers = {[nodeId: string]: Peer};
+export type Peers = {[nodeId: string]: Peer};
 
 
 /* ######################################################### */
