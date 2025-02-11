@@ -120,6 +120,10 @@ export class Transaction {
             transactionData.blockHeight = tx.blockHeight;
         }
 
+        //if (tx.to) {
+        //    transactionData.to = tx.to;
+        //}
+
         if (tx.hash) {
             transactionData.hash = tx.hash;
         }
@@ -143,8 +147,10 @@ export class Transaction {
         asserts(block.hash, `[Transaction.formatForRpc] missing block hash`);
         asserts(tx.hash, `[Transaction.formatForRpc] missing transaction hash`);
 
-        const recipient: AccountAddress | null = tx.instructions.filter(instruction => instruction.type === 'transfer').at(0)?.recipient ?? null;
-        asserts(recipient, `[Transaction.formatForRpc] invalid recipient`);
+        const to: AccountAddress | null = tx.instructions.filter(instruction => instruction.type === 'transfer').at(0)?.recipient
+            ?? tx.instructions.filter(instruction => instruction.type === 'mint').at(0)?.address
+            ?? null;
+        //asserts(to, `[Transaction.formatForRpc] invalid recipient`);
 
         const transactionIndex = block.transactions.findIndex(_tx => _tx.hash === tx.hash);
         asserts(transactionIndex > -1, `[Transaction.formatForRpc] transaction not found`);
@@ -164,7 +170,7 @@ export class Transaction {
             nonce: toHex(tx.nonce),
             r: "0x",
             s: "0x",
-            to: recipient,
+            to: to ?? '0x',
             transactionIndex: toHex(transactionIndex),
             type: "0x2",
             v: "0x1",
@@ -192,7 +198,7 @@ export class Transaction {
         asserts(tx.hash, `[Transaction.formatForRpc] missing transaction hash`);
 
         const to: AccountAddress | null = tx.instructions.filter(instruction => instruction.type === 'transfer').at(0)?.recipient ?? null;
-        asserts(to, `[Transaction.formatForRpc] invalid recipient`);
+        //asserts(to, `[Transaction.formatForRpc] invalid recipient`);
 
         const transactionIndex = block.transactions.findIndex(_tx => _tx.hash === tx.hash);
         asserts(transactionIndex > -1, `[Transaction.formatForRpc] transaction not found`);
@@ -208,7 +214,7 @@ export class Transaction {
             logs: [],
             logsBloom: "0x",
             status: "0x1",
-            to: to,
+            to: to ?? '0x',
             transactionHash: tx.hash,
             transactionIndex: toHex(transactionIndex),
             type: "0x2"
@@ -220,11 +226,14 @@ export class Transaction {
 
     computeHash(): TransactionHash {
         const transactionFormatted: TransactionData = this.toData();
+        delete transactionFormatted.blockHash;
+        delete transactionFormatted.blockHeight;
+
         const transactionHash: TransactionHash = computeHash(transactionFormatted);
 
         if (true) {
             // DEBUG
-            const debugFile = `/tmp/debug/tx-${this.blockHeight?.toString().padStart(5, '0') || 'XXX'}-${transactionHash}.${Date.now()}.json`;
+            const debugFile = `/tmp/debug/tx-${Date.now()}-${transactionHash}.json`;
             fs.writeFileSync(debugFile, JSON.stringify(transactionFormatted, jsonReplacer, 4));
         }
 
@@ -272,7 +281,7 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
             } else if (instruction.type === 'create') {
                 // Create smart contract
 
-                const scriptAddress = computeHash(instruction).slice(0, 42) as AccountAddress;
+                const scriptAddress = computeHash(instruction).slice(0, 42) as AccountAddress; // TODO: recuperer la fonction de generation d'adresse
 
                 const contractAccount = blockchain.getAccount(scriptAddress);
 
@@ -284,11 +293,14 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
                 contractAccount.code = instruction.code;
                 contractAccount.memory = {};
 
-                txFees += 100n; // 100 microcoins for token creation
+                txFees += 1000n; // 1000 microcoins for token creation
 
 
             } else if (instruction.type === 'call') {
                 // Execute script
+
+                // A revoir. Ici c'est le code pour un call (gratuit, donc pas de fees). => a deplacer dans RPC. 
+                // => implémenter instruction.type === 'execute'
 
                 // Load source code
                 const vmMonitor = { counter: 0 };
@@ -363,23 +375,32 @@ export function decodeTx(raw_tx: string): TransactionData {
         }
 
         const amount = BigInt(tx.value.toString());
-        const to = (tx.to ? tx.to.toString() : '0x') as AccountAddress;
+        //const to = (tx.to ? tx.to.toString() : '0x') as AccountAddress;
         const instructions: TransactionInstruction[] = [];
 
         // ✅ Ajout instruction de transfert si `amount > 0`
         if (amount > 0n) {
-            instructions.push({ type: 'transfer', amount, recipient: to } as TransactionInstructionTransfer);
+            instructions.push({ type: 'transfer', amount, recipient: tx.to?.toString() } as TransactionInstructionTransfer);
         }
 
         // ✅ Ajout instruction d'appel si `tx.data` contient un contrat
         if (tx.data.length > 0) {
-            instructions.push({
-                type: 'call',
-                scriptAddress: to,
-                scriptClass: '',
-                scriptMethod: '',
-                scriptArgs: [],
-            } as TransactionInstructionCall);
+            if (tx.to) {
+                instructions.push({
+                    type: 'call',
+                    scriptAddress: tx.to.toString(),
+                    scriptClass: '',
+                    scriptMethod: '',
+                    scriptArgs: [],
+                } as TransactionInstructionCall);
+
+            } else {
+                instructions.push({
+                    type: 'create',
+                    abi: [], // TODO
+                    code: '', // TODO
+                } as TransactionInstructionCreate);
+            }
         }
 
         // ✅ Création de l'objet `TransactionData`

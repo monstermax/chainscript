@@ -10,6 +10,7 @@
   "description": "",
   "dependencies": {
     "@ethereumjs/tx": "^5.4.0",
+    "ethers": "^6.13.5",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.3",
     "ws": "^8.18.0"

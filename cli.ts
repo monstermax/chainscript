@@ -9,9 +9,9 @@ import { Blockchain } from "./blockchain";
 import { Transaction } from "./transaction";
 import { rpcListen } from './rpc';
 import { P2PNode } from './p2p';
+import { BlocksMiner } from './miner';
 
 import type { AccountAddress, CodeAbi } from './types/account.types';
-import { BlocksMiner } from './miner';
 
 
 /* ######################################################### */
@@ -42,6 +42,10 @@ ts-node cli.ts --dir ~/.blockchain-js --rpc -1 --p2p 6002 --listen
 
 /* ######################################################### */
 
+const minerAddress: AccountAddress = '0xee5392913a7930c233Aa711263f715f616114e9B'; // addressTest1
+
+/* ######################################################### */
+
 
 async function main() {
     const stateDir: string = getOpt('--dir') || defaultStateDir;
@@ -51,6 +55,14 @@ async function main() {
     const p2pPort: number = Number(getOpt('--p2p')) || defaultP2pPort; // -1 to disable p2p
 
 
+    if (! lockDb(stateDir)) {
+        return;
+    }
+
+    handleErrors(() => unlockDb(stateDir));
+
+
+
     if (hasOpt('--init')) {
         // Initialize a new Blockchain
 
@@ -58,7 +70,7 @@ async function main() {
             const metadataFilepath = path.join(stateDir, 'metadata.json');
 
             if (fs.existsSync(metadataFilepath) && ! hasOpt('--force')) {
-                console.warn(`[${now()}][cli][main] Cannot init a not-empty blockchain. Use --force option to force`);
+                console.warn(`[${now()}][cli][main] Cannot init a not-empty blockchain. Use --force option to ignore`);
                 return;
             }
 
@@ -118,16 +130,72 @@ async function main() {
         // Load RPC => Wait for transactions from RPC
         if (rpcPort > 0) {
             blockchain.rpc = await rpcListen(blockchain, rpcPort);
-            console.log('rpc started')
         }
 
 
         // Start local miner
         if (hasOpt('--mine')) {
-            const minerAddress: AccountAddress = '0xee5392913a7930c233Aa711263f715f616114e9B'; // addressTest1
-
             blockchain.miner = new BlocksMiner(blockchain, minerAddress);
         }
+    }
+}
+
+
+function handleErrors(onClose: () => void) {
+    // Gestion propre de CTRL+C
+    process.on('SIGINT', () => {
+        console.log("\nCTRL+C detected. Stopping watcher...");
+        if (onClose) onClose();
+        process.exit(0); // Quitter proprement
+    });
+
+    // Gestion en cas d'autres erreurs non interceptées
+    process.on('uncaughtException', (error) => {
+        console.error("Uncaught exception:", error);
+        if (onClose) onClose();
+        process.exit(1);
+    });
+
+    process.on('unhandledRejection', (reason, promise) => {
+        console.error("Unhandled promise rejection:", reason);
+        if (onClose) onClose();
+        process.exit(1);
+    });
+
+    process.on('SIGTERM', (signal) => {
+        console.log("SIGTERM received, shutting down...");
+        if (onClose) onClose();
+    })
+
+    process.on('beforeExit', (code) => {
+        //console.log(`Process beforeExit event with code: ${code}`);
+        if (onClose) onClose();
+    });
+
+    process.on('exit', (code) => {
+        //console.log(`Process exit event with code: ${code}`);
+    });
+}
+
+
+function lockDb(stateDir: string): boolean {
+    const lockFile = `${stateDir}/state.lock`;
+
+    if (fs.existsSync(lockFile) && ! hasOpt('--force')) {
+        console.log(`Warning: lock file exists : ${lockFile} => Use --force option to ignore`);
+        return false;
+    }
+
+    fs.writeFileSync(lockFile, process.pid.toString());
+    return true;
+}
+
+
+function unlockDb(stateDir: string) {
+    const lockFile = `${stateDir}/state.lock`;
+
+    if (fs.existsSync(lockFile)) {
+        fs.unlinkSync(lockFile);
     }
 }
 
@@ -144,19 +212,6 @@ async function testsTransactions(blockchain: Blockchain) {
     const addressContract2: AccountAddress = '0x84a32d0b52ff252229b49da06d541dce857fb480';
     const addressToken1: AccountAddress = '0xc9e4facb4b3c1248cbf71203b568ab617453981e';
 
-
-    if (hasOpt('--mine')) {
-        const minerAddress: AccountAddress = '0xee5392913a7930c233Aa711263f715f616114e9B'; // addressTest1
-
-        const miningResult = await blockchain.createNewBlock(minerAddress);
-
-        if (miningResult) {
-            const { block, blockReceipt } = miningResult;
-
-            console.log(`[${now()}][cli][main] block:`, block)
-            console.log(`[${now()}][cli][main] blockReceipt:`, blockReceipt)
-        }
-    }
 
     if (hasOpt('--tx-transfer')) {
         // 1. Create a transaction
@@ -236,6 +291,19 @@ async function testsTransactions(blockchain: Blockchain) {
 
         // 2. Add transaction to the mempool
         blockchain.mempool.addTransaction(tx);
+    }
+
+    if (hasOpt('--mine')) {
+        const minerAddress: AccountAddress = '0xee5392913a7930c233Aa711263f715f616114e9B'; // addressTest1
+
+        const miningResult = await blockchain.createNewBlock(minerAddress);
+
+        if (miningResult) {
+            const { block, blockReceipt } = miningResult;
+
+            console.log(`[${now()}][cli][main] block:`, block)
+            console.log(`[${now()}][cli][main] blockReceipt:`, blockReceipt)
+        }
     }
 
     console.log(`[${now()}][cli][main] mempool:`, blockchain.mempool.toJSON());

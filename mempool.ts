@@ -27,16 +27,17 @@ export class Mempool {
 
     /** 📥 Ajouter une transaction au mempool */
     addTransaction(tx: Transaction) {
-        tx.hash = tx.computeHash();
-
         const emitterAccount = this.blockchain.getAccount(tx.from);
         asserts(emitterAccount, `[Mempool][addTransaction] emitter account not found`);
 
         tx.nonce = BigInt(emitterAccount.transactionsCount);
+        tx.hash = tx.computeHash();
 
         if (this.transactions.has(tx.hash)) {
             throw new Error(`[Mempool][addTransaction] Transaction ${tx.hash} déjà en attente.`);
         }
+
+        // TODO: gérer le dispatch aux autres noeuds (si la tx est arrivée par le RPC local ET que P2P est actif)
 
         this.transactions.set(tx.hash, tx);
         console.log(`[${now()}][Mempool][addTransaction] Transaction ajoutée: ${tx.hash}`);

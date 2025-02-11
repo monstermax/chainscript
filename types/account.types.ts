@@ -29,18 +29,19 @@ export type AccountData = {
 }
 
 
-export type CodeAbi = {
-    class: string, // class
-    methods: {
-        [method: string]:
-        {
-            inputs?: any[],
-            output?: any,
-            public?: boolean,
-            payable?: boolean,
-        }
-    }
-}[];
+export type CodeAbi = CodeAbiClass[];
+
+export type CodeAbiClass = {
+    class: string,
+    methods: {[method: string]: CodeAbiMethod}
+};
+
+export type CodeAbiMethod = {
+    inputs?: any[],
+    output?: any,
+    public?: boolean,
+    payable?: boolean,
+};
 
 
 export type ContractMemory = Record<string, any>;

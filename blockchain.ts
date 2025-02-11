@@ -144,19 +144,27 @@ export class Blockchain {
 
 
     getTransactionByHash(txHash: TransactionHash): Transaction | null {
-        const blockHeight = this.stateManager.transactionsIndex[txHash];
-        //asserts(typeof blockHeight === 'number', `transaction "${txHash}" not found`)
-        if (typeof blockHeight !== 'number') return null;
 
-        const block = this.getBlock(blockHeight);
-        asserts(block, `block "${blockHeight}" not found for transaction "${txHash}"`);
-        //if (! block) return null;
+        // 1. cherche dans les transactions en memoire
+        // non disponible
 
-        const transactionIndex = block.transactions.findIndex(_tx => _tx.hash === txHash);
-        asserts(transactionIndex > -1, `transaction "${txHash}" not found in block "${blockHeight}"`);
-        //if (transactionIndex === -1) return null;
 
-        return block.transactions[transactionIndex];
+        // 2. cherche dans les transactions sur disque
+        if (txHash in this.stateManager.transactionsIndex) {
+            const blockHeight = this.stateManager.transactionsIndex[txHash];
+
+            const block = this.getBlock(blockHeight);
+            asserts(block, `block "${blockHeight}" not found for transaction "${txHash}"`);
+
+            const transactionIndex = block.transactions.findIndex(_tx => _tx.hash === txHash);
+            asserts(transactionIndex > -1, `transaction "${txHash}" not found in block "${blockHeight}"`);
+
+            return block.transactions[transactionIndex];
+        }
+
+        // transaction inconnue
+        console.warn(`[Chain.getTransactionByHash] Transaction ${txHash} introuvable`);
+        return null;
     }
 
 
@@ -164,36 +172,27 @@ export class Blockchain {
     getBlock(blockHeight: number): Block | null {
         console.log(`[${now()}][Chain.getBlock]`, blockHeight);
 
-        if (this.memoryState.blocks[blockHeight]) {
-            // cherche dans les blocks en memoire
+        // 1. cherche dans les blocks en memoire
+        if (blockHeight in this.memoryState.blocks) {
             return this.memoryState.blocks[blockHeight];
         }
 
-        // Vérifier si le block existe dans l'index
-        const blockHash = this.stateManager.blocksIndex[blockHeight];
 
-        if (! blockHash) {
-            // block inconnu
-            console.warn(`[Chain.getBlock] Block ${blockHeight} introuvable`);
-            throw new Error(`[Chain.getBlock] unknown block at height "${blockHeight}"`);
+        // 2. cherche dans les blocks sur disque
+        if (blockHeight in this.stateManager.blocksIndex) {
+            const block: Block | undefined = this.stateManager.loadBlock(blockHeight) ?? undefined;
+            asserts(block, `block not found on disk`);
+
+            this.memoryState.blocks[blockHeight] = block;
+            return block;
         }
 
-        let block: Block | undefined;
 
-        if (! block) {
-            // cherche dans les blocks sur disque
-            block = this.stateManager.loadBlock(blockHeight) ?? undefined;
+        // 3. block inconnu
+        console.warn(`[Chain.getBlock] Block ${blockHeight} introuvable`);
+        //throw new Error(`[Chain.getBlock] unknown block at height "${blockHeight}"`);
 
-            if (block) {
-                this.memoryState.blocks[blockHeight] = block;
-            }
-        }
-
-        if (! block) {
-            throw new Error(`block "${blockHeight}" not found`);
-        }
-
-        return block;
+        return null;
     }
 
 
@@ -205,33 +204,26 @@ export class Blockchain {
 
         const addressLower = address.toLowerCase() as AccountAddress;
 
-        if (this.memoryState.accounts[addressLower]) {
-            // cherche dans les accounts en memoire
+
+        // 1. cherche dans les accounts en memoire
+        if (addressLower in this.memoryState.accounts) {
             return this.memoryState.accounts[addressLower];
         }
 
-        const accountHash = this.stateManager.accountsIndex[addressLower];
 
-        let account: Account | undefined;
+        // 2. cherche dans les accounts sur disque
+        if (addressLower in this.stateManager.accountsIndex) {
+            const account: Account | undefined = this.stateManager.loadAccount(address) ?? undefined;
+            asserts(account, `account not found on disk`);
 
-        if (! accountHash) {
-            // account inconnu => charge un account vide
-            account = new Account(address);
             this.memoryState.accounts[addressLower] = account;
+            return account;
         }
 
-        if (! account) {
-            // cherche dans les accounts sur disque
-            account = this.stateManager.loadAccount(address) ?? undefined;
 
-            if (account) {
-                this.memoryState.accounts[addressLower] = account;
-            }
-        }
-
-        if (! account) {
-            throw new Error(`account "${address}" not found`);
-        }
+        // 3. account inconnu => charge un account vide
+        const account: Account | undefined = new Account(address);
+        this.memoryState.accounts[addressLower] = account;
 
         return account;
     }
@@ -381,8 +373,8 @@ export class Blockchain {
 
         // 1. Charge le dernier block (verification de height & hash)
         const lastBlock = this.blockHeight > -1 ? this.getBlock(this.blockHeight) : { blockHeight: -1, hash: '0x' as BlockHash };
-        asserts(lastBlock, '[Chain.addExistingBlock] iparent block not found');
-        asserts(lastBlock.hash, '[Chain.addExistingBlock] iempty parent block hash');
+        asserts(lastBlock, '[Chain.addExistingBlock] parent block not found');
+        asserts(lastBlock.hash, '[Chain.addExistingBlock] empty parent block hash');
 
 
         // 2. Execute le block
@@ -409,6 +401,9 @@ export class Blockchain {
 
         let currentBlockReward = blockReward;
         const transactionsReceipts: TransactionReceipt[] = [];
+
+        // Supprime les temp accounts // TODO => a revoir. si un eth_call modifie un temp account pendant qu'un block est en cours d'execution il peut y avoir conflit
+        this.memoryState.accounts = {};
 
 
         // execute transactions...
@@ -470,6 +465,9 @@ export class Blockchain {
 
         // Supprime les transactions de la mempool
         this.mempool.clearMempool(block.transactions);
+
+        // Supprime les temp accounts
+        this.memoryState.accounts = {};
     }
 
 

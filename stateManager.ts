@@ -14,7 +14,6 @@ import type { AccountAddress, AccountData, AccountHash, Accounts, AccountsIndex,
 import type { BlockData, BlockHash, Blocks, BlocksIndex } from './types/block.types';
 import type { BlockchainMetadata } from './types/blockchain.types';
 import type { TransactionsIndex } from './types/transaction.types';
-import { Transaction } from './transaction';
 
 
 /* ######################################################### */

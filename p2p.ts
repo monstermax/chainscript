@@ -8,7 +8,8 @@ import { jsonReplacer, jsonReviver, now } from './utils';
 import { Blockchain } from './blockchain';
 import { Transaction } from './transaction';
 import { Block } from './block';
-import { BlockData, BlockHash, BlockReceipt } from './types/block.types';
+
+import type { BlockData, BlockHash, BlockReceipt } from './types/block.types';
 
 
 /* ######################################################### */
@@ -214,11 +215,14 @@ export class P2PNode {
         }
 
 
-        const peerHighestBlock = this.blockchain.getBlock(metadata.blockHeight);
-        if (! peerHighestBlock || peerHighestBlock.hash !== metadata.blockHash) {
-            console.warn(`[${now()}][P2P][validatePeer] ❌ Rejeté: blockHash incompatible (${metadata.blockHash} ≠ ${peerHighestBlock?.hash})`);
-            ws.close();
-            return;
+        if (metadata.blockHeight <= this.blockchain.blockHeight) {
+            const peerHighestBlock = this.blockchain.getBlock(metadata.blockHeight);
+
+            if (! peerHighestBlock || peerHighestBlock.hash !== metadata.blockHash) {
+                console.warn(`[${now()}][P2P][validatePeer] ❌ Rejeté: blockHash incompatible (${metadata.blockHash} ≠ ${peerHighestBlock?.hash})`);
+                ws.close();
+                return;
+            }
         }
 
 

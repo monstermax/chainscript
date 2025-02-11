@@ -1,18 +1,36 @@
 // rpc.ts
 
 import http from 'http';
+import { keccak256 } from "ethereum-cryptography/keccak";
+import { AbiCoder, toUtf8Bytes } from "ethers";
 
 import { asserts, fromHex, jsonReplacerForRpc, now, toHex } from './utils';
 import { Blockchain } from "./blockchain";
 import { Block } from "./block";
 import { Account } from './account';
 import { decodeTx, Transaction } from './transaction';
+import { execVm } from './vm';
 
 import type { HexNumber } from './types/types';
-import { TransactionData, TransactionHash } from './types/transaction.types';
-import { BlockHash } from './types/block.types';
-import { AccountAddress } from './types/account.types';
+import type { TransactionData, TransactionHash } from './types/transaction.types';
+import type { BlockHash } from './types/block.types';
+import type { AccountAddress, CodeAbi, CodeAbiMethod } from './types/account.types';
 
+
+/* ######################################################### */
+
+type BlockParameter = HexNumber | 'latest' | 'earliest' | 'pending' | 'safe' | 'finalized'; // spec => https://ethereum.org/en/developers/docs/apis/json-rpc/#default-block
+
+type TxParams = {
+    from: AccountAddress,
+    to?: AccountAddress,
+    gas?: HexNumber,
+    gasPrice?: HexNumber,
+    maxPriorityFeePerGas?: HexNumber,
+    maxFeePerGas?: HexNumber,
+    value?: HexNumber,
+    data?: HexNumber, // Hash of the method signature and encoded parameters // spec => https://docs.soliditylang.org/en/latest/abi-spec.html
+}
 
 /* ######################################################### */
 
@@ -75,7 +93,7 @@ export async function rpcListen(blockchain: Blockchain, rpcPort: number) {
 
                     case 'eth_getBalance': {
                         // https://docs.metamask.io/services/reference/ethereum/json-rpc-methods/eth_getBalance/
-                        const [address, blockNumber] = params as [address: AccountAddress, blockNumber: HexNumber];
+                        const [address, blockNumber] = params as [AccountAddress, HexNumber];
 
                         const account = blockchain.getAccount(address);
                         result = toHex(account.balance);
@@ -84,17 +102,18 @@ export async function rpcListen(blockchain: Blockchain, rpcPort: number) {
 
                     case 'eth_getBlockByNumber': {
                         // https://docs.metamask.io/services/reference/ethereum/json-rpc-methods/eth_getBlockByNumber/
-                        const [blockNumber, showTransactionsDetails] = params as [HexNumber | 'latest', showTransactionsDetails?: boolean];
+                        const [blockParameter, showTransactionsDetails] = params as [BlockParameter, boolean];
 
-                        if (blockNumber === "latest") {
-                            const block: Block | null = blockchain.getBlock(blockchain.blockHeight);
-                            asserts(block, `block "${blockNumber}" not found`)
+                        if (blockParameter.startsWith('0x')) {
+                            const blockHeight: number = fromHex(blockParameter as HexNumber);
+                            const block: Block | null = blockchain.getBlock(blockHeight);
+                            asserts(block, `block "${blockParameter}" not found`)
                             result = Block.formatForRpc(block, showTransactionsDetails);
 
                         } else {
-                            const blockHeight: number = fromHex(blockNumber);
-                            const block: Block | null = blockchain.getBlock(blockHeight);
-                            asserts(block, `block "${blockNumber}" not found`)
+                            asserts(blockParameter === 'latest', `blockParameter not implemented`);
+                            const block: Block | null = blockchain.getBlock(blockchain.blockHeight);
+                            asserts(block, `block "${blockParameter}" not found`)
                             result = Block.formatForRpc(block, showTransactionsDetails);
                         }
                         break;
@@ -210,7 +229,7 @@ export async function rpcListen(blockchain: Blockchain, rpcPort: number) {
                     }
 
                     case 'eth_sendRawTransaction': {
-                        const [txRawData] = params as [txRawData: string];
+                        const [txRawData] = params as [string];
 
                         const txData: TransactionData = decodeTx(txRawData.slice(2));
 
@@ -221,6 +240,61 @@ export async function rpcListen(blockchain: Blockchain, rpcPort: number) {
                         result = tx.hash;
                         break;
                     }
+
+                    case 'eth_sendTransaction': {
+                        // https://docs.metamask.io/wallet/reference/json-rpc-methods/eth_sendtransaction/
+                        const [txParams] = params as [TxParams];
+
+                        break;
+                    }
+
+                    case 'eth_call': {
+                        // https://docs.metamask.io/services/reference/ethereum/json-rpc-methods/eth_call/
+                        // https://docs.metamask.io/wallet/reference/json-rpc-methods/eth_call/
+                        const [txParams, blockParameter] = params as [TxParams, BlockParameter];
+                        const { to, data } = txParams;
+
+                        console.log(`[Server] 📩 Requête eth_call reçue`, { to, data });
+
+                        if (to) {
+                            // call contract
+                            asserts(data, `missing data in eth_call`);
+
+                            // Vérifier que le smart contract existe
+                            const contract = blockchain.getAccount(to);
+                            if (!contract) {
+                                throw new Error(`[eth_call] Contrat introuvable à ${to}`);
+                            }
+
+                            asserts(contract.abi, `[eth_call] missing contract abi`);
+                            asserts(contract.code, `[eth_call] missing contract code`);
+
+                            // Décoder la méthode demandée
+                            const methodSignature = data.slice(0, 10); // Les 4 premiers bytes de `keccak256(signature)`
+                            const methodAbi = findMethodAbi(contract.abi, methodSignature);
+
+                            if (!methodAbi) {
+                                throw new Error(`[eth_call] Méthode inconnue pour le contrat à ${to}`);
+                            }
+
+                            // Extraire les arguments
+                            const args = decodeCallData(data, methodAbi);
+
+                            console.log(`[eth_call] Exécution de ${methodAbi.name}(${args.join(', ')})`);
+
+                            // Exécuter le contrat dans ta VM
+                            const vmMonitor = { counter: 0 };
+                            const result = await execVm(blockchain, '0x0000000000000000000000000000000000000000', to, contract.abi[0].class, methodAbi.name, args, vmMonitor);
+
+                            console.log(`[eth_call] ✅ Résultat:`, result);
+
+                        } else {
+                            // create contract
+                            asserts(data, `contract creation not implemented`);
+                        }
+                        break;
+                    }
+
 
                     case 'debug_getAccount': {
                         const account: Account = blockchain.getAccount(params[0]);
@@ -245,7 +319,7 @@ export async function rpcListen(blockchain: Blockchain, rpcPort: number) {
                     id: id ?? 1,
                     result,
                 }
-                , jsonReplacerForRpc);
+                    , jsonReplacerForRpc);
 
                 console.log(`[${now()}][RPC] ✅ Réponse envoyée:`, json);
 
@@ -286,5 +360,34 @@ export async function rpcListen(blockchain: Blockchain, rpcPort: number) {
     server.listen(rpcPort, () => console.log(`[${now()}][RPC] 🚀 RPC Server running on http://0.0.0.0:${rpcPort}`));
 
     return server;
+}
+
+
+
+function findMethodAbi(abi: CodeAbi, methodSignature: string): (CodeAbiMethod & { name: string }) | null {
+    for (const contract of abi) {
+        for (const [methodName, methodData] of Object.entries(contract.methods)) {
+            const inputTypes = (methodData.inputs ?? []).map(input => input.type).join(",");
+            const signature = `${methodName}(${inputTypes})`;
+            const hash = "0x" + Buffer.from(keccak256(toUtf8Bytes(signature))).toString("hex").slice(0, 8);
+
+            if (hash === methodSignature) {
+                return { name: methodName, ...methodData } as CodeAbiMethod & { name: string };
+            }
+        }
+    }
+
+    return null;
+}
+
+
+function decodeCallData(data: string, methodAbi: any) {
+    if (!methodAbi.inputs || methodAbi.inputs.length === 0) return [];
+
+    const coder = new AbiCoder();
+    const encodedParams = data.slice(10); // Supprime la signature de 4 bytes
+    const types = methodAbi.inputs.map((input: any) => input.type);
+
+    return coder.decode(types, "0x" + encodedParams);
 }
 

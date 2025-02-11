@@ -24,7 +24,7 @@ export class Block {
     public timestamp: number | null = null;
     public transactions: Transaction[] = [];
     public receipts: TransactionReceipt[] = [];
-    //public updatedAccounts: Accounts = {}; // TODO
+    //public updatedAccounts: Accounts = {}; // TODO: stocker les accounts modifiés (avec le diff) dans le contenu de chaque block respectif (si on veut retourner au block n-1)
     //public lastBlockchainState: BlockchainMetadata | null = null; // TODO: permet de recuperer un etat precedent de la blockchain (si on veut retourner au block n-1)
 
 
@@ -128,7 +128,7 @@ export class Block {
         const blockFormatted: BlockData = this.toData();
         const blockHash: BlockHash = computeHash(blockFormatted);
 
-        if (true) {
+        if (false) {
             // DEBUG
             const debugFile = `/tmp/debug/block-${this.blockHeight}.${Date.now()}.json`;
             fs.writeFileSync(debugFile, JSON.stringify(blockFormatted, jsonReplacer, 4));

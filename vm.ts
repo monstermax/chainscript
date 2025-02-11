@@ -1,14 +1,13 @@
 // vm.ts
 
-import { Context, createContext, Script } from "vm"; // https://nodejs.org/api/vm.html
+import { createContext, Script } from "vm"; // https://nodejs.org/api/vm.html
 
 import { asserts, stringifyParams } from "./utils";
 import { decimals, fullcoin } from './config';
 import { Blockchain } from './blockchain';
 
 import type { AccountAddress, ContractMemory } from "./types/account.types";
-import { Block } from "./block";
-import { BlockData, BlockHash } from "./types/block.types";
+import type { BlockData, BlockHash } from "./types/block.types";
 
 
 
@@ -100,6 +99,8 @@ export async function execVm(blockchain: Blockchain, executorAddress: AccountAdd
 
 
     // Execute script
-    await compiledScript.runInContext(vmContext, { breakOnSigint: true, timeout: 100 });
+    const callResult = await compiledScript.runInContext(vmContext, { breakOnSigint: true, timeout: 100 });
+
+    console.log('callResult:', callResult)
 }
 
