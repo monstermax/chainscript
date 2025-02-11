@@ -1,7 +1,7 @@
 // transaction.ts
 
 import fs from 'fs';
-import ethers from 'ethers'
+import { AbiCoder, encodeRlp, getAddress, keccak256 } from 'ethers'
 
 import * as ethereumjsTx from '@ethereumjs/tx';
 import * as ethereumjsUtil from '@ethereumjs/util';
@@ -283,7 +283,12 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
             } else if (instruction.type === 'create') {
                 // Create smart contract
 
-                const scriptAddress = computeHash(instruction).slice(0, 42) as AccountAddress; // TODO: recuperer la fonction de generation d'adresse
+                //const tmpData = { ...instruction, from: tx.from, nonce: tx.nonce }
+                //const scriptAddress: AccountAddress = computeHash(tmpData).slice(0, 42) as AccountAddress; // TODO: recuperer la fonction de generation d'adresse
+                //const scriptAddress: AccountAddress = keccak256(encodeRlp([tx.from, toHex(tx.nonce)])) as AccountAddress  // Prendre les 20 derniers octets
+
+                const scriptAddress: AccountAddress = await predictContractAddress(tx.from, tx.nonce)
+                console.log("🔹 Adresse du nouveau contrat :", scriptAddress);
 
                 const contractAccount = blockchain.getAccount(scriptAddress);
 
@@ -394,7 +399,13 @@ export function decodeTx(raw_tx: string): TransactionData {
 
         // ✅ Ajout instruction d'appel si `tx.data` contient un contrat
         if (tx.data.length > 0) {
+            const coder = new AbiCoder();
+
             if (tx.to) {
+                // Executer la methode d'un contrat existant
+
+                // TODO: decode tx.data
+
                 instructions.push({
                     type: 'call',
                     scriptAddress: tx.to.toString(),
@@ -404,10 +415,22 @@ export function decodeTx(raw_tx: string): TransactionData {
                 } as TransactionInstructionCall);
 
             } else {
+                // Créer un novueau contrat
+
+                const codes = coder.decode(["string", "string"], tx.data);
+
+                if (! codes) {
+                    throw new Error('CONTRACT_DEPLOY_CODE_PARSING_FAILED');
+                }
+
+                const sourceCode: string = codes[0];
+                const constructorParams: any[] = codes[1];
+
                 instructions.push({
                     type: 'create',
-                    abi: [], // TODO
-                    code: '', // TODO
+                    abi: [], // l'abi sera généré une fois que le contrat aura été instancié => TODO
+                    code: sourceCode,
+                    params: constructorParams,
                 } as TransactionInstructionCreate);
             }
         }
@@ -443,3 +466,11 @@ export function decodeTx(raw_tx: string): TransactionData {
     }
 }
 
+
+async function predictContractAddress(sender: AccountAddress, nonce: bigint): Promise<AccountAddress> {
+    const encoded: string = encodeRlp([sender, '0x00']); // Encodage RLP
+    const hash: string = keccak256(encoded);
+    const contractAddress: AccountAddress = getAddress("0x" + hash.slice(-40)) as AccountAddress; // Prendre les 20 derniers octets
+
+    return contractAddress;
+}

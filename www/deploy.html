@@ -1,0 +1,215 @@
+<html>
+<head>
+    <title>Contract Deployment</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js" integrity="sha512-FDcVY+g7vc5CXANbrTSg1K5qLyriCsGDYCE02Li1tXEYdNQPvLPHNE+rT2Mjei8N7fZbe0WLhw27j2SrGRpdMg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+
+<body>
+    <textarea id="code" rows="20" style="width:600px"></textarea>
+
+    <button onclick="deploy()">Deploy</button>
+</body>
+
+<script>
+
+async function connectWallet() {
+    const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+}
+
+
+async function deploy() {
+    if (! window.ethereum || ! window.ethereum.selectedAddress) {
+        console.warn('Wallet not connected');
+        return;
+    }
+
+
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+
+    let txValue = ethers.utils.parseEther('0');
+
+    const contractJsCode = document.getElementById('code').value;
+    const constructorParams = [];
+    const constructorParamsJSON = JSON.stringify(constructorParams);
+
+    const bytecode = ethers.utils.defaultAbiCoder.encode(['string', 'string'], [contractJsCode, constructorParamsJSON]);
+
+    const abi = [
+        //"constructor(string)",
+    ];
+
+    const factory = new ethers.ContractFactory(abi, bytecode, signer)
+
+    const deployArgs = [
+        //'test ok', // TODO: constructorParams
+    ];
+
+    if (txValue.gt(0)) {
+        deployArgs.push({
+            value: txValue.toHexString(),
+        });
+    }
+
+    const contract = await factory.deploy(...deployArgs)
+        .catch(() => null);
+
+    if (!contract) {
+        console.warn('deployment canceled');
+        return;
+    }
+
+    console.log('contract:', contract);
+
+    const contractAddress = contract.address;
+    console.log('contractAddress:', contractAddress);
+
+    const deployTx = await contract.deployTransaction.wait()
+        .catch(() => null);
+
+    if (! deployTx) {
+        console.warn('deployment failed');
+        return;
+    }
+
+    console.log('deployTx:', deployTx);
+    console.log('Contract deployed at address', contractAddress);
+}
+
+/*
+    const constructorParams: any[] = []; 
+    const constructorParamsJSON = JSON.stringify(constructorParams);
+    const bytecode = ethers.AbiCoder.defaultAbiCoder().encode(['string', 'string'], [contractAccount.code, constructorParamsJSON]);
+
+    const provider = new ethers.JsonRpcProvider('http://localhost:8545');
+    const pk = devPrivateKey;
+    const signer = new ethers.Wallet(pk, provider);
+
+    const abi: string[] = [
+        //'function deploy()',
+    ];
+    const iface = new ethers.Interface(abi);
+    const factory = new ethers.ContractFactory(iface, bytecode, signer)
+
+    const nonce = await provider.getTransactionCount(signer.getAddress());
+
+    const deployArgs = [...constructorParams];
+    if (instruction.amount && instruction.amount > 0n) {
+        deployArgs.push({
+            value: toHex(instruction.amount),
+            nonce,
+        });
+    }
+
+    const contract = await factory.deploy(...deployArgs);
+
+    const contractAddress = await contract.getAddress();
+    console.log('Contract deployment to address ' + contractAddress);
+
+    await contract.deploymentTransaction()?.wait()
+        .then(() => {
+            console.log('Contract deployed at address', contractAddress);
+        })
+        .catch(() => {
+            console.warn('Contract deployment failed for address', contractAddress);
+        });
+
+*/
+
+</script>
+
+
+<script type="text/template" id="code-sample">
+// ContractToken1.js
+
+
+class ContractToken1 {
+
+    #memory = memory({
+        supply: 10_000_000_000n * this.fulltoken,
+        accounts: {
+            [this.owner]: 10_000_000_000n * this.fulltoken,
+        },
+    });
+
+    get name() {
+        return 'Test Token';
+    }
+
+    get symbol() {
+        return 'TOK';
+    }
+
+    get decimals() {
+        return 9;
+    }
+
+    get owner() {
+        return '0x0000000000000000000000000000000000000010';
+    }
+
+
+    get fulltoken() {
+        return BigInt(Math.pow(10, this.decimals));
+    }
+
+    #mint(_address, amount) {
+        this.#memory.supply += amount;
+
+        this.#memory.accounts[_address] = this.#memory.accounts[_address] ?? 0n;
+        this.#memory.accounts[_address] += amount;
+    }
+
+    #burn(_address, amount) {
+        asserts(this.#memory.supply >= amount, `insufficient token supply : ${this.#memory.supply} < ${amount}`);
+        asserts(this.#memory.accounts, 'unknown account');
+        asserts(this.#memory.accounts[_address] >= amount, `insufficient token balance : ${this.#memory.accounts[_address]} < ${amount}`);
+        this.#memory.accounts[_address] -= amount;
+        this.#memory.supply -= amount;
+    }
+
+    balanceOf(_address) {
+        return this.#memory.accounts[_address] ?? 0n;
+    }
+
+    transfer(recipient, amount) {
+        this.#burn(caller, amount);
+        this.#mint(recipient, amount);
+    }
+
+
+    getCoinsBalance() {
+        log('DEBUG getCoinsBalance: START')
+
+        const coinsBalance = balance(address);
+
+        log('DEBUG getCoinsBalance: END')
+
+        return coinsBalance;
+    }
+
+
+    getTokenPrice() {
+        log('DEBUG getTokenPrice: START')
+
+        const coinsBalance = balance(address);
+
+        const tokensPrice = coinsBalance / this.#memory.supply;
+        log('tokensPrice', tokensPrice)
+
+        log('DEBUG getTokenPrice: END')
+
+        return tokensPrice;
+    }
+
+}
+</script>
+
+
+<script>
+
+document.getElementById('code').innerHTML = document.getElementById('code-sample').innerText;
+</script>
+
+
+</html>
