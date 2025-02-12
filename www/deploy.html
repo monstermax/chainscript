@@ -6,24 +6,29 @@
 </head>
 
 <body>
-    <div>
-        <h1>Contract deployment</h1>
+
+    <fieldset>
+        <legend><h1>Web3</h1></legend>
 
         <div>
-            <textarea id="code" rows="20" style="width:900px"></textarea>
+            Balance
+            <input type="text" id="balance" value="">
+            <button onclick="getBalance()">Get balance</button>
         </div>
-
-        <br />
 
         <div>
-            <button onclick="deploy()" style="width:900px">Deploy</button>
+            Transfer to
+            <input type="text" value="0x0000000000000000000000000000000000000030">
+            <input type="text" value="10">
         </div>
-    </div>
+
+    </fieldset>
 
     <br />
+    <br />
 
-    <div>
-        <h1>Contract execution</h1>
+    <fieldset>
+        <legend><h1>Contract execution</h1></legend>
 
         <div>
             Contract address: <input type="text" id="contractAddress" value="0xC10a2805C1610d81eA3037B041b6669CB4944251">
@@ -51,10 +56,30 @@
 
         <div>
             <button onclick="callContract()" style="width:900px">Call (free)</button>
+            <br />
+            <br />
             <button onclick="executeContract()" style="width:900px">Execute (tx)</button>
         </div>
 
-    </div>
+    </fieldset>
+
+    <br />
+    <br />
+
+
+    <fieldset>
+        <legend><h1>Contract deployment</h1></legend>
+
+        <div>
+            <textarea id="code" rows="20" style="width:900px"></textarea>
+        </div>
+
+        <br />
+
+        <div>
+            <button onclick="deploy()" style="width:900px">Deploy</button>
+        </div>
+    </fieldset>
 </body>
 
 <script>
@@ -75,7 +100,8 @@ const contractAbi = [
                 "inputs": [
                     "recipient",
                     "amount"
-                ]
+                ],
+                "stateMutability": "non-payable"
             },
             "getCoinsBalance": {
                 "inputs": []
@@ -89,9 +115,33 @@ const contractAbi = [
 ];
 
 
-// 🔄 Convertir au format attendu par Ethers.js
-const ethersAbi = convertCustomAbiToEthersFormat(contractAbi);
-console.log("Ethers ABI:", ethersAbi);
+function addArg() {
+    const $span = document.getElementById('span-args');
+    $span.innerHTML += '<br /><input type="text" class="arg-value">';
+}
+
+
+async function getBalance() {
+    if (! window.ethereum || ! window.ethereum.selectedAddress) {
+        console.warn('Wallet not connected');
+        return;
+    }
+
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+
+    const signer = provider.getSigner();
+    if (!signer) return;
+
+    const balanceStr = await provider.getBalance(signer.getAddress());
+    const balance = divideBigInt(BigInt(balanceStr), BigInt(1e18));
+    document.getElementById('balance').value = balance;
+}
+
+
+function divideBigInt(val, divider, precision=18) {
+    const factor = 10 ** precision;
+    return Number(val * BigInt(factor) / divider) / factor;
+}
 
 
 async function callContractMethod(provider, contractAddress, contractAbi, className, methodName, params) {
@@ -101,6 +151,17 @@ async function callContractMethod(provider, contractAddress, contractAbi, classN
 
     if (params.length === 0) {
         console.warn(`⚠️ Aucun paramètre fourni pour ${methodName}`);
+    }
+
+
+    if (false) {
+        const encodedData = contract.interface.encodeFunctionData("transfer", [
+            "0x0000000000000000000000000000000000000010",
+            "6"
+        ]);
+        console.log("Encoded Data:", encodedData);
+        return;
+
     }
 
     const result = await contract[methodName](...params);
@@ -128,10 +189,16 @@ async function callContract() {
     if (!methodName) return;
 
     const argsValues = [...document.getElementsByClassName('arg-value')].map(input => input.value);
+    console.log('arguments:', argsValues)
 
     //const args = Object.fromEntries(
     //    argsNames.map((name, idx) => [name, argsValues[idx]])
     //);
+
+    // 🔄 Convertir au format attendu par Ethers.js
+    const ethersAbi = convertCustomAbiToEthersFormat(contractAbi);
+    console.log("Ethers ABI:", ethersAbi);
+
 
     console.log("Méthode appelée:", ethersAbi.find(m => m.name === methodName));
 
@@ -163,6 +230,15 @@ async function executeContract() {
     if (!methodName) return;
 
     const argsValues = [...document.getElementsByClassName('arg-value')].map(input => input.value);
+    console.log('arguments:', argsValues)
+
+
+    // 🔄 Convertir au format attendu par Ethers.js
+    const ethersAbi = convertCustomAbiToEthersFormat(contractAbi);
+    console.log("Ethers ABI:", ethersAbi);
+
+
+    console.log("Méthode appelée:", ethersAbi.find(m => m.name === methodName));
 
 
     const tx = await callContractMethod(signer, contractAddress, ethersAbi, className, methodName, argsValues);
@@ -257,7 +333,7 @@ function convertCustomAbiToEthersFormat(customAbi) {
                 name: methodName,
                 inputs,
                 outputs,
-                stateMutability: "view", // ou "nonpayable" selon les cas
+                stateMutability: methodData.stateMutability ?? 'view',
             });
         }
     }

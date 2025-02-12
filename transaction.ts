@@ -349,7 +349,7 @@ export function transcodeTx(blockchain: Blockchain, txParams: SendTxParams): Tra
             asserts(abiClassMethod, `[transcodeTx] Méthode inconnue pour la signature ${callSignature}`);
 
             // 🧩 Décoder les arguments
-            const args: any[] = decodeTxData(txParams.data, abiClassMethod);
+            const args: any[] = decodeTxData('00' + txParams.data, abiClassMethod);
             console.log(`[${now()}][transcodeTx] 🔍 Arguments décodés:`, args);
 
             instructions.push({
