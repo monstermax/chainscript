@@ -6,7 +6,7 @@ class ContractToken1 {
     #memory = memory({
         supply: 10_000_000_000n * this.fulltoken,
         accounts: {
-            [this.owner]: 10_000_000_000n * this.fulltoken,
+            [this.owner.toLowerCase()]: 10_000_000_000n * this.fulltoken,
         },
     });
 
@@ -23,7 +23,7 @@ class ContractToken1 {
     }
 
     get owner() {
-        return '0x0000000000000000000000000000000000000010';
+        return '0xee5392913a7930c233Aa711263f715f616114e9B';
     }
 
 
@@ -40,19 +40,20 @@ class ContractToken1 {
 
     #burn(_address, amount) {
         asserts(this.#memory.supply >= amount, `insufficient token supply : ${this.#memory.supply} < ${amount}`);
-        asserts(this.#memory.accounts, 'unknown account');
+        asserts(this.#memory.accounts[_address], `unknown account "${_address}"`);
         asserts(this.#memory.accounts[_address] >= amount, `insufficient token balance : ${this.#memory.accounts[_address]} < ${amount}`);
         this.#memory.accounts[_address] -= amount;
         this.#memory.supply -= amount;
     }
 
     balanceOf(_address) {
+        _address = _address.toLowerCase();
         return this.#memory.accounts[_address] ?? 0n;
     }
 
     transfer(recipient, amount) {
-        this.#burn(caller, amount);
-        this.#mint(recipient, amount);
+        this.#burn(caller.toLowerCase(), BigInt(amount));
+        this.#mint(recipient.toLowerCase(), BigInt(amount));
     }
 
 

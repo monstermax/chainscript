@@ -92,7 +92,7 @@ export function predictContractAddress(sender: AccountAddress, nonce: bigint): A
     const hash: string = keccak256(encoded);
     const contractAddress: AccountAddress = getAddress("0x" + hash.slice(-40)) as AccountAddress; // Prendre les 20 derniers octets
 
-    return contractAddress;
+    return contractAddress; // TODO: a remplacer par ethers.utils.getContractAddress => https://docs.ethers.org/v5/api/utils/address/#utils-getContractAddress
 }
 
 

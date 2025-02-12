@@ -36,8 +36,7 @@ export function findMethodAbi(abi: CodeAbi, methodSignature: string): AbiClassMe
 
 
 
-
-
+/*
 // Encode une transaction en `eth_call` compatible avec Metamask
 export function encodeCallData(className: string, methodName: string, args: any[], abiClassMethod: CodeAbiClassMethod): string {
     const coder = new AbiCoder();
@@ -54,10 +53,10 @@ export function encodeCallData(className: string, methodName: string, args: any[
 
     return signatureHash + encodedParams.slice(2);
 }
+*/
 
 
-
-/** Détecte dynamiquement les propriétés et méthodes d'un contrat */
+// Détecte dynamiquement les propriétés et méthodes d'un contrat
 export function generateContractAbi(contractCode: string): CodeAbi {
     const abi: CodeAbi = [];
 
