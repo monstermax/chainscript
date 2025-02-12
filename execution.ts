@@ -74,6 +74,7 @@ export async function handleEthSendTransaction(blockchain: Blockchain, txData: T
 
 // Transcode un txParams (format Ethereum) au format TransactionData (Typescript Blockchain) en y ajoutant des instructions
 export function transcodeTx(blockchain: Blockchain, txParams: SendTxParams): TransactionData {
+    asserts(typeof txParams.nonce === 'string', `[transcodeTx] missing transaction nonce`);
 
     const value: bigint = BigInt(txParams.value ?? 0n);
     const nonce: bigint = BigInt(txParams.nonce)

@@ -313,6 +313,8 @@ function handleRpcRequest(blockchain: Blockchain, req: http.IncomingMessage, res
                     // https://docs.metamask.io/wallet/reference/json-rpc-methods/eth_sendtransaction/
                     const [txParams] = params as [sendTxParams];
 
+                    // ATTENTION: transaction non signée (on peut mettre ce que l'on veut dans "from") // NE PAS UTILISER EN PRODUCTION //
+
                     // Transcode les txParams au format TransactionData
                     const txData: TransactionData = transcodeTx(blockchain, txParams);
 

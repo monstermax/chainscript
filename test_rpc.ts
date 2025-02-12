@@ -3,7 +3,33 @@
 import http from 'http';
 
 
-/** 📤 Envoie une requête RPC au serveur */
+/* ######################################################### */
+
+
+// Tests des méthodes RPC
+async function main() {
+    try {
+        console.log('\n🔹 Test: sendTransaction');
+
+        const result = await sendRpcRequest('eth_sendTransaction', [
+            {
+                from: '0x0000000000000000000000000000000000000010',
+                to: '0x0000000000000000000000000000000000000020',
+                value: '1000000',
+                nonce: '0x0'
+            }
+        ]);
+
+        console.log(result);
+
+    } catch (error) {
+        console.error(`❌ Erreur lors du test RPC: ${error}`);
+    }
+}
+
+
+
+// Envoie une requête RPC au serveur
 function sendRpcRequest(method: string, params: object): Promise<any> {
     return new Promise((resolve, reject) => {
         const postData = JSON.stringify({ method, params });
@@ -16,7 +42,7 @@ function sendRpcRequest(method: string, params: object): Promise<any> {
             headers: {
                 'Content-Type': 'application/json',
                 'Content-Length': Buffer.byteLength(postData),
-                'Connection': 'close'  // ✅ Assure que la connexion est bien fermée après la réponse
+                'Connection': 'close',
             }
         };
 
@@ -25,7 +51,7 @@ function sendRpcRequest(method: string, params: object): Promise<any> {
 
             console.log(`[Client] Status Code: ${res.statusCode}`);
 
-            res.setEncoding('utf8');  // ✅ Force le format UTF-8 pour éviter les problèmes d'encodage
+            res.setEncoding('utf8');
 
             res.on('data', (chunk) => {
                 console.log(`[Client] Réponse reçue (data): ${chunk}`);
@@ -39,8 +65,10 @@ function sendRpcRequest(method: string, params: object): Promise<any> {
                         reject(`[Client] Erreur: Réponse vide du serveur`);
                         return;
                     }
+
                     const jsonResponse = JSON.parse(data);
                     resolve(jsonResponse);
+
                 } catch (error) {
                     reject(`[Client] Erreur de parsing JSON: ${data}`);
                 }
@@ -57,25 +85,5 @@ function sendRpcRequest(method: string, params: object): Promise<any> {
 }
 
 
-/** ✅ Tests des méthodes RPC */
-async function testRpc() {
-    try {
-        console.log('🔹 Test: getBlock(0)');
-        console.log(await sendRpcRequest('getBlock', { blockHeight: 0 }));
 
-        console.log('\n🔹 Test: getAccount(0x0000000000000000000000000000000000000010)');
-        console.log(await sendRpcRequest('getAccount', { address: '0x0000000000000000000000000000000000000010' }));
-
-        console.log('\n🔹 Test: sendTransaction');
-        console.log(await sendRpcRequest('sendTransaction', {
-            from: '0x0000000000000000000000000000000000000010',
-            to: '0x0000000000000000000000000000000000000020',
-            amount: '1000000'
-        }));
-
-    } catch (error) {
-        console.error(`❌ Erreur lors du test RPC: ${error}`);
-    }
-}
-
-testRpc();
+main();
