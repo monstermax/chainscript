@@ -74,7 +74,7 @@ export class Transaction {
 
 
     public create(code: string, amount=0n): this {
-        asserts(this.nonce, `missing transaction nonce`);
+        asserts(this.nonce, `[Transaction][create] missing transaction nonce`);
         const contractAddress: AccountAddress = predictContractAddress(this.from, this.nonce)
         console.log(`[${now()}][Transaction][create] Adresse du contrat à créer :`, contractAddress);
 
@@ -109,11 +109,10 @@ export class Transaction {
     toData(): TransactionData {
         const tx: Transaction = this;
 
-        asserts(typeof tx.nonce === 'bigint', `invalid transaction nonce "${tx.nonce}"`);
-        if (typeof tx.from !== 'string') debugger;
-        asserts(typeof tx.from === 'string', `invalid transaction emitter type "${tx.from}"`);
-        asserts(tx.from.startsWith('0x'), `invalid transaction emitter "${tx.nonce}"`);
-        asserts(tx.from === '0x' || tx.from.length === 42, `invalid transaction emitter "${tx.nonce}"`);
+        asserts(typeof tx.nonce === 'bigint', `[Transaction][toData] invalid transaction nonce "${tx.nonce}"`);
+        asserts(typeof tx.from === 'string', `[Transaction][toData] invalid transaction emitter type "${tx.from}"`);
+        asserts(tx.from.startsWith('0x'), `[Transaction][toData] invalid transaction emitter "${tx.nonce}"`);
+        asserts(tx.from === '0x' || tx.from.length === 42, `[Transaction][toData] invalid transaction emitter "${tx.nonce}"`);
 
         const transactionData: TransactionData = {
             from: tx.from,
@@ -260,8 +259,8 @@ export class Transaction {
 // Execute un contrat (en lecture seule) dans la VM et retourne le résultat
 export async function handleEthCall(blockchain: Blockchain, txParams: callTxParams): Promise<any> {
     const contractAccount = blockchain.getAccount(txParams.to as AccountAddress, null);
-    asserts(contractAccount, `contract not found`);
-    asserts(contractAccount.abi, `contract abi not found`);
+    asserts(contractAccount.abi, `[handleEthCall] contract abi not found. may not be a contract...`);
+    asserts(contractAccount.code, `[handleEthCall] contract code not found`);
 
     // Signature de la classe+methode à appeler
     asserts(txParams.data && txParams.data.length >= 10);
@@ -270,18 +269,18 @@ export async function handleEthCall(blockchain: Blockchain, txParams: callTxPara
 
     // Cherche la classe+methode à partir de la signature
     const abiClassMethod = findMethodAbi(contractAccount.abi, callSignature);
-    asserts(abiClassMethod, "Méthode inconnue");
+    asserts(abiClassMethod, "[handleEthCall] Méthode inconnue");
 
     // Décodage des parametres de la methode
     const args = decodeTxData(txParams.data, abiClassMethod);
-    console.log(`[eth_call] Arguments décodés:`, args)
+    console.log(`[handleEthCall] Arguments décodés:`, args)
 
     // Execution du code dans la VM
     const { vmResult, vmMonitor } = await execVm(blockchain, txParams.from, txParams.to, abiClassMethod.className, abiClassMethod.methodName, args, null);
 
-    console.log(`[eth_call] ✅ Résultat:`, vmResult);
-    console.log(`[eth_call] 🔍 Nombre total de calls:`, vmMonitor.totalCalls);
-    console.log(`[eth_call] 📜 Stack des calls:`, vmMonitor.callStack.join(" -> "));
+    console.log(`[handleEthCall] ✅ Résultat:`, vmResult);
+    console.log(`[handleEthCall] 🔍 Nombre total de calls:`, vmMonitor.totalCalls);
+    console.log(`[handleEthCall] 📜 Stack des calls:`, vmMonitor.callStack.join(" -> "));
 
     return vmResult;
 }
@@ -455,7 +454,7 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
 
     // Vérifie le hash de la transaction
     const computedTxHash = tx.computeHash();
-    asserts(computedTxHash === tx.hash, `transaction hash mismatch`);
+    asserts(computedTxHash === tx.hash, `[executeTransaction] transaction hash mismatch`);
 
 
     const emitterAccount = blockchain.getAccount(tx.from, blockchain.memoryState);
@@ -467,7 +466,7 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
             if (instruction.type === 'mint') {
                 // Mint value
 
-                asserts(tx.from === '0x', `invalid emitter for mint. Expected: "0x" / Found: ${tx.from}`);
+                asserts(tx.from === '0x', `[executeTransaction] invalid emitter for mint. Expected: "0x" / Found: ${tx.from}`);
 
                 const minerAccount = blockchain.getAccount(instruction.address, blockchain.memoryState);
                 asserts(minerAccount, `[executeTransaction] minerAccount "${instruction.address}" not found`);
@@ -493,9 +492,9 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
                 }
 
                 const contractAccount = blockchain.getAccount(contractAddress, blockchain.memoryState);
-                asserts(contractAccount.balance === 0n, `account "${contractAddress}" already exists (balance > 0)`);
-                asserts(contractAccount.code === null, `account "${contractAddress}" already exists (code exists)`);
-                asserts(contractAccount.abi === null, `account "${contractAddress}" already exists (abi exists)`);
+                asserts(contractAccount.balance === 0n, `[executeTransaction] account "${contractAddress}" already exists (balance > 0)`);
+                asserts(contractAccount.code === null, `[executeTransaction] account "${contractAddress}" already exists (code exists)`);
+                asserts(contractAccount.abi === null, `[executeTransaction] account "${contractAddress}" already exists (abi exists)`);
 
                 contractAccount.abi = generateContractAbi(instruction.code);
                 contractAccount.code = instruction.code;
@@ -523,7 +522,7 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
                 asserts(vmMonitor.totalCalls < 1000, `[executeTransaction] execution limit exceeded`);
 
             } else {
-                throw new Error(`unknown instruction type`);
+                throw new Error(`[executeTransaction] unknown instruction type`);
             }
         }
 
@@ -536,7 +535,7 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
             blockchain.burn(emitterAccount, txFees);
 
         } else {
-            asserts(tx.from === '0x', `invalid emitter for transaction without fees. Expected: "0x" / Found: ${tx.from}`);
+            asserts(tx.from === '0x', `[executeTransaction] invalid emitter for transaction without fees. Expected: "0x" / Found: ${tx.from}`);
 
             // TODO: gérer les annulations de transactions (pas de fees ?)
         }

@@ -138,15 +138,15 @@ function handleRpcRequest(blockchain: Blockchain, req: http.IncomingMessage, res
                         const blockHeight: number = fromHex(blockParameter as HexNumber);
 
                         const block: Block | null = blockchain.getBlock(blockHeight);
-                        asserts(block, `block "${blockParameter}" not found`)
+                        asserts(block, `[RPC][eth_getBlockByNumber] block "${blockParameter}" not found`)
 
                         result = Block.formatForRpc(block, showTransactionsDetails);
 
                     } else {
-                        asserts(blockParameter === 'latest', `blockParameter "${blockParameter}" not implemented`);
+                        asserts(blockParameter === 'latest', `[RPC][eth_getBlockByNumber] blockParameter "${blockParameter}" not implemented`);
 
                         const block: Block | null = blockchain.getBlock(blockchain.blockHeight);
-                        asserts(block, `block "${blockParameter}" not found`)
+                        asserts(block, `[RPC][eth_getBlockByNumber] block "${blockParameter}" not found`)
 
                         result = Block.formatForRpc(block, showTransactionsDetails) as object;
                     }
@@ -166,7 +166,7 @@ function handleRpcRequest(blockchain: Blockchain, req: http.IncomingMessage, res
                     const [blockHash, showTransactionsDetails] = params as [BlockHash, showTransactionsDetails?: boolean];
 
                     const block = blockchain.getBlockByHash(blockHash);
-                    asserts(block, `block not found for block "${blockHash}"`);
+                    asserts(block, `[RPC][eth_getBlockByHash] block not found for block "${blockHash}"`);
 
                     result = Block.formatForRpc(block) as object;
 
@@ -178,10 +178,10 @@ function handleRpcRequest(blockchain: Blockchain, req: http.IncomingMessage, res
                     const [blockHeight, transactionIndex] = params as [blockHeight: number, transactionIndex: number];
 
                     const block = blockchain.getBlock(blockHeight);
-                    asserts(block, `block not found for transaction "${transactionIndex}" of block "${blockHeight}"`);
+                    asserts(block, `[RPC][eth_getTransactionByBlockNumberAndIndex] block not found for transaction "${transactionIndex}" of block "${blockHeight}"`);
 
                     const tx = block.transactions[transactionIndex];
-                    asserts(tx, `transaction "${transactionIndex}" of block "${blockHeight}" not found`);
+                    asserts(tx, `[RPC][eth_getTransactionByBlockNumberAndIndex] transaction "${transactionIndex}" of block "${blockHeight}" not found`);
 
                     result = Transaction.formatForRpc(block, tx) as object;
                 }
@@ -191,10 +191,10 @@ function handleRpcRequest(blockchain: Blockchain, req: http.IncomingMessage, res
                     const [blockHash, transactionIndex] = params as [blockHash: BlockHash, transactionIndex: number];
 
                     const block = blockchain.getBlockByHash(blockHash);
-                    asserts(block, `block not found for transaction "${transactionIndex}" of block "${blockHash}"`);
+                    asserts(block, `[RPC][eth_getTransactionByBlockHashAndIndex] block not found for transaction "${transactionIndex}" of block "${blockHash}"`);
 
                     const tx = block.transactions[transactionIndex];
-                    asserts(tx, `transaction "${transactionIndex}" of block "${blockHash}" not found`);
+                    asserts(tx, `[RPC][eth_getTransactionByBlockHashAndIndex] transaction "${transactionIndex}" of block "${blockHash}" not found`);
 
                     result = Transaction.formatForRpc(block, tx) as object;
                 }
@@ -203,15 +203,15 @@ function handleRpcRequest(blockchain: Blockchain, req: http.IncomingMessage, res
                     // https://docs.metamask.io/services/reference/ethereum/json-rpc-methods/eth_gettransactionbyhash/
                     const [txHash] = params as [txHash: TransactionHash];
 
-                    asserts(typeof txHash === 'string', `invalid txHash type`);
+                    asserts(typeof txHash === 'string', `[RPC][eth_getTransactionByHash] invalid txHash type`);
 
                     const tx = blockchain.getTransactionByHash(txHash);
-                    asserts(tx, `transaction "${txHash}" not found`);
-                    asserts(typeof tx.blockHeight === 'number', `missing blockHeight for transaction "${txHash}"`);
-                    asserts(tx.blockHeight > -1, `invalid blockHeight for transaction "${txHash}"`);
+                    asserts(tx, `[RPC][eth_getTransactionByHash] transaction "${txHash}" not found`);
+                    asserts(typeof tx.blockHeight === 'number', `[RPC][eth_getTransactionByHash] missing blockHeight for transaction "${txHash}"`);
+                    asserts(tx.blockHeight > -1, `[RPC][eth_getTransactionByHash] invalid blockHeight for transaction "${txHash}"`);
 
                     const block = blockchain.getBlock(tx.blockHeight);
-                    asserts(block, `block not found for transaction "${txHash}"`);
+                    asserts(block, `[RPC][eth_getTransactionByHash] block not found for transaction "${txHash}"`);
 
                     result = Transaction.formatForRpc(block, tx) as object;
                     break;
@@ -221,7 +221,7 @@ function handleRpcRequest(blockchain: Blockchain, req: http.IncomingMessage, res
                     // https://docs.metamask.io/services/reference/ethereum/json-rpc-methods/eth_gettransactionreceipt/
                     const [txHash] = params as [txHash: TransactionHash];
 
-                    asserts(typeof txHash === 'string', `invalid txHash type`);
+                    asserts(typeof txHash === 'string', `[RPC][eth_getTransactionReceipt] invalid txHash type`);
 
                     //asserts(typeof blockHeight === 'number', `transaction "${txHash}" has no blockHeight`);
 
@@ -229,10 +229,10 @@ function handleRpcRequest(blockchain: Blockchain, req: http.IncomingMessage, res
                         const blockHeight = blockchain.stateManager.transactionsIndex[txHash];
 
                         const tx = blockchain.getTransactionByHash(txHash);
-                        asserts(tx, `transaction "${txHash}" not found`);
+                        asserts(tx, `[RPC][eth_getTransactionReceipt] transaction "${txHash}" not found`);
 
                         const block = blockchain.getBlock(blockHeight);
-                        asserts(block, `block "${blockHeight}" not found`)
+                        asserts(block, `[RPC][eth_getTransactionReceipt] block "${blockHeight}" not found`)
 
                         result = Transaction.formatReceiptForRpc(block, tx) as object;
 

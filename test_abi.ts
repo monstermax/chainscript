@@ -9,16 +9,21 @@ async function main() {
     const codeFilepath = `${__dirname}/example/scripts/ContractToken1.js`;
     const code = fs.readFileSync(codeFilepath).toString();
 
-    //const abi = generateContractAbi(code);
-    //console.log('abi:', abi);
+    if (true) {
+        const abi = generateContractAbi(code);
+        console.log('abi:', abi[0]);
+    }
 
-    const getClassPropertiesString = getClassProperties.toString();
-    const getFunctionParamsString = getFunctionParams.toString();
-    const buildAbiString = buildAbi.toString();
 
-    console.log('getClassProperties:', getClassPropertiesString.toString());
-    console.log('getFunctionParams:', getFunctionParamsString.toString());
-    console.log('buildAbi:', buildAbiString.toString());
+    if (false) {
+        const getClassPropertiesString = getClassProperties.toString();
+        const getFunctionParamsString = getFunctionParams.toString();
+        const buildAbiString = buildAbi.toString();
+
+        console.log('getClassProperties:', getClassPropertiesString.toString());
+        console.log('getFunctionParams:', getFunctionParamsString.toString());
+        console.log('buildAbi:', buildAbiString.toString());
+    }
 
 
 

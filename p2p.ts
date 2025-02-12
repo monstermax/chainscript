@@ -378,7 +378,7 @@ export class P2PNode {
     private handleNewTransaction(txData: TransactionData) {
         console.log(`[${now()}][P2P][handleNewTransaction] 💰 Nouvelle transaction reçue`);
 
-        asserts(txData.hash, `transaction without hash`)
+        asserts(txData.hash, `[P2P][handleNewTransaction] transaction without hash`)
 
         if (txData.hash in this.blockchain.stateManager.transactionsIndex) {
                 return;

@@ -31,7 +31,7 @@ export class Mempool {
         asserts(emitterAccount, `[Mempool][addTransaction] emitter account not found`);
 
         if (typeof tx.nonce === 'bigint') {
-            asserts(tx.nonce === BigInt(emitterAccount.transactionsCount), `invalid nonce. (Found: ${tx.nonce} / Expected: ${emitterAccount.transactionsCount})`);
+            asserts(tx.nonce === BigInt(emitterAccount.transactionsCount), `[Mempool][addTransaction] invalid nonce. (Found: ${tx.nonce} / Expected: ${emitterAccount.transactionsCount})`);
 
         } else {
             tx.nonce = BigInt(emitterAccount.transactionsCount);
@@ -59,7 +59,7 @@ export class Mempool {
     /** 🔥 Vider le mempool après l'ajout d'un block */
     clearMempool(transactionsIncluded: Transaction[]) {
         for (const tx of transactionsIncluded) {
-            asserts(tx.hash, `missing transaction hash`)
+            asserts(tx.hash, `[Mempool][clearMempool] missing transaction hash`)
             this.transactions.delete(tx.hash);
         }
 

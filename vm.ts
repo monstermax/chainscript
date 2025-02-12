@@ -58,36 +58,23 @@ export async function execVm(
     asserts(contractAccount.code, `[execVm] missing script code at address ${contractAddress}`);
 
 
-
-
-    // Ajout à la stack d'exécution
-    //const signatureString = `${contractAddress}.${className}.${methodName}(${args.map(a => JSON.stringify(a)).join(', ')})`;
-
     const abiClass: CodeAbiClass | null = contractAccount.abi?.find(classAbi => classAbi.class === className) ?? null;
-    asserts(abiClass, `missing abi contract class`);
+    asserts(abiClass, `[execVm] missing abi contract class`);
 
     const abiClassMethod: CodeAbiClassMethod = abiClass.methods[methodName];
-    asserts(abiClass, `missing abi contract method`);
+    asserts(abiClass, `[execVm] missing abi contract method`);
 
-    //const inputTypes = abiClassMethod.inputs?.join(",") ?? "";
-    //const signatureString = `${className}.${methodName}(${inputTypes})`;
-    //const inputTypes = (abiClassMethod.inputs ?? []).map(type => type === "_address" ? "address" : "string").join(",");
     const inputTypes = (abiClassMethod.inputs ?? []).map(name => "string").join(",");
-    const signatureString = `${methodName}(${inputTypes})`; // 🔄 Supprime le `className.`
-
-    //const expectedHash = keccak256(toUtf8Bytes(signatureString)).slice(0, 10);
+    const signatureString = `${methodName}(${inputTypes})`;
 
 
     // Vérifier si l’ABI contient la classe demandée
-    //const abiClassMethod = findMethodAbi(contractAccount.abi, signatureString);
     asserts(abiClassMethod, `[execVm] La méthode "${methodName}" n'existe pas dans "${className}" !`);
-
 
     // Vérifier que les arguments correspondent (optionnel)
     //if (abiClassMethod.inputs) {
     //    //asserts(method.inputs.length === scriptArgs.length, `[execVm] La méthode "${scriptMethod}" attend ${method.inputs.length} arguments, mais ${scriptArgs.length} ont été fournis !`);
     //}
-
 
 
     // Compile le code du contrat
@@ -170,7 +157,9 @@ export async function execVm(
     compiledCode.runInContext(vmContext, { breakOnSigint: true, timeout: 10 });
 
 
+    // Ajout à la stack d'exécution
     vmMonitor.callStack.push(signatureString);
+
 
     // ⚡ Exécute la méthode demandée
     const scriptTimeout = 100; // TODO: à implémenter + l'ajouter à vmMonitor afin de gérer le temps d'execution d'un (sous) call et aussi le temps total d'execution (tous calls et sous-calls additionnés)

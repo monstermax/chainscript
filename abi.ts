@@ -153,10 +153,11 @@ export function getClassProperties(instance: any): { methods: CodeAbiClassMethod
     // Construire l'objet des méthodes
     for (const methodName of methodNames) {
         const method = instance[methodName];
-        const paramNames = getFunctionParams(method);
+        const { params, isWrite } = getFunctionParams(method);
 
         methods[methodName] = {
-            inputs: paramNames,
+            inputs: params,
+            write: isWrite,
         };
     }
 
@@ -164,18 +165,31 @@ export function getClassProperties(instance: any): { methods: CodeAbiClassMethod
 }
 
 
-/** Récupère les noms des paramètres d’une fonction JS */
-export function getFunctionParams(func: Function): string[] {
-    const match = func.toString().match(/\(([^)]*)\)/);
-    if (!match) return [];
+/** Récupère les noms des paramètres d’une fonction JS et détecte les annotations */
+export function getFunctionParams(func: Function): { params: string[], isWrite: boolean } {
+    let functionString = func.toString().replace(/\n/g, " "); // Supprime les sauts de ligne pour éviter les problèmes d'analyse
 
-    const variablesNames = match[1]
-        .split(',')
-        .map(param => param.trim())
-        .filter(param => param.length > 0);
+    // 🛑 Trouver où commence le corps de la fonction `{`
+    const bodyIndex = functionString.indexOf("{");
+    if (bodyIndex === -1) return { params: [], isWrite: false }; // Impossible de récupérer des params
 
-    return variablesNames;
+    // 🎯 Extraire uniquement la partie avant `{`
+    const headerString = functionString.substring(0, bodyIndex);
+
+    // 🔍 Trouver tous les commentaires `/* ... */` AVANT le `{`
+    const commentsMatch = [...headerString.matchAll(/\/\*([\s\S]*?)\*\//g)];
+    const comments = commentsMatch.map(match => match[1].trim()).join(" "); // Concaténer tous les commentaires
+
+    // 📌 Extraire les paramètres normalement
+    const match = headerString.match(/\(([^)]*)\)/);
+    const params = match ? match[1].split(',').map(param => param.trim()).filter(param => param.length > 0) : [];
+
+    // 📝 Vérifier si le commentaire contient " write " (avec espaces pour éviter des faux positifs)
+    const isWrite = ` ${comments} `.includes(" write ");
+
+    return { params, isWrite };
 }
+
 
 
 export function buildAbi(classNames: string[]) {

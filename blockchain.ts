@@ -155,10 +155,10 @@ export class Blockchain {
             const blockHeight = this.stateManager.transactionsIndex[txHash];
 
             const block = this.getBlock(blockHeight);
-            asserts(block, `block "${blockHeight}" not found for transaction "${txHash}"`);
+            asserts(block, `[Chain.getTransactionByHash] block "${blockHeight}" not found for transaction "${txHash}"`);
 
             const transactionIndex = block.transactions.findIndex(_tx => _tx.hash === txHash);
-            asserts(transactionIndex > -1, `transaction "${txHash}" not found in block "${blockHeight}"`);
+            asserts(transactionIndex > -1, `[Chain.getTransactionByHash] transaction "${txHash}" not found in block "${blockHeight}"`);
 
             return block.transactions[transactionIndex];
         }
@@ -184,7 +184,7 @@ export class Blockchain {
         // 2. cherche dans les blocks sur disque
         if (blockHeight in this.stateManager.blocksIndex) {
             const block: Block | undefined = this.stateManager.loadBlock(blockHeight) ?? undefined;
-            asserts(block, `block not found on disk`);
+            asserts(block, `[Chain.getBlock] block not found on disk`);
 
             if (memoryState) {
                 memoryState.blocks[blockHeight] = block;
@@ -203,10 +203,10 @@ export class Blockchain {
 
 
     getAccount(address: AccountAddress, memoryState: MemoryState | null): Account {
-        asserts(typeof address === 'string', `invalid address type for address "${address}"`);
-        asserts(address.startsWith('0x'), `invalid address format for address "${address}"`);
-        asserts(address === '0x' || address.length === 42, `invalid address length for address "${address}"`);
-        asserts(address === '0x' || /^0x[a-fA-F0-9]{40}$/.test(address), `invalid address for address "${address}"`);
+        asserts(typeof address === 'string', `[Chain.getAccount] invalid address type for address "${address}"`);
+        asserts(address.startsWith('0x'), `[Chain.getAccount] invalid address format for address "${address}"`);
+        asserts(address === '0x' || address.length === 42, `[Chain.getAccount] invalid address length for address "${address}"`);
+        asserts(address === '0x' || /^0x[a-fA-F0-9]{40}$/.test(address), `[Chain.getAccount] invalid address for address "${address}"`);
 
         const addressLower = address.toLowerCase() as AccountAddress;
         //const memoryState = this.memoryState;
@@ -220,7 +220,7 @@ export class Blockchain {
         // 2. cherche dans les accounts sur disque
         if (addressLower in this.stateManager.accountsIndex) {
             const account: Account | undefined = this.stateManager.loadAccount(address) ?? undefined;
-            asserts(account, `account not found on disk`);
+            asserts(account, `[Chain.getAccount] account not found on disk`);
 
             if (memoryState) {
                 memoryState.accounts[addressLower] = account;
@@ -309,7 +309,7 @@ export class Blockchain {
 
 
     async createGenesisBlock(): Promise<{ block: Block, blockReceipt: BlockReceipt }> {
-        asserts(this.blockHeight === -1, `[Chain.addGenesisBlock] invalid block height`);
+        asserts(this.blockHeight === -1, `[Chain.createGenesisBlock] invalid block height`);
 
         // 1. Créer nouveau block
         const block = new Block(0, '0x');
@@ -499,7 +499,7 @@ export class Blockchain {
             const txHash = tx.hash;
             asserts(txHash, `[Chain.saveBlockchainAfterNewBlock] missing transaction hash`);
 
-            asserts(! (txHash in this.stateManager.transactionsIndex), `transaction already mined`);
+            asserts(! (txHash in this.stateManager.transactionsIndex), `[Chain.saveBlockchainAfterNewBlock] transaction already mined`);
             this.stateManager.transactionsIndex[txHash] = block.blockHeight;
         }
 

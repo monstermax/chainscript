@@ -51,7 +51,7 @@ class ContractToken1 {
         return this.#memory.accounts[_address] ?? 0n;
     }
 
-    transfer(recipient, amount) {
+    transfer(recipient, amount) /* write */ {
         this.#burn(caller.toLowerCase(), BigInt(amount));
         this.#mint(recipient.toLowerCase(), BigInt(amount));
     }

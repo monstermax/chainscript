@@ -45,7 +45,7 @@ export type CodeAbiClassAttributes = {[attr: string]: { type: JsType } };
 export type CodeAbiClassMethod = {
     //public?: boolean,
     inputs?: string[],
-    //payable?: boolean,
+    write?: boolean,
 };
 
 

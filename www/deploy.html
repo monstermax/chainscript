@@ -31,7 +31,7 @@
         <legend><h1>Contract execution</h1></legend>
 
         <div>
-            Contract address: <input type="text" id="contractAddress" value="0xF978F3ADdB2298481445d99067E6eD677595550b">
+            Contract address: <input type="text" id="contractAddress" value="0xb6f6E8BDA93879EB1a6D16313d951350B245BE68">
         </div>
 
         <div>
@@ -84,9 +84,6 @@
 
 <script>
 
-
-//const contractAbi = [ "function balanceOf() returns (uint256)" ];
-
 const contractAbi = [
     {
         "class": "ContractToken1",
@@ -101,7 +98,7 @@ const contractAbi = [
                     "recipient",
                     "amount"
                 ],
-                "stateMutability": "non-payable"
+                "write": true
             },
             "getCoinsBalance": {
                 "inputs": []
@@ -333,7 +330,7 @@ function convertCustomAbiToEthersFormat(customAbi) {
                 name: methodName,
                 inputs,
                 outputs,
-                stateMutability: methodData.stateMutability ?? 'view',
+                stateMutability: methodData.write ? 'non-payable' : 'view',
             });
         }
     }
@@ -399,7 +396,7 @@ class ContractToken1 {
         return this.#memory.accounts[_address] ?? 0n;
     }
 
-    transfer(recipient, amount) {
+    transfer(recipient, amount) /* write */ {
         this.#burn(caller.toLowerCase(), BigInt(amount));
         this.#mint(recipient.toLowerCase(), BigInt(amount));
     }
@@ -431,7 +428,7 @@ class ContractToken1 {
 
 }
 
-
+    
 </script>
 
 
