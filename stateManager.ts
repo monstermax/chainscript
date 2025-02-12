@@ -90,7 +90,7 @@ export class StateManager {
 
     /** 📥 Sauvegarde l'état général */
     saveMetadata(): void {
-        console.log(`[${now()}][State.saveMetadata]`);
+        //console.log(`[${now()}][State.saveMetadata]`);
 
         const metadata: BlockchainMetadata = {
             totalAccounts: Object.keys(this.accountsIndex).length,
@@ -106,14 +106,14 @@ export class StateManager {
         const metadataJson = JSON.stringify(metadata, jsonReplacer, 4);
         fs.writeFileSync(this.paths.METADATA_FILE, metadataJson);
 
-        console.log(`[${now()}][State.saveMetadata] Metadata sauvegardée !`);
+        //console.log(`[${now()}][State.saveMetadata] Metadata sauvegardée !`);
     }
 
 
 
     /** 🔄 Charge l'index des blocks */
     loadBlocksIndex(): number {
-        console.log(`[${now()}][State.loadBlocksIndex]`);
+        //console.log(`[${now()}][State.loadBlocksIndex]`);
 
         if (fs.existsSync(this.paths.BLOCKS_INDEX_FILE)) {
             const blocksIndex = fs.readFileSync(this.paths.BLOCKS_INDEX_FILE).toString();
@@ -129,7 +129,7 @@ export class StateManager {
 
     /** 💾 Sauvegarde l’index des blocks */
     saveBlocksIndex(): void {
-        console.log(`[${now()}][State.saveBlocksIndex]`);
+        //console.log(`[${now()}][State.saveBlocksIndex]`);
 
         fs.writeFileSync(this.paths.BLOCKS_INDEX_FILE, JSON.stringify(this.blocksIndex, null, 4));
     }
@@ -138,7 +138,7 @@ export class StateManager {
 
     /** 🔄 Charge l'index des transactions */
     loadTransactionsIndex(): number {
-        console.log(`[${now()}][State.loadTransactionsIndex]`);
+        //console.log(`[${now()}][State.loadTransactionsIndex]`);
 
         if (fs.existsSync(this.paths.TRANSACTIONS_INDEX_FILE)) {
             const transactionsIndex = fs.readFileSync(this.paths.TRANSACTIONS_INDEX_FILE).toString();
@@ -154,7 +154,7 @@ export class StateManager {
 
     /** 💾 Sauvegarde l’index des transactions */
     saveTransactionsIndex(): void {
-        console.log(`[${now()}][State.saveTransactionsIndex]`);
+        //console.log(`[${now()}][State.saveTransactionsIndex]`);
 
         fs.writeFileSync(this.paths.TRANSACTIONS_INDEX_FILE, JSON.stringify(this.transactionsIndex, null, 4));
     }
@@ -163,7 +163,7 @@ export class StateManager {
 
     /** 📤 Charge un block et vérifie son intégrité */
     loadBlock(blockHeight: number): Block | null {
-        console.log(`[${now()}][State.loadBlock]`, blockHeight);
+        //console.log(`[${now()}][State.loadBlock]`, blockHeight);
 
         // Vérification si le block est un block connu dans l'index
         const indexedBlockHash = this.blocksIndex[blockHeight];
@@ -211,7 +211,7 @@ export class StateManager {
 
     /** 📥 Sauvegarde un block et met à jour le hash incrémental */
     saveBlock(block: Block): void {
-        console.log(`[${now()}][State.saveBlock]`, block.blockHeight);
+        //console.log(`[${now()}][State.saveBlock]`, block.blockHeight);
 
         const blockPath = path.join(this.paths.BLOCKS_DIR, `${block.blockHeight.toString().padStart(15, '0')}.json`);
 
@@ -224,7 +224,7 @@ export class StateManager {
 
     /** 🔄 Charge l'index des accounts */
     loadAccountsIndex(): number {
-        console.log(`[${now()}][State.loadAccountsIndex]`);
+        //console.log(`[${now()}][State.loadAccountsIndex]`);
 
         if (fs.existsSync(this.paths.ACCOUNTS_INDEX_FILE)) {
             const accountsIndex = fs.readFileSync(this.paths.ACCOUNTS_INDEX_FILE).toString();
@@ -240,7 +240,7 @@ export class StateManager {
 
     /** 💾 Sauvegarde l’index des accounts */
     saveAccountsIndex(): void {
-        console.log(`[${now()}][State.saveAccountsIndex]`);
+        //console.log(`[${now()}][State.saveAccountsIndex]`);
 
         fs.writeFileSync(this.paths.ACCOUNTS_INDEX_FILE, JSON.stringify(this.accountsIndex, null, 4));
     }
@@ -248,7 +248,7 @@ export class StateManager {
 
     /** 📤 Charge un compte et vérifie son intégrité */
     loadAccount(address: AccountAddress): Account | null {
-        console.log(`[${now()}][State.loadAccount]`, address);
+        //console.log(`[${now()}][State.loadAccount]`, address);
 
         const addressLower = address.toLowerCase() as AccountAddress;
 
@@ -287,7 +287,7 @@ export class StateManager {
 
     /** 📥 Sauvegarde un compte et met à jour le hash incrémental */
     saveAccount(account: Account): void {
-        console.log(`[${now()}][State.saveAccount]`, account.address);
+        //console.log(`[${now()}][State.saveAccount]`, account.address);
 
         const accountPath = path.join(this.paths.ACCOUNTS_DIR, `${account.address.toLowerCase()}.json`);
 

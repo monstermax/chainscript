@@ -1,24 +1,23 @@
 // transaction.ts
 
 import fs from 'fs';
-import { AbiCoder, encodeRlp, getAddress, keccak256 } from 'ethers'
+import { AbiCoder } from 'ethers'
 
 import * as ethereumjsTx from '@ethereumjs/tx';
-//import * as ethereumjsUtil from '@ethereumjs/util';
 
 import { chainId } from './config';
-import { asserts, bufferToHex, computeHash, encodeBigintRLP, hexToUint8Array, jsonReplacer, now, toHex } from './utils';
+import { asserts, bufferToHex, computeHash, hexToUint8Array, jsonReplacer, now, toHex } from './utils';
 import { Blockchain } from './blockchain';
 import { Block } from './block';
+import { predictContractAddress } from './account';
 import { execVm } from './vm';
-import { decodeCallData, findMethodAbi, generateContractAbi } from './abi';
+import { findMethodAbi, generateContractAbi } from './abi';
 
-import type { AbiClassMethod, AccountAddress, CodeAbi, CodeAbiCall } from './types/account.types';
+import type { AbiClassMethod, AccountAddress } from './types/account.types';
 import type { TransactionData, TransactionHash, TransactionInstruction, TransactionInstructionExecute, TransactionInstructionCreate, TransactionInstructionMint, TransactionInstructionTransfer, TransactionReceipt, TransactionReceiptData, TransactionReceiptRpc, TransactionRpc } from './types/transaction.types';
 import type { BlockHash } from './types/block.types';
-import { HexNumber } from './types/types';
-import { callTxParams, sendTxParams as SendTxParams } from './types/rpc.types';
-import { predictContractAddress } from './account';
+import type { HexNumber } from './types/types';
+import type { callTxParams, sendTxParams as SendTxParams } from './types/rpc.types';
 
 
 /* ######################################################### */
@@ -270,14 +269,15 @@ export async function handleEthCall(blockchain: Blockchain, txParams: callTxPara
     const callSignature2 = bufferToHex(Buffer.from(txParams.data).slice(0, 4)); // 4 premiers bytes
 
     // Cherche la classe+methode à partir de la signature
-    const methodAbi = findMethodAbi(contractAccount.abi, callSignature);
-    asserts(methodAbi, "Méthode inconnue");
+    const abiClassMethod = findMethodAbi(contractAccount.abi, callSignature);
+    asserts(abiClassMethod, "Méthode inconnue");
 
     // Décodage des parametres de la methode
-    const args = decodeCallData(txParams.data, methodAbi);
+    const args = decodeTxData(txParams.data, abiClassMethod);
+    console.log(`[eth_call] Arguments décodés:`, args)
 
     // Execution du code dans la VM
-    const { vmResult, vmMonitor } = await execVm(blockchain, txParams.from, txParams.to, methodAbi.className, methodAbi.methodName, args, null);
+    const { vmResult, vmMonitor } = await execVm(blockchain, txParams.from, txParams.to, abiClassMethod.className, abiClassMethod.methodName, args, null);
 
     console.log(`[eth_call] ✅ Résultat:`, vmResult);
     console.log(`[eth_call] 🔍 Nombre total de calls:`, vmMonitor.totalCalls);
@@ -349,7 +349,7 @@ export function transcodeTx(blockchain: Blockchain, txParams: SendTxParams): Tra
             asserts(abiClassMethod, `[transcodeTx] Méthode inconnue pour la signature ${callSignature}`);
 
             // 🧩 Décoder les arguments
-            const args: any[] = decodeCallData(txParams.data, abiClassMethod);
+            const args: any[] = decodeTxData(txParams.data, abiClassMethod);
             console.log(`[${now()}][transcodeTx] 🔍 Arguments décodés:`, args);
 
             instructions.push({
@@ -558,4 +558,36 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
     }
 
     return receipt;
+}
+
+
+
+// Décode un `eth_call` reçu en argument et retourne une liste d'arguments décodés
+export function decodeTxData(data: string, abiClassMethod: AbiClassMethod): any[] {
+    if (!abiClassMethod.method.inputs || abiClassMethod.method.inputs.length === 0) return [];
+
+    const coder = new AbiCoder();
+    const encodedParams = data.slice(10); // Supprime la signature de 4 bytes
+
+    //const types = abiClassMethod.method.inputs.map(_ => 'string'); // supposons que tous les parametre de la methode soient des string (le plus safe pour JS)
+
+    // Utiliser les vrais types des paramètres extraits de l'ABI
+    const types = abiClassMethod.method.inputs.map(inputName => {
+        // 🎯 Corrige le type si nécessaire
+        //if (inputName.includes("address")) return "address";
+        //if (inputName.includes("amount")) return "uint256"; // Supposition logique
+        return "string"; // Fallback pour JS
+    });
+
+    console.log(`[decodeTxData] 📥 Décodage des arguments:`, encodedParams);
+
+    try {
+        const result = coder.decode(types, "0x" + encodedParams);
+        return result;
+
+    } catch (err: any) {
+        console.error(`[decodeTxData] ❌ Erreur de décodage des arguments`, err);
+        //return [];
+        throw err;
+    }
 }

@@ -1,5 +1,6 @@
 <html>
 <head>
+    <meta charset="UTF-8" />
     <title>Contract Deployment</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js" integrity="sha512-FDcVY+g7vc5CXANbrTSg1K5qLyriCsGDYCE02Li1tXEYdNQPvLPHNE+rT2Mjei8N7fZbe0WLhw27j2SrGRpdMg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
@@ -25,7 +26,7 @@
         <h1>Contract execution</h1>
 
         <div>
-            Contract address: <input type="text" id="contractAddress" value="0x28EAfa5D7a29416AECcc3C5620B1F5468092fEE5">
+            Contract address: <input type="text" id="contractAddress" value="0xC10a2805C1610d81eA3037B041b6669CB4944251">
         </div>
 
         <div>
@@ -39,7 +40,6 @@
         <div>
             Args: 
             <div id="span-args">
-                <input type="text" class="arg-name" value="amount">
                 <input type="text" class="arg-value" value="0x0000000000000000000000000000000000000010">
             </div>
 
@@ -60,33 +60,50 @@
 <script>
 
 
-const contractAbi = [ "function balanceOf() returns (uint256)" ];
+//const contractAbi = [ "function balanceOf() returns (uint256)" ];
+
+const contractAbi = [
+    {
+        "class": "ContractToken1",
+        "methods": {
+            "balanceOf": {
+                "inputs": [
+                    "_address"
+                ]
+            },
+            "transfer": {
+                "inputs": [
+                    "recipient",
+                    "amount"
+                ]
+            },
+            "getCoinsBalance": {
+                "inputs": []
+            },
+            "getTokenPrice": {
+                "inputs": []
+            }
+        },
+        "attributes": {}
+    }
+];
 
 
-function addArg() {
-    const $span = document.getElementById('span-args');
-    $span.innerHTML += '<br /><input type="text" class="arg-name"><input type="text" class="arg-value">';
-}
-
-async function connectWallet() {
-    const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
-}
+// 🔄 Convertir au format attendu par Ethers.js
+const ethersAbi = convertCustomAbiToEthersFormat(contractAbi);
+console.log("Ethers ABI:", ethersAbi);
 
 
 async function callContractMethod(provider, contractAddress, contractAbi, className, methodName, params) {
-    const contractAbi2 = [
-        {
-            class: className,
-            methods: {
-                balanceOf: { inputs: [] }
-            },
-        }
-    ];
-
     const contract = new ethers.Contract(contractAddress, contractAbi, provider);
-    //const result = await contract[methodName].apply(this, params);
-    const result = await contract[methodName](params);
 
+    console.log(`Appel de ${methodName} avec params:`, params);
+
+    if (params.length === 0) {
+        console.warn(`⚠️ Aucun paramètre fourni pour ${methodName}`);
+    }
+
+    const result = await contract[methodName](...params);
     return result;
 }
 
@@ -110,15 +127,16 @@ async function callContract() {
     const methodName = document.getElementById('methodName').value;
     if (!methodName) return;
 
-    //const argsNames = [...document.getElementsByClassName('arg-name')].map(input => input.value);
     const argsValues = [...document.getElementsByClassName('arg-value')].map(input => input.value);
 
     //const args = Object.fromEntries(
     //    argsNames.map((name, idx) => [name, argsValues[idx]])
     //);
 
+    console.log("Méthode appelée:", ethersAbi.find(m => m.name === methodName));
 
-    const result = await callContractMethod(signer, contractAddress, contractAbi, className, methodName, []);
+
+    const result = await callContractMethod(signer, contractAddress, ethersAbi, className, methodName, argsValues);
     console.log('result:', result);
 
     return result;
@@ -144,15 +162,10 @@ async function executeContract() {
     const methodName = document.getElementById('methodName').value;
     if (!methodName) return;
 
-    const argsNames = [...document.getElementsByClassName('arg-name')].map(input => input.value);
     const argsValues = [...document.getElementsByClassName('arg-value')].map(input => input.value);
 
-    const args = Object.fromEntries(
-        argsNames.map((name, idx) => [name, argsValues[idx]])
-    );
 
-
-    const tx = await callContractMethod(signer, contractAddress, contractAbi, className, methodName, args);
+    const tx = await callContractMethod(signer, contractAddress, ethersAbi, className, methodName, argsValues);
     console.log('tx:', tx);
 
     const receipt = await tx.wait();
@@ -219,45 +232,39 @@ async function deploy() {
     console.log('Contract deployed at address', contractAddress);
 }
 
-/*
-    const constructorParams: any[] = []; 
-    const constructorParamsJSON = JSON.stringify(constructorParams);
-    const bytecode = ethers.AbiCoder.defaultAbiCoder().encode(['string', 'string'], [contractAccount.code, constructorParamsJSON]);
 
-    const provider = new ethers.JsonRpcProvider('http://localhost:8545');
-    const pk = devPrivateKey;
-    const signer = new ethers.Wallet(pk, provider);
 
-    const abi: string[] = [
-        //'function deploy()',
-    ];
-    const iface = new ethers.Interface(abi);
-    const factory = new ethers.ContractFactory(iface, bytecode, signer)
+// 🔧 Convertit ton ABI personnalisé en un format compatible Ethers.js
+function convertCustomAbiToEthersFormat(customAbi) {
+    const ethersAbi = [];
 
-    const nonce = await provider.getTransactionCount(signer.getAddress());
+    for (const abiClass of customAbi) {
+        for (const [methodName, methodData] of Object.entries(abiClass.methods)) {
+            const inputs = (methodData.inputs ?? []).map(input => ({
+                name: input,
+                type: "string", // input.includes("address") ? "address" : "uint256",
+            }));
 
-    const deployArgs = [...constructorParams];
-    if (instruction.amount && instruction.amount > 0n) {
-        deployArgs.push({
-            value: toHex(instruction.amount),
-            nonce,
-        });
+            const outputs = [
+                {
+                    name: "", // Pas obligatoire pour ethers.js
+                    type: "string",
+                },
+            ];
+
+            ethersAbi.push({
+                type: "function",
+                name: methodName,
+                inputs,
+                outputs,
+                stateMutability: "view", // ou "nonpayable" selon les cas
+            });
+        }
     }
 
-    const contract = await factory.deploy(...deployArgs);
+    return ethersAbi;
+}
 
-    const contractAddress = await contract.getAddress();
-    console.log('Contract deployment to address ' + contractAddress);
-
-    await contract.deploymentTransaction()?.wait()
-        .then(() => {
-            console.log('Contract deployed at address', contractAddress);
-        })
-        .catch(() => {
-            console.warn('Contract deployment failed for address', contractAddress);
-        });
-
-*/
 
 </script>
 

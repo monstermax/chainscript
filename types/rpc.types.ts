@@ -10,20 +10,20 @@ export type RpcMessage = RpcMessageReq | RpcMessageResult | RpcMessageError;
 
 export type RpcMessageReq = {
     jsonrpc: string,
-    id: number | null,
+    id: number | string | null,
     method: string,
     params?: [],
 }
 
 export type RpcMessageResult = {
     jsonrpc: string,
-    id: number | null,
+    id: number | string | null,
     result?: any,
 }
 
 export type RpcMessageError = {
     jsonrpc: string,
-    id: number | null,
+    id: number | string | null,
     error?: string,
 }
 

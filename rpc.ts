@@ -3,19 +3,18 @@
 import fs from 'fs';
 import http from 'http';
 
-import { asserts, fromHex, jsonReplacerForRpc, now, toHex } from './utils';
+import { asserts, bufferToHex, fromHex, jsonReplacerForRpc, now, toHex } from './utils';
 import { Blockchain } from "./blockchain";
 import { Block } from "./block";
 import { Account } from './account';
 import { decodeRawTransaction, handleEthCall, handleEthSendTransaction, Transaction, transcodeTx } from './transaction';
-import { execVm } from './vm';
 
 import type { HexNumber } from './types/types';
 import type { TransactionData, TransactionHash } from './types/transaction.types';
 import type { BlockHash, BlockParameter } from './types/block.types';
-import type { AbiClassMethod, AccountAddress, CodeAbiCall } from './types/account.types';
-import { decodeCallData, findMethodAbi } from './abi';
-import { RpcMessageError, RpcMessageResult, callTxParams, sendTxParams } from './types/rpc.types';
+import type { AccountAddress } from './types/account.types';
+import type { RpcMessageError, RpcMessageResult, callTxParams, sendTxParams } from './types/rpc.types';
+import { AbiCoder, hexlify, toUtf8Bytes, zeroPadBytes, zeroPadValue } from 'ethers';
 
 
 /* ######################################################### */
@@ -317,7 +316,9 @@ function handleRpcRequest(blockchain: Blockchain, req: http.IncomingMessage, res
                     const [txParams, blockParameter] = params as [callTxParams, BlockParameter];
 
                     // Execute l'appel du contrat dans la VM et retourne le résultat
-                    result = await handleEthCall(blockchain, txParams);
+                    const rawResult = await handleEthCall(blockchain, txParams);
+
+                    result = formatRpcResult(rawResult);
                     break;
                 }
 
@@ -388,5 +389,39 @@ function handleRpcRequest(blockchain: Blockchain, req: http.IncomingMessage, res
 }
 
 
+
+
+function formatRpcResult(result: any): any {
+    const coder = new AbiCoder();
+
+    if (typeof result === "bigint") {
+        return hexlify(coder.encode(["string"], [result.toString()]));
+    }
+
+    if (typeof result === "number") {
+        return hexlify(coder.encode(["string"], [result.toString()]));
+    }
+
+    if (typeof result === "boolean") {
+        return hexlify(coder.encode(["string"], [result.toString()]));
+    }
+
+    if (typeof result === "string") {
+        if (result.startsWith("0x")) {
+            return result; // Déjà en format hexadécimal, ne rien modifier
+        }
+        return hexlify(coder.encode(["string"], [result]));
+    }
+
+    if (Array.isArray(result)) {
+        return hexlify(coder.encode(["string[]"], [result.map(String)]));
+    }
+
+    if (typeof result === "object" && result !== null) {
+        return hexlify(coder.encode(["string"], [JSON.stringify(result)]));
+    }
+
+    return hexlify(coder.encode(["string"], [""])); // Retour par défaut pour éviter les erreurs
+}
 
 

@@ -13,11 +13,13 @@ import type { AbiClassMethod, CodeAbi, CodeAbiClassAttributes, CodeAbiClassMetho
 
 export function findMethodAbi(abi: CodeAbi, methodSignature: string): AbiClassMethod | null {
     for (const abiClass of abi) {
-        for (const [methodName, methodData] of Object.entries(abiClass.methods)) {
-            const inputTypes = (methodData.inputs ?? []).join(",");
-            const signatureString = `${abiClass.class}.${methodName}(${inputTypes})`;
+        for (const [methodName, abiClassMethod] of Object.entries(abiClass.methods)) {
+            // 🔥 Correction du format de signature pour être compatible avec Ethers.js
+            //const inputTypes = (methodData.inputs ?? []).map(type => type === "_address" ? "address" : "string").join(",");
+            const inputTypes = (abiClassMethod.inputs ?? []).map(name => "string").join(",");
+            const signatureString = `${methodName}(${inputTypes})`; // 🔄 Supprime le `className.`
 
-            // Générer le hash en incluant className et methodName
+            // 📌 Générer la signature Ethereum standard
             const hash = keccak256(toUtf8Bytes(signatureString)).slice(0, 10);
 
             if (hash === methodSignature.slice(0, 10)) {
@@ -35,15 +37,17 @@ export function findMethodAbi(abi: CodeAbi, methodSignature: string): AbiClassMe
 
 
 
+
 // Encode une transaction en `eth_call` compatible avec Metamask
-export function encodeCallData(className: string, methodName: string, args: any[], methodAbi: CodeAbiClassMethod): string {
+export function encodeCallData(className: string, methodName: string, args: any[], abiClassMethod: CodeAbiClassMethod): string {
     const coder = new AbiCoder();
 
     // Encoder les paramètres en ABI
-    const encodedParams = coder.encode(methodAbi.inputs ?? [], args);
+    const encodedParams = coder.encode(abiClassMethod.inputs ?? [], args);
 
     // ✅ Format de signature : `className.methodName(types)`
-    const inputTypes = (methodAbi.inputs ?? []).join(",");
+    //const inputTypes = (methodAbi.inputs ?? []).join(",");
+    const inputTypes = (abiClassMethod.inputs ?? []).map(name => "string").join(",");
     const signatureString = `${className}.${methodName}(${inputTypes})`;
 
     const signatureHash = keccak256(toUtf8Bytes(signatureString)).slice(0, 10); // 4 bytes de signature
@@ -53,40 +57,12 @@ export function encodeCallData(className: string, methodName: string, args: any[
 
 
 
-// Décode un `eth_call` reçu en argument et retourne une liste d'arguments décodés
-export function decodeCallData(data: string, abiClassMethod: AbiClassMethod): any[] {
-    if (!abiClassMethod.method.inputs || abiClassMethod.method.inputs.length === 0) return [];
-
-    const coder = new AbiCoder();
-    const encodedParams = data.slice(10); // Supprime la signature de 4 bytes
-    const types = abiClassMethod.method.inputs.map(_ => 'string'); // supposons que tous les parametre de la methode soient des string (le plus safe pour JS)
-
-    console.log(`[decodeCallData] 📥 Décodage des arguments:`, encodedParams);
-
-    try {
-        const result = coder.decode(types, "0x" + encodedParams);
-        return result;
-
-    } catch (err: any) {
-        console.error(`[decodeCallData] ❌ Erreur de décodage des arguments`, err);
-        //return [];
-        throw err;
-    }
-}
-
-
-
-
 /** Détecte dynamiquement les propriétés et méthodes d'un contrat */
 export function generateContractAbi(contractCode: string): CodeAbi {
     const abi: CodeAbi = [];
 
     // 📌 Extrait les classes déclarées dans le code source
     const classNames = extractClassNamesWithAcorn(contractCode);
-
-
-    // 📌 Exécute le code dans un contexte isolé pour identifier les classes
-    //const sandbox: { [key: string]: any } = { classNames };
 
 
     // Prépare le contexte d'exécution
@@ -128,71 +104,22 @@ export function generateContractAbi(contractCode: string): CodeAbi {
     Object.defineProperty(sandbox, 'constructor', { value: undefined });
     Object.defineProperty(sandbox, 'this', { value: undefined });
 
-
     const vmContext = createContext(sandbox)
 
+
+    // 📌 Exécute le code dans un contexte isolé pour identifier les classes
     const compiledSourceCode = new Script(contractCode);
 
+    const getClassPropertiesString = getClassProperties.toString();
+    const getFunctionParamsString = getFunctionParams.toString();
+    const buildAbiString = buildAbi.toString();
+    const classNamesString = '[' + classNames.map(className => `'${className}'`).join(', ') + ']';
+
     const searchCode = `
-        const abi = [];
-
-        function getClassProperties(instance) {
-            const methods = {}
-
-            // Récupère les attributs d'instance
-            const attributesNames = Object.keys(instance)
-
-            // Construire l'objet des attributs
-            const attributes = Object.fromEntries(
-                attributesNames.map(name => [name, { type: typeof instance[name] }])
-            )
-
-            // Récupère les méthodes publiques
-            const methodNames = Object.getOwnPropertyNames(
-                Object.getPrototypeOf(instance)
-            ).filter(
-                name => name !== "constructor" && typeof instance[name] === "function"
-            )
-
-            // Construire l'objet des méthodes
-            for (const methodName of methodNames) {
-                const method = instance[methodName]
-                const paramNames = getFunctionParams(method)
-
-                methods[methodName] = {
-                    inputs: paramNames
-                }
-            }
-
-            return { methods, attributes }
-        }
-
-        function getFunctionParams(func) {
-            const match = func.toString().match(/\(([^)]*)\)/)
-            if (!match) return []
-
-            const variablesNames = match[1]
-                .split("(").at(1)
-                .split(",")
-                .map(param => param.trim())
-                .filter(param => param.length > 0)
-
-            return variablesNames
-        }
-
-
-        for (const className of classNames) {
-            const classInstance = eval("new " + className + "()"); // Instancier la classe
-            const { methods, attributes } = getClassProperties(classInstance);
-
-            abi.push({
-                class: className,
-                methods,
-                attributes,
-            });
-        }
-
-        abi;
+        ${getClassPropertiesString}
+        ${getFunctionParamsString}
+        ${buildAbiString}
+        buildAbi(${classNamesString});
     `;
 
     const compiledSearchCode = new Script(searchCode);
@@ -203,27 +130,12 @@ export function generateContractAbi(contractCode: string): CodeAbi {
 
     abi.push(...result);
 
-
-    /*
-    // 🔍 Recherche toutes les classes déclarées dans le contrat
-    for (const className in sandbox.classNames) {
-        const classInstance = new sandbox[className](); // Instancier la classe
-        const { methods, attributes } = getClassProperties(classInstance);
-
-        abi.push({
-            class: className,
-            methods,
-            attributes,
-        });
-    }
-    */
-
     return abi;
 }
 
 
 /** Récupère les méthodes publiques d’une classe */
-function getClassProperties(instance: any): { methods: CodeAbiClassMethods, attributes: CodeAbiClassAttributes } {
+export function getClassProperties(instance: any): { methods: CodeAbiClassMethods, attributes: CodeAbiClassAttributes } {
     const methods: CodeAbiClassMethods = {};
 
     // Récupère les attributs d'instance
@@ -254,7 +166,7 @@ function getClassProperties(instance: any): { methods: CodeAbiClassMethods, attr
 
 
 /** Récupère les noms des paramètres d’une fonction JS */
-function getFunctionParams(func: Function): string[] {
+export function getFunctionParams(func: Function): string[] {
     const match = func.toString().match(/\(([^)]*)\)/);
     if (!match) return [];
 
@@ -267,6 +179,22 @@ function getFunctionParams(func: Function): string[] {
 }
 
 
+export function buildAbi(classNames: string[]) {
+    const abi: CodeAbi = [];
+
+    for (const className of classNames) {
+        const classInstance = eval("new " + className + "()"); // Instancier la classe
+        const { methods, attributes } = getClassProperties(classInstance);
+
+        abi.push({
+            class: className,
+            methods,
+            attributes,
+        });
+    }
+
+    return abi;
+}
 
 
 export function extractClassNamesWithAcorn(contractCode: string): string[] {
