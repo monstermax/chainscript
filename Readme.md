@@ -1,96 +1,121 @@
 
-# Typescript Tiny Blockchain
+# ChainScript
 
+ChainScript est une blockchain minimaliste et performante, permettant l'exécution de **smart contracts en JavaScript**. Compatible avec **Metamask**, elle supporte les transactions simples et les interactions avec des contrats intelligents.
 
-## Nom (à définir)
+## Fonctionnalités
 
-- TinyChain → Ça met bien en avant la légèreté et la simplicité de la blockchain. Parfait si l'objectif est de garder un projet minimaliste et efficace.
+✅ **Blockchain légère** avec une structure optimisée.  
+✅ **Smart contracts en JavaScript**, sans Solidity.  
+✅ **Compatible Metamask** via RPC.  
+✅ **Système de P2P** pour la synchronisation entre nœuds.  
+✅ **Transactions simples et appels de contrats**.  
+✅ **Exécution de transactions et consensus distribué**.  
+✅ **Gestion des logs et événements dans les smart contracts**.  
 
-- ChainScript → Ça évoque clairement l’idée d’une blockchain où les smart contracts sont des scripts JavaScript. Plus orienté sur l’aspect exécution de code.
+## Installation
 
+1. Clonez le repository :
+   ```sh
+   git clone https://github.com/votre-utilisateur/chainscript.git
+   cd chainscript
+   npm install
+   ```
 
+2. Installez `ts-node` si nécessaire :
+   ```sh
+   npm install -g ts-node typescript
+   ```
 
-## Roadmap
-- Explorer web pour voir les transactions et smart contracts (etherscan like)
-- Sécuriser les states (empecher d'avoir une incoherence entre les index et le state general. dans quel cas il faut recommencer la chaine a zero)
-- Historisation les states (possibilité de revenir à un état précédent)
-- Historisation les accounts (possibilité de connaitre l'etat d'un compte à n'importe quel block antérieur)
-- Partager les transactions du mempool entre les peers
-- Gérer le consensus (si 2 peers ont une blockchain qui diverge)
-- Gestion des logs/events (emit("EventName"))
-- Gas et frais de transaction dynamiques (gas & gasLimit)
-- Optimisation VM / sandbox
+## Utilisation
 
+### 📌 Initialisation de la blockchain
+```sh
+ts-node cli.ts --init [--force]  # Initialise la blockchain, y compris le bloc genesis
+```
+
+### 🚀 Démarrage du nœud
+```sh
+ts-node cli.ts --listen [--mine]  # Écoute les transactions RPC & P2P et mine de nouveaux blocs
+```
+
+### 🔍 Monitoring & Debug
+```sh
+ts-node cli.ts --dump-accounts   # Affiche les comptes enregistrés
+
+ts-node cli.ts --dump-memories   # Affiche les mémoires des contrats
+
+ts-node cli.ts --dump-blocks     # Affiche la liste des blocs
+```
+
+### ⚙️ Options supplémentaires
+```sh
+ts-node cli.ts --dir ~/.blockchain-js [...]  # Spécifie un répertoire personnalisé pour la blockchain
+
+ts-node cli.ts --rpc 8545 [...]              # Définit le port RPC (par défaut 8545)
+
+ts-node cli.ts --p2p 6001 [...]              # Définit le port P2P (par défaut 6001)
+```
+
+## Exemple : Déploiement & Interaction avec un smart contract
+
+### 📜 1. Écrire un contrat simple en JavaScript
+```js
+class MyToken {
+    #memory = memory({
+        totalSupply: 1000000n,
+        balances: { "0x123...": 1000000n }
+    });
+
+    balanceOf(address) {
+        return this.#memory.balances[address] || 0n;
+    }
+
+    transfer(to, amount) /* write */ {
+        asserts(this.#memory.balances[caller] >= amount, "Insufficient balance");
+        this.#memory.balances[caller] -= amount;
+        this.#memory.balances[to] = (this.#memory.balances[to] || 0n) + amount;
+    }
+}
+```
+
+### 🚀 2. Déployer le contrat via Metamask
+
+Utilisez une interface Web ou un script pour envoyer une transaction avec le **bytecode du contrat**.
+
+```js
+const bytecode = ethers.utils.defaultAbiCoder.encode(["string", "string"], [contractCode, "[]"]);
+await signer.sendTransaction({ data: bytecode });
+```
+
+### 🔍 3. Lire un smart contract
+
+```js
+const contract = new ethers.Contract(contractAddress, customAbi, provider);
+const balance = await contract.balanceOf("0x123...");
+console.log("Balance:", balance.toString());
+```
+
+### ✏️ 4. Envoyer une transaction (écrire dans un smart contract)
+
+```js
+const tx = await contract.transfer("0x456...", "100");
+await tx.wait();
+```
+
+## 📜 Roadmap
+- [ ] Explorateur web des transactions & contrats.
+- [ ] Sécurisation et rollback des états blockchain.
+- [ ] Synchronisation avancée du mempool entre les nœuds.
+- [ ] Système de consensus amélioré.
+- [ ] Gestion des logs et événements dans les smart contracts.
+- [ ] Implémentation des frais de transactions dynamiques (gas).
+- [ ] Optimisation de la VM et des performances.
+
+## 📜 Licence
+MIT License
 
 ---
 
-
-
-### **🌐 Explorer web (Blockchain Explorer)**
-- 🔹 Interface web avec **React + Tailwind** ou **Vue.js**
-- 🔹 Pages pour :
-  - 📜 **Liste des blocks** (avec leur hash, transactions, timestamp…)
-  - 🔍 **Détail d’un block** (transactions, smart contracts…)
-  - 🏦 **Liste des comptes** (solde, transactions associées…)
-  - 📑 **Détail d’une transaction** (hash, inputs, outputs, status…)
-  - ⚡ **Smart contracts** (liste des méthodes disponibles, état du stockage…)
-
----
-
-### **🔒 Sécurisation des states & Rebuild de la chaîne**
-- 🔹 Vérifier **l'intégrité du state global** après chaque block appliqué.
-- 🔹 Comparer les **Merkle Roots** des transactions et des states pour détecter les corruptions.
-- 🔹 Détection des forks en utilisant un **check des headers précédents**.
-- 🔹 Mécanisme de **rollback & resync** si un peer détecte une divergence majeure.
-
----
-
-### **📜 Historisation des states & accounts**
-- 🔹 **Merkle Patricia Trie (MPT)** : Permet d’accéder à n’importe quel état passé sans stocker toute l’historique.
-- 🔹 **Snapshot des comptes** tous les `X` blocks pour pouvoir faire des rollbacks précis.
-- 🔹 Stocker un **mapping des balances et states** sur disque avec des checkpoints.
-- 🔹 Possibilité d'extraire **l’état d’un compte à un block donné** (comme `eth_getBalance(address, blockNumber)`).
-
----
-
-### **🔗 Partage du mempool entre peers**
-- 🔹 Chaque peer **annonce ses transactions** aux autres (via un système de gossip).
-- 🔹 Ajouter un **TTL** sur les transactions pour éviter de spammer le réseau.
-- 🔹 Mécanisme de **propagation en cascade** : lorsqu’un peer reçoit une tx, il la relaye uniquement aux peers qui ne l'ont pas encore.
-- 🔹 **Signature unique des transactions** pour éviter les doublons.
-
----
-
-### **🛠 Gestion des forks & consensus**
-- 🔹 **Longest chain rule** : choisir la chaîne la plus longue (avec le plus de travail cumulé).
-- 🔹 **Fork resolution** :
-  1. Détecter un fork via la divergence des headers (`parentHash` différent).
-  2. Comparer le **cumulative work** (PoW, PoS ou autre).
-  3. Si une chaîne est plus longue, rollback la plus courte et resynchroniser.
-- 🔹 Possibilité d’avoir un **consensus custom** basé sur un système de réputation des nœuds.
-
----
-
-### **📢 Gestion des logs/events**
-- 🔹 Implémenter une fonction `emit("EventName", data)`, qui stocke les logs dans les blocks.
-- 🔹 Permettre aux **dApps de s’abonner** aux événements (`eth_subscribe`).
-- 🔹 Ajout d’une commande `eth_getLogs({ fromBlock, toBlock, address, topics })`.
-
----
-
-### **⛽ Gas & frais de transaction dynamiques**
-- 🔹 Implémenter un **gas price dynamique** en fonction de la demande réseau.
-- 🔹 Ajouter une **priorité des transactions** en fonction du gas payé.
-- 🔹 Permettre aux smart contracts d’exécuter des instructions limitées par `gasLimit`.
-
----
-
-### **🛠 Optimisation VM & sandbox**
-- 🔹 **Isolation renforcée** : Interdire certaines opérations (ex: accès au réseau).
-- 🔹 **Limiter la mémoire utilisée** pour éviter les boucles infinies.
-- 🔹 **Profiling de performance** pour détecter les appels coûteux.
-- 🔹 **Multi-threading** pour l'exécution des smart contracts.
-
-
-
+ChainScript, une blockchain **simple, flexible et puissante** 🚀.
 

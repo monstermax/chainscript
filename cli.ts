@@ -19,25 +19,19 @@ import type { AccountAddress, CodeAbi } from './types/account.types';
 /*
 
 # Initialization
-ts-node cli.ts --init                  # initiialize the blockchain (including genesis block)
-ts-node cli.ts --test --mine           # mine an empty block and get the reward
-ts-node cli.ts --listen --mine         # listen for rpc & p2p transactions
+ts-node cli.ts --init [--force]        # initiialize the blockchain (including genesis block)
 
-# Tests
-ts-node cli.ts --test --tx-transfer
-ts-node cli.ts --test --tx-create-contract-1
-ts-node cli.ts --test --tx-exec-contract-1
-ts-node cli.ts --test --tx-create-token-1
-ts-node cli.ts --test --tx-exec-token-1
+# Run
+ts-node cli.ts --listen [--mine]       # listen for rpc & p2p transactions + mine new blocks
 
 # Monitoring
 ts-node cli.ts --dump-accounts --dump-memories --dump-blocks
 
 # Options
-ts-node cli.ts --dir ~/.blockchain-js --rpc 8545 --p2p 6001 [your other options...]
+ts-node cli.ts --dir ~/.blockchain-js [...]
+ts-node cli.ts --rpc 8545 [...]
+ts-node cli.ts --p2p 6001 [...]
 
-# Example : 2nd instance with P2P
-ts-node cli.ts --dir ~/.blockchain-js --rpc -1 --p2p 6002 --listen
 */
 
 /* ######################################################### */
