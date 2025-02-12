@@ -17,7 +17,7 @@ ChainScript est une blockchain minimaliste et performante, permettant l'exécuti
 
 1. Clonez le repository :
    ```sh
-   git clone https://github.com/votre-utilisateur/chainscript.git
+   git clone https://github.com/monstermax/chainscript.git
    cd chainscript
    npm install
    ```
