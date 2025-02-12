@@ -99,6 +99,19 @@ ethereum.request({
 ```
 
 
+# CALL CONTRACT (OK)
+
+```js
+ethereum.request({
+    method: 'eth_call',
+    params: [{
+        to: "0x6b07C8E15B5B2086845303179587c00D116b8759", // ContractToken1
+        data: "0xa594bdbb", // test_vm_1
+    }, "latest"]
+}).then(console.log).catch(console.error);
+```
+
+
 # ADD CHAIN TO METAMASK
 
 ```js

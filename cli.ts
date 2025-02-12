@@ -230,10 +230,10 @@ async function testsTransactions(blockchain: Blockchain) {
         const txExecutorAddress = addressTest1;
 
         const code = loadScriptCode('ContractTest1');
-        const abi: CodeAbi = [ { class: 'ContractTest1', methods: { test_vm_1: {} } } ];
+        const abi: CodeAbi = [ { class: 'ContractTest1', methods: { test_vm_1: {} }, attributes: {} } ];
 
         const tx = new Transaction(txExecutorAddress)
-            .create(abi, code); // CREATE CONTRACT
+            .create(code); // CREATE CONTRACT
 
         // 2. Add transaction to the mempool
         blockchain.mempool.addTransaction(tx);
@@ -246,7 +246,7 @@ async function testsTransactions(blockchain: Blockchain) {
 
         const tx = new Transaction(txExecutorAddress, txAmount)
             .transfer(addressContract1, txAmount) // TRANSFER AMOUNT
-            .call(addressContract1, 'ContractTest1', 'test_vm_1'); // CALL CONTRACT
+            .execute(addressContract1, 'ContractTest1', 'test_vm_1'); // CALL CONTRACT
 
         // 2. Add transaction to the mempool
         blockchain.mempool.addTransaction(tx);
@@ -257,10 +257,10 @@ async function testsTransactions(blockchain: Blockchain) {
         const txExecutorAddress = addressTest1;
 
         const code = loadScriptCode('ContractTest2');
-        const abi: CodeAbi = [ { class: 'ContractTest2', methods: { test_vm_2_a: {}, test_vm_2_b: {} } } ];
+        const abi: CodeAbi = [ { class: 'ContractTest2', methods: { test_vm_2_a: {}, test_vm_2_b: {} }, attributes: {} } ];
 
         const tx = new Transaction(txExecutorAddress)
-            .create(abi, code); // CREATE TOKEN
+            .create(code); // CREATE TOKEN
 
         // 2. Add transaction to the mempool
         blockchain.mempool.addTransaction(tx);
@@ -271,10 +271,10 @@ async function testsTransactions(blockchain: Blockchain) {
         const txExecutorAddress = addressTest1;
 
         const code = loadScriptCode('ContractToken1');
-        const abi: CodeAbi = [ { class: 'ContractToken1', methods: { transfer: {}, balanceOf: {} } } ];
+        const abi: CodeAbi = [ { class: 'ContractToken1', methods: { transfer: {}, balanceOf: {} }, attributes: {} } ];
 
         const tx = new Transaction(txExecutorAddress)
-            .create(abi, code); // CREATE TOKEN
+            .create(code); // CREATE TOKEN
 
         // 2. Add transaction to the mempool
         blockchain.mempool.addTransaction(tx);
@@ -287,7 +287,7 @@ async function testsTransactions(blockchain: Blockchain) {
         const fulltoken = BigInt(10 ** 9); // because this token has 9 decimals
 
         const tx = new Transaction(txExecutorAddress, txAmount)
-            .call(addressToken1, 'ContractToken1', 'transfer', ['0x0000000000000000000000000000000000000020', 600n * fulltoken]); // CALL TOKEN
+            .execute(addressToken1, 'ContractToken1', 'transfer', ['0x0000000000000000000000000000000000000020', 600n * fulltoken]); // CALL TOKEN
 
         // 2. Add transaction to the mempool
         blockchain.mempool.addTransaction(tx);

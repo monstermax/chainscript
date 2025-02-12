@@ -146,6 +146,7 @@ export class Blockchain {
     getTransactionByHash(txHash: TransactionHash): Transaction | null {
 
         // 1. cherche dans les transactions en memoire
+        //const memoryState: MemoryState = this.memoryState;
         // non disponible
 
 
@@ -169,12 +170,14 @@ export class Blockchain {
 
 
     /** 📥 Retourne un block complet en chargeant le fichier JSON */
-    getBlock(blockHeight: number): Block | null {
+    getBlock(blockHeight: number /* , memoryState?: MemoryState | null */): Block | null {
         console.log(`[${now()}][Chain.getBlock]`, blockHeight);
 
+        const memoryState: MemoryState = this.memoryState;
+
         // 1. cherche dans les blocks en memoire
-        if (blockHeight in this.memoryState.blocks) {
-            return this.memoryState.blocks[blockHeight];
+        if (memoryState && blockHeight in memoryState.blocks) {
+            return memoryState.blocks[blockHeight];
         }
 
 
@@ -183,7 +186,10 @@ export class Blockchain {
             const block: Block | undefined = this.stateManager.loadBlock(blockHeight) ?? undefined;
             asserts(block, `block not found on disk`);
 
-            this.memoryState.blocks[blockHeight] = block;
+            if (memoryState) {
+                memoryState.blocks[blockHeight] = block;
+            }
+
             return block;
         }
 
@@ -196,18 +202,18 @@ export class Blockchain {
     }
 
 
-    getAccount(address: AccountAddress): Account {
+    getAccount(address: AccountAddress, memoryState: MemoryState | null): Account {
         asserts(typeof address === 'string', `invalid address type for address "${address}"`);
         asserts(address.startsWith('0x'), `invalid address format for address "${address}"`);
         asserts(address === '0x' || address.length === 42, `invalid address length for address "${address}"`);
         asserts(address === '0x' || /^0x[a-fA-F0-9]{40}$/.test(address), `invalid address for address "${address}"`);
 
         const addressLower = address.toLowerCase() as AccountAddress;
-
+        //const memoryState = this.memoryState;
 
         // 1. cherche dans les accounts en memoire
-        if (addressLower in this.memoryState.accounts) {
-            return this.memoryState.accounts[addressLower];
+        if (memoryState && addressLower in memoryState.accounts) {
+            return memoryState.accounts[addressLower];
         }
 
 
@@ -216,14 +222,20 @@ export class Blockchain {
             const account: Account | undefined = this.stateManager.loadAccount(address) ?? undefined;
             asserts(account, `account not found on disk`);
 
-            this.memoryState.accounts[addressLower] = account;
+            if (memoryState) {
+                memoryState.accounts[addressLower] = account;
+            }
+
             return account;
         }
 
 
         // 3. account inconnu => charge un account vide
         const account: Account | undefined = new Account(address);
-        this.memoryState.accounts[addressLower] = account;
+
+        if (memoryState) {
+            memoryState.accounts[addressLower] = account;
+        }
 
         return account;
     }
@@ -256,15 +268,15 @@ export class Blockchain {
     }
 
 
-    transfer(emitterAddress: AccountAddress, recipientAddress: AccountAddress, amount: bigint): void {
+    transfer(emitterAddress: AccountAddress, recipientAddress: AccountAddress, amount: bigint, memoryState: MemoryState | null): void {
         console.log(`[${now()}][Chain.transfer]`);
 
-        asserts(typeof emitterAddress === 'string', "[Chain.transfer] invalid emitterAddress type");
-        asserts(typeof recipientAddress === 'string', "[Chain.transfer] invalid recipientAddress type");
+        asserts(typeof emitterAddress === 'string', `[Chain.transfer] invalid emitterAddress type "${emitterAddress}"`);
+        asserts(typeof recipientAddress === 'string', `[Chain.transfer] invalid recipientAddress type "${recipientAddress}"`);
         asserts(typeof amount === 'bigint', `[Chain.transfer] invalid amount type : typeof "${amount}" => "${typeof amount}"`);
 
-        const emitter = this.getAccount(emitterAddress);
-        const recipient = this.getAccount(recipientAddress);
+        const emitter = this.getAccount(emitterAddress, memoryState);
+        const recipient = this.getAccount(recipientAddress, memoryState);
 
         emitter.burn(amount);
         recipient.mint(amount);
@@ -275,7 +287,7 @@ export class Blockchain {
     public burn(account: Account, amount: bigint) {
         asserts(typeof account === 'object' && account.constructor.name === 'Account', "[Chain.burn] invalid account type");
         asserts(typeof amount === 'bigint', `[Chain.burn] invalid amount type : typeof "${amount}" => "${typeof amount}"`);
-        asserts(amount > 0, `[Chain.burn] invalid amount`);
+        asserts(amount > 0, `[Chain.burn] empty amount`);
         asserts(account.balance >= amount, `[Account.burn] insufficient balance for ${account.address}`);
 
         account.burn(amount);
@@ -287,7 +299,7 @@ export class Blockchain {
     public mint(account: Account, amount: bigint) {
         asserts(typeof account === 'object' && account.constructor.name === 'Account', "[Chain.mint] invalid account type");
         asserts(typeof amount === 'bigint', `[Chain.mint] invalid amount type : typeof "${amount}" => "${typeof amount}"`);
-        asserts(amount > 0, `[Chain.mint] invalid amount`);
+        asserts(amount > 0, `[Chain.mint] empty amount`);
 
         account.mint(amount);
 
@@ -402,7 +414,7 @@ export class Blockchain {
         let currentBlockReward = blockReward;
         const transactionsReceipts: TransactionReceipt[] = [];
 
-        // Supprime les temp accounts // TODO => a revoir. si un eth_call modifie un temp account pendant qu'un block est en cours d'execution il peut y avoir conflit
+        // Supprime les temp accounts (avant minage d'un bloc)
         this.memoryState.accounts = {};
 
 
@@ -466,7 +478,7 @@ export class Blockchain {
         // Supprime les transactions de la mempool
         this.mempool.clearMempool(block.transactions);
 
-        // Supprime les temp accounts
+        // Supprime les temp accounts (apres minage d'un bloc)
         this.memoryState.accounts = {};
     }
 

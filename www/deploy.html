@@ -5,15 +5,158 @@
 </head>
 
 <body>
-    <textarea id="code" rows="20" style="width:600px"></textarea>
+    <div>
+        <h1>Contract deployment</h1>
 
-    <button onclick="deploy()">Deploy</button>
+        <div>
+            <textarea id="code" rows="20" style="width:900px"></textarea>
+        </div>
+
+        <br />
+
+        <div>
+            <button onclick="deploy()" style="width:900px">Deploy</button>
+        </div>
+    </div>
+
+    <br />
+
+    <div>
+        <h1>Contract execution</h1>
+
+        <div>
+            Contract address: <input type="text" id="contractAddress" value="0x28EAfa5D7a29416AECcc3C5620B1F5468092fEE5">
+        </div>
+
+        <div>
+            Class: <input type="text" id="className" value="ContractToken1">
+        </div>
+
+        <div>
+            Method: <input type="text" id="methodName" value="balanceOf">
+        </div>
+
+        <div>
+            Args: 
+            <div id="span-args">
+                <input type="text" class="arg-name" value="amount">
+                <input type="text" class="arg-value" value="0x0000000000000000000000000000000000000010">
+            </div>
+
+            <br />
+            <button onclick="addArg()">Add arg</button>
+        </div>
+
+        <br />
+
+        <div>
+            <button onclick="callContract()" style="width:900px">Call (free)</button>
+            <button onclick="executeContract()" style="width:900px">Execute (tx)</button>
+        </div>
+
+    </div>
 </body>
 
 <script>
 
+
+const contractAbi = [ "function balanceOf() returns (uint256)" ];
+
+
+function addArg() {
+    const $span = document.getElementById('span-args');
+    $span.innerHTML += '<br /><input type="text" class="arg-name"><input type="text" class="arg-value">';
+}
+
 async function connectWallet() {
     const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+}
+
+
+async function callContractMethod(provider, contractAddress, contractAbi, className, methodName, params) {
+    const contractAbi2 = [
+        {
+            class: className,
+            methods: {
+                balanceOf: { inputs: [] }
+            },
+        }
+    ];
+
+    const contract = new ethers.Contract(contractAddress, contractAbi, provider);
+    //const result = await contract[methodName].apply(this, params);
+    const result = await contract[methodName](params);
+
+    return result;
+}
+
+
+async function callContract() {
+    if (! window.ethereum || ! window.ethereum.selectedAddress) {
+        console.warn('Wallet not connected');
+        return;
+    }
+
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+    if (!signer) return;
+
+    const contractAddress = document.getElementById('contractAddress').value;
+    if (!contractAddress) return;
+
+    const className = document.getElementById('className').value;
+    if (!className) return;
+
+    const methodName = document.getElementById('methodName').value;
+    if (!methodName) return;
+
+    //const argsNames = [...document.getElementsByClassName('arg-name')].map(input => input.value);
+    const argsValues = [...document.getElementsByClassName('arg-value')].map(input => input.value);
+
+    //const args = Object.fromEntries(
+    //    argsNames.map((name, idx) => [name, argsValues[idx]])
+    //);
+
+
+    const result = await callContractMethod(signer, contractAddress, contractAbi, className, methodName, []);
+    console.log('result:', result);
+
+    return result;
+}
+
+
+async function executeContract() {
+    if (! window.ethereum || ! window.ethereum.selectedAddress) {
+        console.warn('Wallet not connected');
+        return;
+    }
+
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+    if (!signer) return;
+
+    const contractAddress = document.getElementById('contractAddress').value;
+    if (!contractAddress) return;
+
+    const className = document.getElementById('className').value;
+    if (!className) return;
+
+    const methodName = document.getElementById('methodName').value;
+    if (!methodName) return;
+
+    const argsNames = [...document.getElementsByClassName('arg-name')].map(input => input.value);
+    const argsValues = [...document.getElementsByClassName('arg-value')].map(input => input.value);
+
+    const args = Object.fromEntries(
+        argsNames.map((name, idx) => [name, argsValues[idx]])
+    );
+
+
+    const tx = await callContractMethod(signer, contractAddress, contractAbi, className, methodName, args);
+    console.log('tx:', tx);
+
+    const receipt = await tx.wait();
+    console.log('receipt:', receipt);
 }
 
 
@@ -23,9 +166,9 @@ async function deploy() {
         return;
     }
 
-
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     const signer = provider.getSigner();
+    if (!signer) return;
 
     let txValue = ethers.utils.parseEther('0');
 
@@ -65,7 +208,7 @@ async function deploy() {
     console.log('contractAddress:', contractAddress);
 
     const deployTx = await contract.deployTransaction.wait()
-        .catch(() => null);
+        //.catch(() => null);
 
     if (! deployTx) {
         console.warn('deployment failed');

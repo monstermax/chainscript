@@ -4,12 +4,13 @@ import crypto from 'crypto';
 
 import WebSocket, { WebSocketServer } from 'ws';
 
-import { jsonReplacer, jsonReviver, now } from './utils';
+import { asserts, jsonReplacer, jsonReviver, now } from './utils';
 import { Blockchain } from './blockchain';
 import { Transaction } from './transaction';
 import { Block } from './block';
 
 import type { BlockData, BlockHash, BlockReceipt } from './types/block.types';
+import { TransactionData } from './types/transaction.types';
 
 
 /* ######################################################### */
@@ -208,6 +209,14 @@ export class P2PNode {
     private validatePeer(ws: WebSocket, metadata: PeerMetadata, isAcknowledge = false) {
         console.log(`[${now()}][P2P][validatePeer] 🔍 Vérification des métadonnées du peer`, metadata);
 
+
+        if (metadata.nodeId === this.nodeId) {
+            console.warn(`[${now()}][P2P][validatePeer] ❌ Rejeté: connexion à soi-meme`);
+            ws.close();
+            return;
+        }
+
+
         if (metadata.chainId !== this.chainId) {
             console.warn(`[${now()}][P2P][validatePeer] ❌ Rejeté: Chain ID incompatible (${metadata.chainId} ≠ ${this.chainId})`);
             ws.close();
@@ -359,21 +368,33 @@ export class P2PNode {
             this.blockSyncQueue.add(blockData.blockHeight);
             console.log(`[${now()}][P2P][handleNewBlock] 🔄 Block ${blockData.blockHeight} ajouté à la file d'attente`);
         }
+
+        // TODO: propager le block au autres peers.
+        // TODO: conserver une liste des blocks que les peers connaissent, afin de pas leur ré-envoyer des blocks qu'ils ont déjà
     }
 
 
     /** 🔄 Gère la réception d'une nouvelle transaction */
-    private handleNewTransaction(transaction: Transaction) {
+    private handleNewTransaction(txData: TransactionData) {
         console.log(`[${now()}][P2P][handleNewTransaction] 💰 Nouvelle transaction reçue`);
 
-        // TODO: verifier si present dans l'index des transactions (deja minées)
+        asserts(txData.hash, `transaction without hash`)
 
-        if (!this.mempool.find(tx => tx.hash === transaction.hash)) {
+        if (txData.hash in this.blockchain.stateManager.transactionsIndex) {
+                return;
+        }
+
+        if (!this.mempool.find(tx => tx.hash === tx.hash)) {
             // already in mempool
             return;
         }
 
-        this.mempool.push(transaction);
+        // Ajout au mempool
+        const tx = Transaction.from(txData);
+        this.mempool.push(tx);
+
+        // TODO: propager la transaction au autres peers.
+        // TODO: conserver une liste des transactions que les peers connaissent, afin de pas leur ré-envoyer des transactions qu'ils ont déjà
     }
 
 

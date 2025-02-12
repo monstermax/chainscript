@@ -4,17 +4,21 @@ import fs from 'fs';
 import { AbiCoder, encodeRlp, getAddress, keccak256 } from 'ethers'
 
 import * as ethereumjsTx from '@ethereumjs/tx';
-import * as ethereumjsUtil from '@ethereumjs/util';
+//import * as ethereumjsUtil from '@ethereumjs/util';
 
-import { chainId, devPrivateKey } from './config';
-import { asserts, bufferToHex, computeHash, hexToUint8Array, jsonReplacer, now, toHex } from './utils';
+import { chainId } from './config';
+import { asserts, bufferToHex, computeHash, encodeBigintRLP, hexToUint8Array, jsonReplacer, now, toHex } from './utils';
 import { Blockchain } from './blockchain';
 import { Block } from './block';
 import { execVm } from './vm';
+import { decodeCallData, findMethodAbi, generateContractAbi } from './abi';
 
-import type { AccountAddress, CodeAbi } from './types/account.types';
-import type { TransactionData, TransactionHash, TransactionInstruction, TransactionInstructionCall, TransactionInstructionCreate, TransactionInstructionMint, TransactionInstructionTransfer, TransactionReceipt, TransactionReceiptData, TransactionReceiptRpc, TransactionRpc } from './types/transaction.types';
+import type { AbiClassMethod, AccountAddress, CodeAbi, CodeAbiCall } from './types/account.types';
+import type { TransactionData, TransactionHash, TransactionInstruction, TransactionInstructionExecute, TransactionInstructionCreate, TransactionInstructionMint, TransactionInstructionTransfer, TransactionReceipt, TransactionReceiptData, TransactionReceiptRpc, TransactionRpc } from './types/transaction.types';
 import type { BlockHash } from './types/block.types';
+import { HexNumber } from './types/types';
+import { callTxParams, sendTxParams as SendTxParams } from './types/rpc.types';
+import { predictContractAddress } from './account';
 
 
 /* ######################################################### */
@@ -25,19 +29,20 @@ export class Transaction {
     public hash: TransactionHash | null = null;
     public amount: bigint;
     public instructions: TransactionInstruction[] = [];
-    public nonce: bigint;
-    public blockHeight: number | null = null;
-    public blockHash: BlockHash | null = null;
+    public nonce: bigint | null;
+    public blockHeight: number | null = null; // TODO: a deplacer dans les receipts
+    public blockHash: BlockHash | null = null; // TODO: a deplacer dans les receipts
+    public contractAddress: AccountAddress | null = null;
 
 
-    constructor(from: AccountAddress, amount: bigint=0n, nonce=0n) {
+    constructor(from: AccountAddress, amount: bigint=0n, nonce?: bigint | null) {
         this.from = from;
         this.amount = amount;
-        this.nonce = nonce;
+        this.nonce = nonce ?? null;
     }
 
     static from(txData: TransactionData) {
-        const tx = new Transaction(txData.from, txData.amount, txData.nonce);
+        const tx = new Transaction(txData.from, txData.value, txData.nonce);
         Object.assign(tx, txData);
         return tx;
     }
@@ -69,12 +74,16 @@ export class Transaction {
     }
 
 
-    public create(abi: CodeAbi, code: string, amount=0n): this {
+    public create(code: string, amount=0n): this {
+        asserts(this.nonce, `missing transaction nonce`);
+        const contractAddress: AccountAddress = predictContractAddress(this.from, this.nonce)
+        console.log(`[${now()}][Transaction][create] Adresse du contrat à créer :`, contractAddress);
+
         const instruction: TransactionInstructionCreate = {
             type: 'create',
-            abi,
+            contractAddress,
             code,
-            amount,
+            value: amount,
         };
 
         this.instructions.push(instruction);
@@ -83,13 +92,13 @@ export class Transaction {
     }
 
 
-    public call(scriptAddress: AccountAddress, scriptClass: string, scriptMethod: string, scriptArgs: any[] = []): this {
-        const instruction: TransactionInstructionCall = {
-            type: 'call',
-            scriptAddress,
-            scriptClass,
-            scriptMethod,
-            scriptArgs,
+    public execute(contractAddress: AccountAddress, className: string, methodName: string, args: any[]=[]): this {
+        const instruction: TransactionInstructionExecute = {
+            type: 'execute',
+            contractAddress,
+            className,
+            methodName,
+            args,
         };
 
         this.instructions.push(instruction);
@@ -110,8 +119,9 @@ export class Transaction {
         const transactionData: TransactionData = {
             from: tx.from,
             nonce: tx.nonce,
-            amount: tx.amount,
+            value: tx.amount,
             instructions: tx.instructions,
+            contractAddress: tx.contractAddress,
             //to: '0x',
             //gasPrice: 0n,
             //gasLimit: 0n,
@@ -169,10 +179,10 @@ export class Transaction {
             input: "0x",
             maxFeePerGas: "0x1",
             maxPriorityFeePerGas: "0x1",
-            nonce: toHex(tx.nonce),
+            nonce: toHex(tx.nonce ?? 0),
             r: "0x",
             s: "0x",
-            to: to ?? '0x',
+            to: to,
             transactionIndex: toHex(transactionIndex),
             type: "0x2",
             v: "0x1",
@@ -208,7 +218,7 @@ export class Transaction {
         const receiptRpc: TransactionReceiptRpc = {
             blockHash: block.hash,
             blockNumber: toHex(block.blockHeight),
-            contractAddress: null,
+            contractAddress: tx.contractAddress,
             cumulativeGasUsed: "0x",
             effectiveGasPrice: "0x",
             from: tx.from,
@@ -216,11 +226,11 @@ export class Transaction {
             logs: [],
             logsBloom: "0x",
             status: "0x1",
-            to: to ?? '0x',
+            to: to,
             transactionHash: tx.hash,
             transactionIndex: toHex(transactionIndex),
             type: "0x2"
-          };
+        };
 
         return receiptRpc;
     }
@@ -245,6 +255,199 @@ export class Transaction {
 }
 
 
+
+
+
+// Execute un contrat (en lecture seule) dans la VM et retourne le résultat
+export async function handleEthCall(blockchain: Blockchain, txParams: callTxParams): Promise<any> {
+    const contractAccount = blockchain.getAccount(txParams.to as AccountAddress, null);
+    asserts(contractAccount, `contract not found`);
+    asserts(contractAccount.abi, `contract abi not found`);
+
+    // Signature de la classe+methode à appeler
+    asserts(txParams.data && txParams.data.length >= 10);
+    const callSignature = txParams.data.slice(0, 10); // 4 premiers bytes
+    const callSignature2 = bufferToHex(Buffer.from(txParams.data).slice(0, 4)); // 4 premiers bytes
+
+    // Cherche la classe+methode à partir de la signature
+    const methodAbi = findMethodAbi(contractAccount.abi, callSignature);
+    asserts(methodAbi, "Méthode inconnue");
+
+    // Décodage des parametres de la methode
+    const args = decodeCallData(txParams.data, methodAbi);
+
+    // Execution du code dans la VM
+    const { vmResult, vmMonitor } = await execVm(blockchain, txParams.from, txParams.to, methodAbi.className, methodAbi.methodName, args, null);
+
+    console.log(`[eth_call] ✅ Résultat:`, vmResult);
+    console.log(`[eth_call] 🔍 Nombre total de calls:`, vmMonitor.totalCalls);
+    console.log(`[eth_call] 📜 Stack des calls:`, vmMonitor.callStack.join(" -> "));
+
+    return vmResult;
+}
+
+
+
+// Gère l'envoi d'une transaction Ethereum
+export async function handleEthSendTransaction(blockchain: Blockchain, txData: TransactionData): Promise<TransactionHash> {
+    console.log(`[handleEthSendTransaction] 📩 Traitement d'une transaction`, txData);
+
+    const amount: bigint = BigInt(txData.value ?? 0);
+    const nonce: bigint = BigInt(txData.nonce ?? 0);
+
+    const tx = new Transaction(txData.from, amount, nonce);
+    tx.instructions = txData.instructions;
+
+    blockchain.mempool.addTransaction(tx);
+    console.log(`[handleEthSendTransaction] 📥 Transaction ajoutée à la mempool`);
+
+    return tx.hash as TransactionHash;
+}
+
+
+
+
+
+// Transcode un txParams (format Ethereum) au format TransactionData (Typescript Blockchain) en y ajoutant des instructions
+export function transcodeTx(blockchain: Blockchain, txParams: SendTxParams): TransactionData {
+
+    const value: bigint = BigInt(txParams.value ?? 0n);
+    const nonce: bigint = BigInt(txParams.nonce)
+
+    const instructions: TransactionInstruction[] = [];
+
+
+    // Ajout instruction de transfert si `amount > 0`
+    if (value > 0n && txParams.to) {
+        const instruction: TransactionInstructionTransfer = {
+            type: 'transfer',
+            amount: value,
+            recipient: txParams.to,
+        };
+        instructions.push(instruction);
+    }
+
+
+    // Ajout instruction d'appel si txParams.data n'est pas vide
+    if (txParams.data) {
+
+        if (txParams.to) {
+            // Executer la methode d'un contrat existant
+
+            // 🔎 Recherche du contrat et de son ABI
+            const contractAccount = blockchain.getAccount(txParams.to, null);
+            asserts(contractAccount, `[transcodeTx] Contrat introuvable à ${txParams.to}`);
+            asserts(contractAccount.abi, `[transcodeTx] missing contract abi à ${txParams.to}`);
+            asserts(contractAccount.code, `[transcodeTx] missing contract code à ${txParams.to}`);
+
+            const callSignature2: string = txParams.data.slice(0, 10); // 4 bytes
+            const callSignature: string = "0x" + txParams.data.slice(0, 8);
+            const callSignature1: string = "0x" + bufferToHex(Buffer.from(txParams.data).slice(0, 8));
+
+            // Trouver la méthode correspondante dans l'ABI
+            const abiClassMethod: AbiClassMethod | null = findMethodAbi(contractAccount.abi, callSignature);
+            asserts(abiClassMethod, `[transcodeTx] Méthode inconnue pour la signature ${callSignature}`);
+
+            // 🧩 Décoder les arguments
+            const args: any[] = decodeCallData(txParams.data, abiClassMethod);
+            console.log(`[${now()}][transcodeTx] 🔍 Arguments décodés:`, args);
+
+            instructions.push({
+                type: 'execute',
+                contractAddress: txParams.to,
+                className: abiClassMethod.className,
+                methodName: abiClassMethod.methodName,
+                args,
+            } as TransactionInstructionExecute);
+
+        } else {
+            // Créer un nouveau contrat
+
+            const contractAddress: AccountAddress = predictContractAddress(txParams.from, nonce)
+            console.log(`[${now()}][transcodeTx] Adresse du contrat à créer :`, contractAddress);
+
+
+            const coder = new AbiCoder();
+            //const codes2 = coder.decode(["string", "string"], txParams.data);
+            const codes = coder.decode(["string", "string"], "0x" + txParams.data);
+
+
+            if (!codes) {
+                throw new Error('CONTRACT_DEPLOY_CODE_PARSING_FAILED');
+            }
+
+            const contractCode: string = codes[0];
+            const contructorArgs: any[] = codes[1];
+
+            const instruction: TransactionInstructionCreate = {
+                type: 'create',
+                contractAddress,
+                code: contractCode,
+                params: contructorArgs,
+                value,
+            };
+
+            instructions.push(instruction);
+        }
+    }
+
+
+    // Création de l'objet `TransactionData`
+    const txData: TransactionData = {
+        from: txParams.from,
+        nonce,
+        value,
+        instructions,
+        //hash: '0x' + bufferToHex(tx.hash()) as TransactionHash,
+    };
+
+    console.log(`[${now()}][decodeTx] ✅ Transaction décodée:`, txData);
+    return txData;
+}
+
+
+
+/** Décode une transaction Ethereum en un objet TransactionData */
+export function decodeRawTransaction(blockchain: Blockchain, txRawData: string): TransactionData {
+    console.log(`[${now()}][decodeTx] 🔄 Début décodage de: ${txRawData}`);
+
+    const rawBuffer = hexToUint8Array(txRawData);
+    let tx: ethereumjsTx.FeeMarketEIP1559Transaction | ethereumjsTx.LegacyTransaction;
+
+    try {
+        if (rawBuffer[0] === 2) {
+            // EIP-1559 Transaction
+            console.log(`[${now()}][decodeTx] 🆕 Transaction EIP-1559 détectée.`);
+            tx = ethereumjsTx.FeeMarketEIP1559Transaction.fromSerializedTx(rawBuffer) as ethereumjsTx.FeeMarketEIP1559Transaction;
+
+        } else {
+            // Legacy Transaction
+            console.log(`[${now()}][decodeTx] 🔄 Transaction Legacy détectée.`);
+            tx = ethereumjsTx.LegacyTransaction.fromSerializedTx(rawBuffer) as ethereumjsTx.LegacyTransaction;
+        }
+
+    } catch (err: any) {
+        console.error(`[${now()}][decodeTx] ❌ Impossible de décoder la transaction:`, err);
+        throw new Error(`[decodeTx] Invalid transaction format`);
+    }
+
+
+    const txParams: SendTxParams = {
+        from: tx.getSenderAddress().toString(),
+        to: tx.to?.toString() as AccountAddress | undefined,
+        value: toHex(tx.value),
+        nonce: toHex(tx.nonce),
+        data: bufferToHex(tx.data) as HexNumber,
+    };
+
+
+    // Transcode le txParams (format Ethereum) au format TransactionData et retourne cette information, prête à être envoyée à handleEthSendTransaction()
+    return transcodeTx(blockchain, txParams);
+}
+
+
+
+
 export async function executeTransaction(blockchain: Blockchain, block: Block, tx: Transaction): Promise<TransactionReceipt> {
     let txFees: bigint = 0n;
     let amountUsed: bigint = 0n;
@@ -255,10 +458,9 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
     asserts(computedTxHash === tx.hash, `transaction hash mismatch`);
 
 
-    const emitterAccount = blockchain.getAccount(tx.from);
+    const emitterAccount = blockchain.getAccount(tx.from, blockchain.memoryState);
     asserts(emitterAccount, `[executeTransaction] emitterAccount "${tx.from}" not found`);
 
-    //const nonce = emitterAccount.transactionsCount;
 
     try {
         for (const instruction of tx.instructions) {
@@ -267,7 +469,7 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
 
                 asserts(tx.from === '0x', `invalid emitter for mint. Expected: "0x" / Found: ${tx.from}`);
 
-                const minerAccount = blockchain.getAccount(instruction.address);
+                const minerAccount = blockchain.getAccount(instruction.address, blockchain.memoryState);
                 asserts(minerAccount, `[executeTransaction] minerAccount "${instruction.address}" not found`);
 
                 blockchain.mint(minerAccount, instruction.amount);
@@ -276,50 +478,49 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
             } else if (instruction.type === 'transfer') {
                 // Transfer value
 
-                blockchain.transfer(tx.from, instruction.recipient, instruction.amount);
+                blockchain.transfer(tx.from, instruction.recipient, instruction.amount, blockchain.memoryState);
                 txFees += 21n; // 21 microcoins for simple transfer
                 amountUsed += instruction.amount;
 
             } else if (instruction.type === 'create') {
                 // Create smart contract
 
-                //const tmpData = { ...instruction, from: tx.from, nonce: tx.nonce }
-                //const scriptAddress: AccountAddress = computeHash(tmpData).slice(0, 42) as AccountAddress; // TODO: recuperer la fonction de generation d'adresse
-                //const scriptAddress: AccountAddress = keccak256(encodeRlp([tx.from, toHex(tx.nonce)])) as AccountAddress  // Prendre les 20 derniers octets
+                const contractAddress: AccountAddress = instruction.contractAddress;
 
-                const scriptAddress: AccountAddress = await predictContractAddress(tx.from, tx.nonce)
-                console.log("🔹 Adresse du nouveau contrat :", scriptAddress);
-
-                const contractAccount = blockchain.getAccount(scriptAddress);
-
-                asserts(contractAccount.balance === 0n, `account "${scriptAddress}" already exists (balance > 0)`);
-                asserts(contractAccount.code === null, `account "${scriptAddress}" already exists (code exists)`);
-                asserts(contractAccount.abi === null, `account "${scriptAddress}" already exists (abi exists)`);
-
-                contractAccount.abi = instruction.abi;
-                contractAccount.code = instruction.code;
-                contractAccount.memory = {};
-
-                {
-                    // TODO => Deploy contract => voir https://evmjs.dev/tools/deploy
+                if (! tx.contractAddress) {
+                    // Si plusieurs contrats créés en 1 seul transaction (si plusieurs instructions create), on affecte l'adresse du 1er contractAddress à la transaction
+                    tx.contractAddress = contractAddress;
                 }
 
+                const contractAccount = blockchain.getAccount(contractAddress, blockchain.memoryState);
+                asserts(contractAccount.balance === 0n, `account "${contractAddress}" already exists (balance > 0)`);
+                asserts(contractAccount.code === null, `account "${contractAddress}" already exists (code exists)`);
+                asserts(contractAccount.abi === null, `account "${contractAddress}" already exists (abi exists)`);
+
+                contractAccount.abi = generateContractAbi(instruction.code);
+                contractAccount.code = instruction.code;
+                //contractAccount.contructorArgs = instruction.params;
+                contractAccount.memory = {};
+
+                amountUsed += instruction.value ?? 0n;
 
                 txFees += 1000n; // 1000 microcoins for token creation
 
 
-            } else if (instruction.type === 'call') {
+            } else if (instruction.type === 'execute') {
                 // Execute script
 
-                // A revoir. Ici c'est le code pour un call (gratuit, donc pas de fees). => a deplacer dans RPC. 
-                // => implémenter instruction.type === 'execute'
-
                 // Load source code
-                const vmMonitor = { counter: 0 };
-                await execVm(blockchain, tx.from, instruction.scriptAddress, instruction.scriptClass, instruction.scriptMethod, instruction.scriptArgs, vmMonitor)
+                const { vmResult, vmMonitor } = await execVm(blockchain, tx.from, instruction.contractAddress, instruction.className, instruction.methodName, instruction.args, blockchain.memoryState)
+
+                console.log(`[executeTransaction][vmResult] ✅ Résultat:`, vmResult); // pas de résultat attendu pour un sendTransaction
+                console.log(`[executeTransaction][vmResult] 🔍 Nombre total de calls:`, vmMonitor.totalCalls);
+                console.log(`[executeTransaction][vmResult] 📜 Stack des calls:`, vmMonitor.callStack.join(" -> "));
 
                 // Calculate fees
-                txFees += BigInt(Math.ceil(100 * vmMonitor.counter)); // 100 microCoins per call
+                txFees += BigInt(Math.ceil(100 * vmMonitor.totalCalls)); // 100 microCoins per call
+
+                asserts(vmMonitor.totalCalls < 1000, `[executeTransaction] execution limit exceeded`);
 
             } else {
                 throw new Error(`unknown instruction type`);
@@ -357,120 +558,4 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
     }
 
     return receipt;
-}
-
-
-
-
-
-/** ✅ Décode une transaction Ethereum en un objet TransactionData */
-export function decodeTx(raw_tx: string): TransactionData {
-    try {
-        console.log(`[${now()}][decodeTx] 🔄 Début décodage de: ${raw_tx}`);
-
-        const rawBuffer = hexToUint8Array(raw_tx);
-        let tx: ethereumjsTx.FeeMarketEIP1559Transaction | ethereumjsTx.LegacyTransaction;
-
-        try {
-            if (rawBuffer[0] === 2) {
-                // EIP-1559 Transaction
-                console.log(`[${now()}][decodeTx] 🆕 Transaction EIP-1559 détectée.`);
-                tx = ethereumjsTx.FeeMarketEIP1559Transaction.fromSerializedTx(rawBuffer) as ethereumjsTx.FeeMarketEIP1559Transaction;
-
-            } else {
-                // Legacy Transaction
-                console.log(`[${now()}][decodeTx] 🔄 Transaction Legacy détectée.`);
-                tx = ethereumjsTx.LegacyTransaction.fromSerializedTx(rawBuffer) as ethereumjsTx.LegacyTransaction;
-            }
-
-        } catch (err: any) {
-            console.error(`[${now()}][decodeTx] ❌ Impossible de décoder la transaction:`, err);
-            throw new Error(`[decodeTx] Invalid transaction format`);
-        }
-
-        const amount = BigInt(tx.value.toString());
-        //const to = (tx.to ? tx.to.toString() : '0x') as AccountAddress;
-        const instructions: TransactionInstruction[] = [];
-
-        // ✅ Ajout instruction de transfert si `amount > 0`
-        if (amount > 0n) {
-            instructions.push({ type: 'transfer', amount, recipient: tx.to?.toString() } as TransactionInstructionTransfer);
-        }
-
-        // ✅ Ajout instruction d'appel si `tx.data` contient un contrat
-        if (tx.data.length > 0) {
-            const coder = new AbiCoder();
-
-            if (tx.to) {
-                // Executer la methode d'un contrat existant
-
-                // TODO: decode tx.data
-
-                instructions.push({
-                    type: 'call',
-                    scriptAddress: tx.to.toString(),
-                    scriptClass: '',
-                    scriptMethod: '',
-                    scriptArgs: [],
-                } as TransactionInstructionCall);
-
-            } else {
-                // Créer un novueau contrat
-
-                const codes = coder.decode(["string", "string"], tx.data);
-
-                if (! codes) {
-                    throw new Error('CONTRACT_DEPLOY_CODE_PARSING_FAILED');
-                }
-
-                const sourceCode: string = codes[0];
-                const constructorParams: any[] = codes[1];
-
-                instructions.push({
-                    type: 'create',
-                    abi: [], // l'abi sera généré une fois que le contrat aura été instancié => TODO
-                    code: sourceCode,
-                    params: constructorParams,
-                } as TransactionInstructionCreate);
-            }
-        }
-
-        // ✅ Création de l'objet `TransactionData`
-        const txData: TransactionData = {
-            from: '0x',
-            nonce: BigInt(tx.nonce.toString()),
-            //gasPrice: tx.gasPrice ? BigInt(tx.gasPrice.toString()) : 0n,
-            //gasLimit: BigInt(tx.gasLimit.toString()),
-            //to,
-            amount,
-            instructions,
-            hash: '0x' + bufferToHex(tx.hash()) as TransactionHash,
-        };
-
-        if (tx.r /* && tx.s && tx.v */ ) {
-            Object.assign(txData, {
-                from: ethereumjsUtil.Address.fromPublicKey(tx.getSenderPublicKey()).toString() as AccountAddress,
-                //from: tx.getSenderAddress().toString() as AccountAddress,
-                //r: bufferToHex(tx.r),
-                //s: bufferToHex(tx.s),
-                //v: bufferToHex(tx.v),
-            });
-        }
-
-        console.log(`[${now()}][decodeTx] ✅ Transaction décodée:`, txData);
-        return txData;
-
-    } catch (err: any) {
-        console.warn(`[${now()}][decodeTx] ❌ ${err.message}`);
-        throw err;
-    }
-}
-
-
-async function predictContractAddress(sender: AccountAddress, nonce: bigint): Promise<AccountAddress> {
-    const encoded: string = encodeRlp([sender, '0x00']); // Encodage RLP
-    const hash: string = keccak256(encoded);
-    const contractAddress: AccountAddress = getAddress("0x" + hash.slice(-40)) as AccountAddress; // Prendre les 20 derniers octets
-
-    return contractAddress;
 }

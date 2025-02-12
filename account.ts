@@ -1,6 +1,8 @@
 // account.ts
 
-import { asserts, computeHash, jsonReplacer } from './utils';
+import { encodeRlp, getAddress, keccak256 } from 'ethers';
+
+import { asserts, computeHash, encodeBigintRLP, jsonReplacer } from './utils';
 
 import type { AccountAddress, AccountData, AccountHash, CodeAbi, ContractMemory } from './types/account.types';
 
@@ -80,5 +82,17 @@ export class Account {
     }
 
 };
+
+
+
+
+
+export function predictContractAddress(sender: AccountAddress, nonce: bigint): AccountAddress {
+    const encoded: string = encodeRlp([sender, encodeBigintRLP(nonce)]); // Encodage RLP
+    const hash: string = keccak256(encoded);
+    const contractAddress: AccountAddress = getAddress("0x" + hash.slice(-40)) as AccountAddress; // Prendre les 20 derniers octets
+
+    return contractAddress;
+}
 
 

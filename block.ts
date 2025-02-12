@@ -128,7 +128,7 @@ export class Block {
         const blockFormatted: BlockData = this.toData();
         const blockHash: BlockHash = computeHash(blockFormatted);
 
-        if (false && fs.existsSync('/tmp/debug')) {
+        if (true && fs.existsSync('/tmp/debug')) {
             // DEBUG
             const debugFile = `/tmp/debug/block-${this.blockHeight}.${Date.now()}.json`;
             fs.writeFileSync(debugFile, JSON.stringify(blockFormatted, jsonReplacer, 4));

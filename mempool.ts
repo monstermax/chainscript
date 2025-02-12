@@ -27,10 +27,16 @@ export class Mempool {
 
     /** 📥 Ajouter une transaction au mempool */
     addTransaction(tx: Transaction) {
-        const emitterAccount = this.blockchain.getAccount(tx.from);
+        const emitterAccount = this.blockchain.getAccount(tx.from, null);
         asserts(emitterAccount, `[Mempool][addTransaction] emitter account not found`);
 
-        tx.nonce = BigInt(emitterAccount.transactionsCount);
+        if (typeof tx.nonce === 'bigint') {
+            asserts(tx.nonce === BigInt(emitterAccount.transactionsCount), `invalid nonce. (Found: ${tx.nonce} / Expected: ${emitterAccount.transactionsCount})`);
+
+        } else {
+            tx.nonce = BigInt(emitterAccount.transactionsCount);
+        }
+
         tx.hash = tx.computeHash();
 
         if (this.transactions.has(tx.hash)) {

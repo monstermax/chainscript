@@ -107,9 +107,6 @@ export function computeStrHash(dataToHash: string): HexNumber {
 
 
 
-
-
-
 // Numbers
 
 export function divideBigInt(val: bigint, divider: bigint, precision: number=decimals) {
@@ -143,6 +140,23 @@ export function hexToUint8Array(hex: string): Uint8Array {
     if (hex.startsWith("0x")) hex = hex.slice(2);
     return new Uint8Array(Buffer.from(hex, "hex"));
 }
+
+
+export function encodeBigintRLP(val: bigint): Uint8Array {
+    if (val < BigInt(0)) throw new Error("encodeBigintRLP ne gère pas les nombres négatifs");
+
+    // Convertir en hex sans préfixe 0x
+    let hexNonce = val.toString(16);
+
+    // Si la longueur est impaire, ajouter un 0 devant pour garder un format correct (pair-length)
+    if (hexNonce.length % 2 !== 0) {
+        hexNonce = "0" + hexNonce;
+    }
+
+    // Transformer en Uint8Array pour encodeRlp
+    return Buffer.from(hexNonce, "hex");
+}
+
 
 
 

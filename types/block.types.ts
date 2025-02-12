@@ -9,6 +9,7 @@ import type { TransactionData, TransactionReceipt } from "./transaction.types";
 
 /* ######################################################### */
 
+export type BlockParameter = HexNumber | 'latest' | 'earliest' | 'pending' | 'safe' | 'finalized'; // spec => https://ethereum.org/en/developers/docs/apis/json-rpc/#default-block
 
 export type BlockHash = HexNumber;
 

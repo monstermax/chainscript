@@ -325,7 +325,7 @@ export class StateManager {
 
     * getAccountsGenerator(): Generator<Account> {
         for (const address in this.accountsIndex) {
-            const account: Account = this.blockchain.getAccount(address as AccountAddress);
+            const account: Account = this.blockchain.getAccount(address as AccountAddress, null);
             yield account;
         }
     }

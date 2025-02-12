@@ -2,57 +2,21 @@
 
 import fs from 'fs';
 import http from 'http';
-import { keccak256 } from "ethereum-cryptography/keccak";
-import { AbiCoder, toUtf8Bytes } from "ethers";
 
 import { asserts, fromHex, jsonReplacerForRpc, now, toHex } from './utils';
 import { Blockchain } from "./blockchain";
 import { Block } from "./block";
 import { Account } from './account';
-import { decodeTx, Transaction } from './transaction';
+import { decodeRawTransaction, handleEthCall, handleEthSendTransaction, Transaction, transcodeTx } from './transaction';
 import { execVm } from './vm';
 
 import type { HexNumber } from './types/types';
 import type { TransactionData, TransactionHash } from './types/transaction.types';
-import type { BlockHash } from './types/block.types';
-import type { AccountAddress, CodeAbi, CodeAbiMethod } from './types/account.types';
+import type { BlockHash, BlockParameter } from './types/block.types';
+import type { AbiClassMethod, AccountAddress, CodeAbiCall } from './types/account.types';
+import { decodeCallData, findMethodAbi } from './abi';
+import { RpcMessageError, RpcMessageResult, callTxParams, sendTxParams } from './types/rpc.types';
 
-
-/* ######################################################### */
-
-type RpcMessage = RpcMessageReq | RpcMessageResult | RpcMessageError;
-
-type RpcMessageReq = {
-    jsonrpc: string,
-    id: number | null,
-    method: string,
-    params?: [],
-}
-
-type RpcMessageResult = {
-    jsonrpc: string,
-    id: number | null,
-    result?: any,
-}
-
-type RpcMessageError = {
-    jsonrpc: string,
-    id: number | null,
-    error?: string,
-}
-
-type BlockParameter = HexNumber | 'latest' | 'earliest' | 'pending' | 'safe' | 'finalized'; // spec => https://ethereum.org/en/developers/docs/apis/json-rpc/#default-block
-
-type TxParams = {
-    from: AccountAddress,
-    to?: AccountAddress,
-    gas?: HexNumber,
-    gasPrice?: HexNumber,
-    maxPriorityFeePerGas?: HexNumber,
-    maxFeePerGas?: HexNumber,
-    value?: HexNumber,
-    data?: HexNumber, // Hash of the method signature and encoded parameters // spec => https://docs.soliditylang.org/en/latest/abi-spec.html
-}
 
 /* ######################################################### */
 
@@ -137,18 +101,22 @@ function handleRpcRequest(blockchain: Blockchain, req: http.IncomingMessage, res
             const { jsonrpc, id, method, params } = JSON.parse(body);
             console.log(`[${now()}][RPC] 📩 Requête RPC reçue: ${method}`, params);
 
-            let result;
+
+            let result: string | object | null | boolean = null;
+
             switch (method) {
                 case 'eth_chainId': {
                     // https://docs.metamask.io/services/reference/ethereum/json-rpc-methods/eth_chainId/
                     const chainId = blockchain.getChainId();
-                    result = toHex(chainId);
+
+                    result = toHex(chainId) as HexNumber;
                     break;
                 }
 
                 case 'eth_blockNumber': {
                     // https://docs.metamask.io/services/reference/ethereum/json-rpc-methods/eth_blocknumber/
-                    result = toHex(blockchain.blockHeight);
+
+                    result = toHex(blockchain.blockHeight) as HexNumber;
                     break;
                 }
 
@@ -157,8 +125,9 @@ function handleRpcRequest(blockchain: Blockchain, req: http.IncomingMessage, res
                     // https://docs.metamask.io/wallet/reference/json-rpc-methods/eth_getbalance/
                     const [address, blockNumber] = params as [AccountAddress, HexNumber];
 
-                    const account = blockchain.getAccount(address);
-                    result = toHex(account.balance);
+                    const account: Account = blockchain.getAccount(address, null);
+
+                    result = toHex(account.balance) as HexNumber;
                     break;
                 }
 
@@ -168,23 +137,28 @@ function handleRpcRequest(blockchain: Blockchain, req: http.IncomingMessage, res
 
                     if (blockParameter.startsWith('0x')) {
                         const blockHeight: number = fromHex(blockParameter as HexNumber);
+
                         const block: Block | null = blockchain.getBlock(blockHeight);
                         asserts(block, `block "${blockParameter}" not found`)
+
                         result = Block.formatForRpc(block, showTransactionsDetails);
 
                     } else {
-                        asserts(blockParameter === 'latest', `blockParameter not implemented`);
+                        asserts(blockParameter === 'latest', `blockParameter "${blockParameter}" not implemented`);
+
                         const block: Block | null = blockchain.getBlock(blockchain.blockHeight);
                         asserts(block, `block "${blockParameter}" not found`)
-                        result = Block.formatForRpc(block, showTransactionsDetails);
+
+                        result = Block.formatForRpc(block, showTransactionsDetails) as object;
                     }
                     break;
                 }
 
                 case 'net_version': {
                     // https://docs.metamask.io/services/reference/ethereum/json-rpc-methods/net_version/
-                    const networkVersion = blockchain.getNetworkVersion();
-                    result = networkVersion;
+                    const networkVersion: number = blockchain.getNetworkVersion();
+
+                    result = networkVersion.toString() as string;
                     break;
                 }
 
@@ -195,7 +169,7 @@ function handleRpcRequest(blockchain: Blockchain, req: http.IncomingMessage, res
                     const block = blockchain.getBlockByHash(blockHash);
                     asserts(block, `block not found for block "${blockHash}"`);
 
-                    result = Block.formatForRpc(block);
+                    result = Block.formatForRpc(block) as object;
 
                     break;
                 }
@@ -209,7 +183,8 @@ function handleRpcRequest(blockchain: Blockchain, req: http.IncomingMessage, res
 
                     const tx = block.transactions[transactionIndex];
                     asserts(tx, `transaction "${transactionIndex}" of block "${blockHeight}" not found`);
-                    result = Transaction.formatForRpc(block, tx);
+
+                    result = Transaction.formatForRpc(block, tx) as object;
                 }
 
                 case 'eth_getTransactionByBlockHashAndIndex': {
@@ -221,12 +196,15 @@ function handleRpcRequest(blockchain: Blockchain, req: http.IncomingMessage, res
 
                     const tx = block.transactions[transactionIndex];
                     asserts(tx, `transaction "${transactionIndex}" of block "${blockHash}" not found`);
-                    result = Transaction.formatForRpc(block, tx);
+
+                    result = Transaction.formatForRpc(block, tx) as object;
                 }
 
                 case 'eth_getTransactionByHash': {
                     // https://docs.metamask.io/services/reference/ethereum/json-rpc-methods/eth_gettransactionbyhash/
                     const [txHash] = params as [txHash: TransactionHash];
+
+                    asserts(typeof txHash === 'string', `invalid txHash type`);
 
                     const tx = blockchain.getTransactionByHash(txHash);
                     asserts(tx, `transaction "${txHash}" not found`);
@@ -236,7 +214,7 @@ function handleRpcRequest(blockchain: Blockchain, req: http.IncomingMessage, res
                     const block = blockchain.getBlock(tx.blockHeight);
                     asserts(block, `block not found for transaction "${txHash}"`);
 
-                    result = Transaction.formatForRpc(block, tx);
+                    result = Transaction.formatForRpc(block, tx) as object;
                     break;
                 }
 
@@ -244,41 +222,51 @@ function handleRpcRequest(blockchain: Blockchain, req: http.IncomingMessage, res
                     // https://docs.metamask.io/services/reference/ethereum/json-rpc-methods/eth_gettransactionreceipt/
                     const [txHash] = params as [txHash: TransactionHash];
 
-                    const blockHeight = blockchain.stateManager.transactionsIndex[txHash];
-                    asserts(typeof blockHeight === 'number', `transaction "${txHash}" has no blockHeight`);
+                    asserts(typeof txHash === 'string', `invalid txHash type`);
 
-                    const tx = blockchain.getTransactionByHash(txHash);
-                    asserts(tx, `transaction "${txHash}" not found`);
+                    //asserts(typeof blockHeight === 'number', `transaction "${txHash}" has no blockHeight`);
 
-                    const block = blockchain.getBlock(blockHeight);
-                    asserts(block, `block "${blockHeight}" not found`)
+                    if (txHash in blockchain.stateManager.transactionsIndex) {
+                        const blockHeight = blockchain.stateManager.transactionsIndex[txHash];
 
-                    result = Transaction.formatReceiptForRpc(block, tx);
+                        const tx = blockchain.getTransactionByHash(txHash);
+                        asserts(tx, `transaction "${txHash}" not found`);
+
+                        const block = blockchain.getBlock(blockHeight);
+                        asserts(block, `block "${blockHeight}" not found`)
+
+                        result = Transaction.formatReceiptForRpc(block, tx) as object;
+
+                    } else {
+                        result = null;
+                    }
+
                     break;
                 }
 
                 case 'eth_getTransactionCount': {
                     const [address, blockNumber] = params;
 
-                    const account = blockchain.getAccount(address);
-                    result = toHex(account.transactionsCount);
+                    const account = blockchain.getAccount(address, null);
+
+                    result = toHex(account.transactionsCount) as HexNumber;
                     break;
                 }
 
                 case 'eth_gasPrice': {
                     // https://docs.metamask.io/services/reference/ethereum/json-rpc-methods/eth_gasPrice/
-                    result = '0x6bcc886e7';
+
+                    result = '0x6bcc886e7' as HexNumber;
                     break;
                 }
 
                 case 'eth_estimateGas': {
                     // https://docs.metamask.io/services/reference/ethereum/json-rpc-methods/eth_estimategas/
+                    const [args] = params as [args: { from: AccountAddress, value: HexNumber, gasPrice: HexNumber, data: HexNumber, to: AccountAddress }];
 
                     // Warning: To prevent abuse of the API, the gas parameter in this eth_estimateGas method and in eth_call is capped at 10x (1000%) the current block gas limit
 
-                    const [args] = params as [args: { from: AccountAddress, value: HexNumber, gasPrice: HexNumber, data: HexNumber, to: AccountAddress }];
-
-                    result = '0x5208';
+                    result = '0x5208' as HexNumber;
                     break;
                 }
 
@@ -286,7 +274,7 @@ function handleRpcRequest(blockchain: Blockchain, req: http.IncomingMessage, res
                     // https://docs.metamask.io/services/reference/ethereum/json-rpc-methods/eth_getCode/
                     const [address, blockNumber] = params as [address: AccountAddress, blockNumber: HexNumber];
 
-                    result = '0x';
+                    result = '0x' as HexNumber;
                     break;
                 }
 
@@ -294,89 +282,57 @@ function handleRpcRequest(blockchain: Blockchain, req: http.IncomingMessage, res
                     // https://docs.metamask.io/services/reference/ethereum/json-rpc-methods/eth_getlogs/
                     // https://docs.metamask.io/wallet/reference/json-rpc-methods/eth_getlogs/
                     // TODO
-                    result = '0x';
+                    result = '0x' as HexNumber;
                     break;
                 }
 
                 case 'eth_sendRawTransaction': {
                     const [txRawData] = params as [string];
 
-                    const txData: TransactionData = decodeTx(txRawData.slice(2));
+                    // Décode la transaction brute
+                    const txData: TransactionData = decodeRawTransaction(blockchain, txRawData.slice(2));
 
-                    const tx = Transaction.from(txData);
-                    tx.instructions = txData.instructions;
+                    // Soumet la transaction décodée au mempool
+                    const txHash = await handleEthSendTransaction(blockchain, txData);
 
-                    blockchain.mempool.addTransaction(tx);
-                    result = tx.hash;
+                    result = txHash;
                     break;
                 }
 
                 case 'eth_sendTransaction': {
                     // https://docs.metamask.io/wallet/reference/json-rpc-methods/eth_sendtransaction/
-                    const [txParams] = params as [TxParams];
+                    const [txParams] = params as [sendTxParams];
 
+                    // Transcode les txParams au format TransactionData
+                    const txData: TransactionData = transcodeTx(blockchain, txParams);
+
+                    // Soumet la transaction (non-encodée) au mempool
+                    result = await handleEthSendTransaction(blockchain, txData);
                     break;
                 }
 
                 case 'eth_call': {
                     // https://docs.metamask.io/services/reference/ethereum/json-rpc-methods/eth_call/
                     // https://docs.metamask.io/wallet/reference/json-rpc-methods/eth_call/
-                    const [txParams, blockParameter] = params as [TxParams, BlockParameter];
-                    const { to, data } = txParams;
+                    const [txParams, blockParameter] = params as [callTxParams, BlockParameter];
 
-                    console.log(`[Server] 📩 Requête eth_call reçue`, { to, data });
-
-                    if (to) {
-                        // call contract
-                        asserts(data, `missing data in eth_call`);
-
-                        // Vérifier que le smart contract existe
-                        const contract = blockchain.getAccount(to);
-                        if (!contract) {
-                            throw new Error(`[eth_call] Contrat introuvable à ${to}`);
-                        }
-
-                        asserts(contract.abi, `[eth_call] missing contract abi`);
-                        asserts(contract.code, `[eth_call] missing contract code`);
-
-                        // Décoder la méthode demandée
-                        const methodSignature = data.slice(0, 10); // Les 4 premiers bytes de `keccak256(signature)`
-                        const methodAbi = findMethodAbi(contract.abi, methodSignature);
-
-                        if (!methodAbi) {
-                            throw new Error(`[eth_call] Méthode inconnue pour le contrat à ${to}`);
-                        }
-
-                        // Extraire les arguments
-                        const args = decodeCallData(data, methodAbi);
-
-                        console.log(`[eth_call] Exécution de ${methodAbi.name}(${args.join(', ')})`);
-
-                        // Exécuter le contrat dans ta VM
-                        const vmMonitor = { counter: 0 };
-                        const result = await execVm(blockchain, '0x0000000000000000000000000000000000000000', to, contract.abi[0].class, methodAbi.name, args, vmMonitor);
-
-                        console.log(`[eth_call] ✅ Résultat:`, result);
-
-                    } else {
-                        // create contract
-                        asserts(data, `contract creation not implemented`);
-                    }
+                    // Execute l'appel du contrat dans la VM et retourne le résultat
+                    result = await handleEthCall(blockchain, txParams);
                     break;
                 }
 
 
                 case 'debug_getAccount': {
-                    const account: Account = blockchain.getAccount(params[0]);
+                    const account: Account = blockchain.getAccount(params[0], null);
 
-                    result = account.toJSON();
+                    result = account.toData() as object;
                     break;
                 }
 
                 case 'debug_getBlock': {
                     const block: Block | null = blockchain.getBlock(params[0]);
 
-                    result = block ? block.toJSON() : null;
+                    result = block ? block.toData() : null;
                     break;
                 }
 
@@ -432,48 +388,5 @@ function handleRpcRequest(blockchain: Blockchain, req: http.IncomingMessage, res
 }
 
 
-
-/** 🔍 Recherche une méthode dans l'ABI à partir de la signature */
-export function findMethodAbi(abi: CodeAbi, methodSignature: string): (CodeAbiMethod & { name: string }) | null {
-    for (const contract of abi) {
-        for (const [methodName, methodData] of Object.entries(contract.methods)) {
-            const inputTypes = (methodData.inputs ?? []).map(input => input.type).join(",");
-            const signature = `${methodName}(${inputTypes})`;
-
-            // Hasher la signature en Keccak256 et récupérer les 4 premiers bytes
-            //const hash = "0x" + Buffer.from(keccak256(toUtf8Bytes(signature))).toString("hex").slice(0, 8);
-            const hash = keccak256(toUtf8Bytes(methodSignature)).slice(0, 10).toString();
-
-            // Vérifier si cela correspond à la signature de la méthode
-            if (hash === methodSignature) {
-                console.log(`[findMethodAbi] ✅ Méthode trouvée: ${methodName}`);
-                return { name: methodName, ...methodData } as CodeAbiMethod & { name: string };
-            }
-        }
-    }
-
-    console.warn(`[findMethodAbi] ❌ Méthode inconnue pour la signature: ${methodSignature}`);
-    return null;
-}
-
-
-/** 🔓 Décodage des arguments d'un appel de fonction */
-export function decodeCallData(data: string, methodAbi: any) {
-    if (!methodAbi.inputs || methodAbi.inputs.length === 0) return [];
-
-    const coder = new AbiCoder();
-    const encodedParams = data.slice(10); // Supprime la signature de 4 bytes
-    const types = methodAbi.inputs.map((input: any) => input.type);
-
-    console.log(`[decodeCallData] 📥 Décodage des arguments:`, encodedParams);
-
-    try {
-        return coder.decode(types, "0x" + encodedParams);
-
-    } catch (err) {
-        console.error(`[decodeCallData] ❌ Erreur de décodage des arguments`, err);
-        return [];
-    }
-}
 
 

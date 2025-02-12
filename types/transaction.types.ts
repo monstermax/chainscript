@@ -16,11 +16,13 @@ export type TransactionsIndex = Record<TransactionHash, number>; // blockHeight
 export type TransactionData = {
     from: AccountAddress;
     nonce: bigint;
-    amount: bigint;
+    value: bigint;
     blockHeight?: number;
     blockHash?: BlockHash;
     instructions: TransactionInstruction[];
     hash?: TransactionHash | null;
+    contractAddress?: AccountAddress | null;
+    //callData?: string | null;
     //to: AccountAddress;
     //gasPrice: bigint;
     //gasLimit: bigint;
@@ -43,7 +45,7 @@ export type TransactionRpc = {
     nonce: HexNumber;
     r: HexNumber;
     s: HexNumber;
-    to: AccountAddress;
+    to: AccountAddress | null;
     transactionIndex: HexNumber;
     type: HexNumber;
     v: HexNumber;
@@ -79,7 +81,7 @@ export type TransactionReceiptRpc = {
     }>;
     logsBloom: HexNumber;
     status: HexNumber;
-    to: AccountAddress;
+    to: AccountAddress | null;
     transactionHash: HexNumber;
     transactionIndex: HexNumber;
     type: HexNumber;
@@ -96,7 +98,7 @@ export type TransactionReceipt = {
 }
 
 
-export type TransactionInstruction = TransactionInstructionTransfer | TransactionInstructionCreate | TransactionInstructionCall | TransactionInstructionMint;
+export type TransactionInstruction = TransactionInstructionTransfer | TransactionInstructionCreate | TransactionInstructionExecute | TransactionInstructionMint;
 
 
 export type TransactionInstructionTransfer = {
@@ -114,18 +116,18 @@ export type TransactionInstructionMint = {
 
 export type TransactionInstructionCreate = {
     type: 'create',
-    abi: CodeAbi,
+    contractAddress: AccountAddress,
     code: string,
-    amount?: bigint,
+    value?: bigint,
     params?: any[],
 }
 
 
-export type TransactionInstructionCall = {
-    type: 'call',
-    scriptAddress: AccountAddress,
-    scriptClass: string,
-    scriptMethod: string,
-    scriptArgs: any[],
+export type TransactionInstructionExecute = {
+    type: 'execute',
+    contractAddress: AccountAddress,
+    className: string,
+    methodName: string,
+    args: any[],
 }
 

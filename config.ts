@@ -36,4 +36,4 @@ export const devAddress = "0xee5392913a7930c233Aa711263f715f616114e9B";
 export const devPrivateKey = "f55ccf8acbef226806fcccf268c1dc6d7365c42009c963a4e9565debc3dba475";
 
 
-export const defaultStateDir = path.join(__dirname, 'state');
+export const defaultStateDir = `/home/${process.env.USER}/.blockchain-js`; // path.join(__dirname, 'state');

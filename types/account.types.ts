@@ -2,7 +2,7 @@
 
 import { Account } from "../account";
 
-import type { HexNumber } from "./types";
+import type { HexNumber, JsType } from "./types";
 
 
 /* ######################################################### */
@@ -33,14 +33,35 @@ export type CodeAbi = CodeAbiClass[];
 
 export type CodeAbiClass = {
     class: string,
-    methods: {[method: string]: CodeAbiMethod}
+    methods: CodeAbiClassMethods,
+    attributes: CodeAbiClassAttributes,
 };
 
-export type CodeAbiMethod = {
-    inputs?: any[],
-    output?: any,
-    public?: boolean,
-    payable?: boolean,
+
+export type CodeAbiClassMethods = {[method: string]: CodeAbiClassMethod};
+export type CodeAbiClassAttributes = {[attr: string]: { type: JsType } };
+
+
+export type CodeAbiClassMethod = {
+    //public?: boolean,
+    inputs?: string[],
+    //payable?: boolean,
+};
+
+
+export type CodeAbiCall = {
+    className: string,
+    methodName: string,
+    args: any[],
+};
+
+
+
+export type AbiClassMethod = {
+    className: string,
+    methodName: string,
+    class: CodeAbiClass,
+    method: CodeAbiClassMethod,
 };
 
 
