@@ -11,6 +11,7 @@ import { Block } from './block';
 
 import type { BlockData, BlockHash, BlockReceipt } from './types/block.types';
 import { TransactionData } from './types/transaction.types';
+import { initialPeers } from './config';
 
 
 /* ######################################################### */
@@ -39,17 +40,6 @@ export type PeerMetadata = {
 
 export type Peers = {[nodeId: string]: Peer};
 
-
-/* ######################################################### */
-
-
-const initialPeers = [
-    "192.168.1.113:6001",
-    "127.0.0.1:6002",
-    "127.0.0.1:6003",
-    //"127.0.0.1:6004",
-    //"127.0.0.1:6005",
-];
 
 /* ######################################################### */
 

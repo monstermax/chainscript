@@ -4,7 +4,8 @@ import fs from 'fs';
 
 import { asserts, computeHash, jsonReplacer, now, toHex } from './utils';
 import { Blockchain } from './blockchain';
-import { executeTransaction, Transaction } from './transaction';
+import { Transaction } from './transaction';
+import { executeTransaction } from './execution';
 
 import type { BlockData, BlockHash, BlockRpc } from './types/block.types';
 import type { AccountAddress } from './types/account.types';
@@ -68,7 +69,7 @@ export class Block {
             hash: block.hash,
             timestamp: block.timestamp ?? 0,
             transactions: block.transactions.map(tx => tx.toData()),
-            receipts: block.receipts.map(receipt => Transaction.toReceiptData(receipt)),
+            receipts: block.transactions.map((tx, idx) => Transaction.toReceiptData(tx, block.receipts[idx])),
             nonce: block.nonce,
         };
 
@@ -128,9 +129,9 @@ export class Block {
         const blockFormatted: BlockData = this.toData();
         const blockHash: BlockHash = computeHash(blockFormatted);
 
-        if (true && fs.existsSync('/tmp/debug')) {
+        if (true && fs.existsSync('/tmp/blockchain-js-debug')) {
             // DEBUG
-            const debugFile = `/tmp/debug/block-${this.blockHeight}.${Date.now()}.json`;
+            const debugFile = `/tmp/blockchain-js-debug/block-${this.blockHeight}.${Date.now()}.json`;
             fs.writeFileSync(debugFile, JSON.stringify(blockFormatted, jsonReplacer, 4));
         }
 

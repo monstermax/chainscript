@@ -17,11 +17,8 @@ export type TransactionData = {
     from: AccountAddress;
     nonce: bigint;
     value: bigint;
-    blockHeight?: number;
-    blockHash?: BlockHash;
     instructions: TransactionInstruction[];
     hash?: TransactionHash | null;
-    contractAddress?: AccountAddress | null;
     //callData?: string | null;
     //to: AccountAddress;
     //gasPrice: bigint;
@@ -54,9 +51,18 @@ export type TransactionRpc = {
 }
 
 
+
+
+export type TransactionReceipt = TransactionReceiptData;
+
+
 export type TransactionReceiptData = {
     success: boolean;
     fees: bigint;
+    blockHeight: number;
+    //blockHash?: BlockHash;
+    contractAddress: AccountAddress | null;
+    //logs: any[], // TODO
 }
 
 
@@ -89,13 +95,6 @@ export type TransactionReceiptRpc = {
 
 
 
-
-
-export type TransactionReceipt = {
-    success: boolean,
-    fees: bigint,
-    //logs: any[], // TODO
-}
 
 
 export type TransactionInstruction = TransactionInstructionTransfer | TransactionInstructionCreate | TransactionInstructionExecute | TransactionInstructionMint;

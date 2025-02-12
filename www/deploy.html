@@ -7,6 +7,10 @@
 
 <body>
 
+    <button onclick="connectWallet()">Connect Wallet</button>
+
+    <hr />
+
     <fieldset>
         <legend><h1>Web3</h1></legend>
 
@@ -18,8 +22,9 @@
 
         <div>
             Transfer to
-            <input type="text" value="0x0000000000000000000000000000000000000030">
-            <input type="text" value="10">
+            <input type="text" id="recipient" value="0x0000000000000000000000000000000000000030">
+            <input type="text" id="amount" value="10">
+            <button onclick="transfer()">Send</button>
         </div>
 
     </fieldset>
@@ -31,7 +36,7 @@
         <legend><h1>Contract execution</h1></legend>
 
         <div>
-            Contract address: <input type="text" id="contractAddress" value="0xb6f6E8BDA93879EB1a6D16313d951350B245BE68">
+            Contract address: <input type="text" id="contractAddress" value="0x93FD6B09Bb59fC60defB8967686a7c3932AAF804">
         </div>
 
         <div>
@@ -112,6 +117,11 @@ const contractAbi = [
 ];
 
 
+async function connectWallet() {
+    const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+}
+
+
 function addArg() {
     const $span = document.getElementById('span-args');
     $span.innerHTML += '<br /><input type="text" class="arg-value">';
@@ -132,6 +142,28 @@ async function getBalance() {
     const balanceStr = await provider.getBalance(signer.getAddress());
     const balance = divideBigInt(BigInt(balanceStr), BigInt(1e18));
     document.getElementById('balance').value = balance;
+}
+
+
+
+async function transfer() {
+    if (! window.ethereum || ! window.ethereum.selectedAddress) {
+        console.warn('Wallet not connected');
+        return;
+    }
+
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+
+    const signer = provider.getSigner();
+    if (!signer) return;
+
+    const recipient = document.getElementById('recipient').value;
+    const amount = document.getElementById('amount').value;
+
+    const tx = await signer.sendTransaction({
+        to: recipient,
+        value: ethers.utils.parseUnits(amount, 'ether'),
+    });
 }
 
 

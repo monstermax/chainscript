@@ -353,7 +353,6 @@ export class Blockchain {
 
         transactions.forEach(tx => {
             tx.blockHeight = block.blockHeight;
-            tx.blockHash = block.hash;
         });
 
 
