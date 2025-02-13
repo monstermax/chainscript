@@ -2,7 +2,7 @@
 
 import http from 'http';
 
-import { blockMaxTransactions, blockMinTransactions, blockReward, chainId, genesisTimestamp, networkVersion } from './config';
+import { blockMaxTransactions, blockMinTransactions, blockReward, chainId, genesisTimestamp, MAX_MEMORY_ACCOUNTS, MAX_MEMORY_BLOCKS, networkVersion } from './config';
 import { asserts, computeHash, now } from './utils';
 import { StateManager } from './stateManager';
 import { Transaction } from './transaction';
@@ -175,26 +175,34 @@ export class Blockchain {
 
         const memoryState: MemoryState = this.memoryState;
 
-        // 1. cherche dans les blocks en memoire
+        // 1. Vérifie si le block est déjà en mémoire
         if (memoryState && blockHeight in memoryState.blocks) {
             return memoryState.blocks[blockHeight];
         }
 
 
-        // 2. cherche dans les blocks sur disque
+        // 2. Vérifie si le block est sur disque
         if (blockHeight in this.stateManager.blocksIndex) {
             const block: Block | undefined = this.stateManager.loadBlock(blockHeight) ?? undefined;
             asserts(block, `[Chain.getBlock] block not found on disk`);
 
             if (memoryState) {
+                // Ajout du block en cache mémoire (LRU cache simplifié)
                 memoryState.blocks[blockHeight] = block;
+
+                // Si trop de blocks en mémoire, supprimer le plus ancien
+                if (Object.keys(memoryState.blocks).length > MAX_MEMORY_BLOCKS) {
+                    const oldestBlockHeight = Math.min(...Object.keys(memoryState.blocks).map(Number));
+                    delete memoryState.blocks[oldestBlockHeight];
+                    console.log(`[Chain.getBlock] Cache LRU: Suppression du block ${oldestBlockHeight}`);
+                }
             }
 
             return block;
         }
 
 
-        // 3. block inconnu
+        // 3. Block inconnu
         console.warn(`[Chain.getBlock] Block ${blockHeight} introuvable`);
         //throw new Error(`[Chain.getBlock] unknown block at height "${blockHeight}"`);
 
@@ -211,30 +219,47 @@ export class Blockchain {
         const addressLower = address.toLowerCase() as AccountAddress;
         //const memoryState = this.memoryState;
 
-        // 1. cherche dans les accounts en memoire
+
+        // 1. Vérifie si l'account est déjà en mémoire
         if (memoryState && addressLower in memoryState.accounts) {
             return memoryState.accounts[addressLower];
         }
 
 
-        // 2. cherche dans les accounts sur disque
+        // 2. Vérifie si l'account est stocké sur disque
         if (addressLower in this.stateManager.accountsIndex) {
             const account: Account | undefined = this.stateManager.loadAccount(address) ?? undefined;
             asserts(account, `[Chain.getAccount] account not found on disk`);
 
             if (memoryState) {
+                // Ajout en cache mémoire
                 memoryState.accounts[addressLower] = account;
+
+                // Si trop de comptes en mémoire, supprimer le plus ancien
+                if (Object.keys(memoryState.accounts).length > MAX_MEMORY_ACCOUNTS) {
+                    const oldestAddress = Object.keys(memoryState.accounts)[0]; // Suppression FIFO (à revoir car un object ne conserve pas l'ordre d'insertion)
+                    delete memoryState.accounts[oldestAddress];
+                    console.log(`[Chain.getAccount] Cache LRU: Suppression de l'account ${oldestAddress}`);
+                }
             }
 
             return account;
         }
 
 
-        // 3. account inconnu => charge un account vide
+        // 3. Si l'account est inconnu, en créer un vide
         const account: Account | undefined = new Account(address);
 
         if (memoryState) {
+            // Ajout en cache mémoire
             memoryState.accounts[addressLower] = account;
+
+            // Si trop de comptes en mémoire, supprimer le plus ancien
+            if (Object.keys(memoryState.accounts).length > MAX_MEMORY_ACCOUNTS) {
+                const oldestAddress = Object.keys(memoryState.accounts)[0]; // Suppression FIFO
+                delete memoryState.accounts[oldestAddress];
+                console.log(`[Chain.getAccount] Cache LRU: Suppression de l'account ${oldestAddress}`);
+            }
         }
 
         return account;

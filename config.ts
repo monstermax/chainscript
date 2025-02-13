@@ -29,6 +29,7 @@ export const blockDelayMax = 60_000; // au moins un bloc toutes les N secondes
 export const blockMinTransactions = 0; // au moins N transactions par block
 export const blockMaxTransactions = 10; // pas plus de N transactions par block
 
+
 // Genesis config
 export const genesisTimestamp = 1739232518150;
 
@@ -40,3 +41,8 @@ export const devPrivateKey = "f55ccf8acbef226806fcccf268c1dc6d7365c42009c963a4e9
 
 
 export const defaultStateDir = `/home/${process.env.USER}/.blockchain-js`;
+
+export const MAX_MEMORY_BLOCKS = 1000; // Nb maximum de blocks à conserver en mémoire dans le cachee LRU
+export const MAX_MEMORY_ACCOUNTS = 5_000; // Nb maximum de comptes à conserver en mémoire dans le cachee LRU
+//export const MAX_MEMORY_TRANSACTIONS = 10_000; // Nb maximum de transactions à conserver en mémoire dans le cachee LRU => à implémenter
+

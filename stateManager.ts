@@ -346,8 +346,8 @@ export class StateManager {
 
 
 export class MemoryState {
-    public accounts: Accounts = {};
-    public blocks: Blocks = {};
+    public accounts: Accounts = {}; // TODO: à remplacer par un Map ou un LRU
+    public blocks: Blocks = {}; // TODO: à remplacer par un Map ou un LRU
 
 
     dumpAccountsBalances(asFullCoin = false): { [address: string]: bigint | string } {
