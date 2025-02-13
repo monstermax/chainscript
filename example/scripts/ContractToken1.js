@@ -53,6 +53,11 @@ class ContractToken1 {
 
 
     transfer(recipient, amount) /* write */ {
+
+        // Usage:
+        // await token.transfer("0x123...", "1000");
+
+
         this.#burn(lower(caller), BigInt(amount));
         this.#mint(lower(recipient), BigInt(amount));
     }
@@ -72,6 +77,11 @@ class ContractToken1 {
 
     // ✅ Autorisation d’un "spender" pour dépenser les tokens du owner
     approve(spender, amount) /* write */ {
+
+        // Usage: 
+        // 1. => await token.approve("0xPoolContract", "5000");
+        // 2. => await token.transferFrom("0xUser", "0xLPContract", "5000");
+
         const owner = lower(caller);
         spender = lower(spender);
         amount = BigInt(amount);
@@ -89,6 +99,11 @@ class ContractToken1 {
 
     // ✅ Transfert via autorisation (spender → recipient)
     transferFrom(owner, recipient, amount) /* write */ {
+
+        // Usage: 
+        // 1. => await token.approve("0xPoolContract", "5000");
+        // 2. => await token.transferFrom("0xUser", "0xLPContract", "5000");
+
         const spender = lower(caller);
         owner = lower(owner);
         recipient = lower(recipient);
