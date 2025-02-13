@@ -1,11 +1,12 @@
 // abi.ts
 
 import { parse } from 'acorn';
-import { AbiCoder, keccak256, toUtf8Bytes } from "ethers";
-
+import { keccak256, toUtf8Bytes } from "ethers";
 import { createContext, Script } from "vm";
 
-import type { AbiClassMethod, CodeAbi, CodeAbiClassAttributes, CodeAbiClassMethods, CodeAbiClassMethod } from "./types/account.types";
+import { createSandboxMock } from './vm';
+
+import type { AbiClassMethod, CodeAbi, CodeAbiClassAttributes, CodeAbiClassMethods } from "./types/account.types";
 
 
 /* ######################################################### */
@@ -65,43 +66,7 @@ export function generateContractAbi(contractCode: string): CodeAbi {
 
 
     // Prépare le contexte d'exécution
-    const sandboxUtils: { [method: string]: Function } = {
-        log: console.log,
-
-        transfer: async (to: any, amount: bigint): Promise<void> => {},
-
-        call: async (callContractAddress: any, callClassName: string, callMethodName: string, callArgs: any[]): Promise<void> => {},
-
-        balance: (address: any) => {},
-
-        memory: (initialValues: any): void => {},
-
-        asserts: (condition: any): void => {},
-
-        getBlock: (blockHeight: number): void => {},
-
-        getBlockHash: (blockHeight: number): void => {},
-
-        getBlockHeight: (blockHash: any): void => {},
-
-        getBlockByHash: (blockHash: any): void => {},
-    }
-
-    const sandboxData: { [method: string]: any } = {
-        address: "",
-        caller: "",
-        decimals: 0,
-        fullcoin: 0n,
-        classNames,
-    }
-
-    const sandbox: { [methodOrVariable: string]: any } = {
-        ...sandboxUtils,
-        ...sandboxData,
-    };
-
-    Object.defineProperty(sandbox, 'constructor', { value: undefined });
-    Object.defineProperty(sandbox, 'this', { value: undefined });
+    const sandbox = createSandboxMock(classNames);
 
     const vmContext = createContext(sandbox)
 

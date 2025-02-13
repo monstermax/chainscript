@@ -79,7 +79,15 @@ function handleHttpRequest(blockchain: Blockchain, req: http.IncomingMessage, re
             return;
         }
 
-        const content = fs.readFileSync(templateFilepath);
+
+        const exampleContractFilepath = `${__dirname}/example/scripts/ContractToken1.js`;
+        const exampleContractCode  = fs.existsSync(exampleContractFilepath) ? fs.readFileSync(exampleContractFilepath).toString() : 'class ExampleContract { /* your code javascript here */ }';
+
+
+        let content = fs.readFileSync(templateFilepath).toString();
+
+        content = content.replace('</textarea>', `${exampleContractCode}</textarea>`);
+
         res.writeHead(200, { 'Content-Type': 'text/html' });
         res.end(content);
         return;

@@ -82,6 +82,32 @@ export async function execVm(
     //const contructorArgs = contractAccount.contructorArgs;
     const compiledScript = new Script(`(new ${className}).${methodName}(${stringifyParams(args)})`);
 
+    const sandbox = createSandbox(blockchain, caller, contractAddress, vmMonitor, memoryState);
+    const vmContext = createContext(sandbox)
+    //console.log('vmContext:', vmContext)
+
+
+    // Charge le code source du contrat
+    compiledCode.runInContext(vmContext, { breakOnSigint: true, timeout: 10 });
+
+
+    // Ajout à la stack d'exécution
+    vmMonitor.callStack.push(signatureString);
+
+
+    // ⚡ Exécute la méthode demandée
+    const scriptTimeout = 100; // TODO: à implémenter + l'ajouter à vmMonitor afin de gérer le temps d'execution d'un (sous) call et aussi le temps total d'execution (tous calls et sous-calls additionnés)
+    const vmResult = await compiledScript.runInContext(vmContext, { breakOnSigint: true, timeout: scriptTimeout });
+
+    console.log(`[execVm] ✅ Résultat de ${signatureString}:`, vmResult);
+
+    return { vmResult, vmMonitor };
+}
+
+
+
+// Créé un environnement sandbox pour la VM
+export function createSandbox(blockchain: Blockchain, caller: AccountAddress, contractAddress: AccountAddress, vmMonitor: VmMonitor, memoryState: MemoryState | null): { [methodOrVariable: string]: any } {
 
     // Prépare le contexte d'exécution
     const sandboxUtils: { [method: string]: Function } = {
@@ -117,6 +143,10 @@ export async function execVm(
 
         asserts,
 
+        lower: (str: string): string => str.toLowerCase(),
+
+        upper: (str: string): string => str.toUpperCase(),
+
         getBlock: (blockHeight: number): BlockData | null => {
             return blockchain.getBlock(blockHeight)?.toData() ?? null;
         },
@@ -135,10 +165,61 @@ export async function execVm(
     }
 
     const sandboxData: { [method: string]: any } = {
-        address: contractAddress,
-        caller: caller,
+        address: contractAddress, // TODO: à renommer en "self"
+        caller,
         decimals,
         fullcoin,
+    }
+
+    const sandbox: { [methodOrVariable: string]: any } = {
+        ...sandboxUtils,
+        ...sandboxData,
+
+        // Note: penser à mettre à jour `createSandboxMock()` ET `contract.dummy.ts` en cas de modification de sandboxUtils ou sandboxData
+    };
+
+    Object.defineProperty(sandbox, 'constructor', { value: undefined });
+    Object.defineProperty(sandbox, 'this', { value: undefined });
+
+    return sandbox;
+}
+
+
+
+// Ce mock sert uniquement lors du déploiement du contrat, pour générer l'Abi
+export function createSandboxMock(classNames: string[]): { [methodOrVariable: string]: any } {
+    const sandboxUtils: { [method: string]: Function } = {
+        log: console.log,
+
+        transfer: async (to: any, amount: bigint): Promise<void> => {},
+
+        call: async (callContractAddress: any, callClassName: string, callMethodName: string, callArgs: any[]): Promise<void> => {},
+
+        balance: (address: any) => {},
+
+        memory: (initialValues: any): void => {},
+
+        asserts: (condition: any): void => {},
+
+        lower: (str: string): string => "",
+
+        upper: (str: string): string => "",
+
+        getBlock: (blockHeight: number): void => {},
+
+        getBlockHash: (blockHeight: number): void => {},
+
+        getBlockHeight: (blockHash: any): void => {},
+
+        getBlockByHash: (blockHash: any): void => {},
+    }
+
+    const sandboxData: { [method: string]: any } = {
+        address: "",
+        caller: "",
+        decimals: 0,
+        fullcoin: 0n,
+        classNames,
     }
 
     const sandbox: { [methodOrVariable: string]: any } = {
@@ -149,27 +230,7 @@ export async function execVm(
     Object.defineProperty(sandbox, 'constructor', { value: undefined });
     Object.defineProperty(sandbox, 'this', { value: undefined });
 
-    const vmContext = createContext(sandbox)
-    //console.log('vmContext:', vmContext)
-
-
-    // Charge le code source du contrat
-    compiledCode.runInContext(vmContext, { breakOnSigint: true, timeout: 10 });
-
-
-    // Ajout à la stack d'exécution
-    vmMonitor.callStack.push(signatureString);
-
-
-    // ⚡ Exécute la méthode demandée
-    const scriptTimeout = 100; // TODO: à implémenter + l'ajouter à vmMonitor afin de gérer le temps d'execution d'un (sous) call et aussi le temps total d'execution (tous calls et sous-calls additionnés)
-    const vmResult = await compiledScript.runInContext(vmContext, { breakOnSigint: true, timeout: scriptTimeout });
-
-    console.log(`[execVm] ✅ Résultat de ${signatureString}:`, vmResult);
-
-    return { vmResult, vmMonitor };
+    return sandbox;
 }
-
-
 
 

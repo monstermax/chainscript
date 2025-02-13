@@ -6,9 +6,10 @@ class ContractToken1 {
     #memory = memory({
         supply: 10_000_000_000n * this.fulltoken,
         accounts: {
-            [this.owner.toLowerCase()]: 10_000_000_000n * this.fulltoken,
+            [lower(this.owner)]: 10_000_000_000n * this.fulltoken,
         },
     });
+
 
     get name() {
         return 'Test Token';
@@ -26,59 +27,82 @@ class ContractToken1 {
         return '0xee5392913a7930c233Aa711263f715f616114e9B';
     }
 
-
     get fulltoken() {
-        return BigInt(Math.pow(10, this.decimals));
+        return BigInt(10 ** this.decimals);
     }
+
 
     #mint(_address, amount) {
         this.#memory.supply += amount;
-
-        this.#memory.accounts[_address] = this.#memory.accounts[_address] ?? 0n;
-        this.#memory.accounts[_address] += amount;
+        this.#memory.accounts[_address] = (this.#memory.accounts[_address] ?? 0n) + amount;
     }
+
 
     #burn(_address, amount) {
         asserts(this.#memory.supply >= amount, `insufficient token supply : ${this.#memory.supply} < ${amount}`);
-        asserts(this.#memory.accounts[_address], `unknown account "${_address}"`);
-        asserts(this.#memory.accounts[_address] >= amount, `insufficient token balance : ${this.#memory.accounts[_address]} < ${amount}`);
+        asserts(this.#memory.accounts[_address] ?? 0n >= amount, `insufficient token balance : ${this.#memory.accounts[_address]} < ${amount}`);
+
         this.#memory.accounts[_address] -= amount;
         this.#memory.supply -= amount;
     }
 
+
     balanceOf(_address) {
-        _address = _address.toLowerCase();
-        return this.#memory.accounts[_address] ?? 0n;
+        return this.#memory.accounts[lower(_address)] ?? 0n;
     }
+
 
     transfer(recipient, amount) /* write */ {
-        this.#burn(caller.toLowerCase(), BigInt(amount));
-        this.#mint(recipient.toLowerCase(), BigInt(amount));
+        this.#burn(lower(caller), BigInt(amount));
+        this.#mint(lower(recipient), BigInt(amount));
     }
 
 
-    getCoinsBalance() {
-        log('DEBUG getCoinsBalance: START')
+    // ✅ Transfert direct (sender → recipient)
+    transfer(recipient, amount) /* write */ {
+        const sender = lower(caller);
+        recipient = lower(recipient);
+        amount = BigInt(amount);
 
-        const coinsBalance = balance(address);
+        asserts(this.#memory.accounts[sender] ?? 0n >= amount, "Insufficient balance");
 
-        log('DEBUG getCoinsBalance: END')
-
-        return coinsBalance;
+        this.#memory.accounts[sender] -= amount;
+        this.#memory.accounts[recipient] = (this.#memory.accounts[recipient] ?? 0n) + amount;
     }
 
+    // ✅ Autorisation d’un "spender" pour dépenser les tokens du owner
+    approve(spender, amount) /* write */ {
+        const owner = lower(caller);
+        spender = lower(spender);
+        amount = BigInt(amount);
 
-    getTokenPrice() {
-        log('DEBUG getTokenPrice: START')
+        this.#memory.allowances[owner] = this.#memory.allowances[owner] || {};
+        this.#memory.allowances[owner][spender] = amount;
+    }
 
-        const coinsBalance = balance(address);
+    // ✅ Vérifie combien un "spender" peut dépenser depuis "owner"
+    allowance(owner, spender) {
+        owner = lower(owner);
+        spender = lower(spender);
+        return this.#memory.allowances[owner]?.[spender] ?? 0n;
+    }
 
-        const tokensPrice = coinsBalance / this.#memory.supply;
-        log('tokensPrice', tokensPrice)
+    // ✅ Transfert via autorisation (spender → recipient)
+    transferFrom(owner, recipient, amount) /* write */ {
+        const spender = lower(caller);
+        owner = lower(owner);
+        recipient = lower(recipient);
+        amount = BigInt(amount);
 
-        log('DEBUG getTokenPrice: END')
+        asserts(this.#memory.accounts[owner] ?? 0n >= amount, "Insufficient balance");
+        asserts(this.#memory.allowances[owner]?.[spender] ?? 0n >= amount, "Allowance exceeded");
 
-        return tokensPrice;
+        // Déduire l'allocation et les tokens du owner
+        this.#memory.allowances[owner][spender] -= amount;
+        this.#memory.accounts[owner] -= amount;
+
+        // Ajouter les tokens au recipient
+        this.#memory.accounts[recipient] = (this.#memory.accounts[recipient] ?? 0n) + amount;
     }
 
 }
