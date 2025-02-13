@@ -6,11 +6,9 @@ import { asserts, stringifyParams } from "./utils";
 import { decimals, fullcoin } from './config';
 import { Blockchain } from './blockchain';
 import { MemoryState } from "./stateManager";
-import { findMethodAbi } from "./abi";
 
 import type { AccountAddress, CodeAbiClass, CodeAbiClassMethod, ContractMemory } from "./types/account.types";
 import type { BlockData, BlockHash } from "./types/block.types";
-import { keccak256, toUtf8Bytes } from "ethers";
 
 
 
@@ -148,6 +146,7 @@ export function createSandbox(blockchain: Blockchain, caller: AccountAddress, co
         asserts,
 
         //revert, // TODO
+        //hash, // TODO
 
         lower: (str: string): string => str.toLowerCase(),
 
