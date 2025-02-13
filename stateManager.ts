@@ -52,7 +52,7 @@ export class StateManager {
     }
 
 
-    /** 📥 Charge l'état général et vérifie l'intégrité */
+    /** Charge l'état général et vérifie l'intégrité */
     loadMetadata(): BlockchainMetadata {
         console.log(`[${now()}][State.loadMetadata]`);
 
@@ -88,7 +88,7 @@ export class StateManager {
     }
 
 
-    /** 📥 Sauvegarde l'état général */
+    /** Sauvegarde l'état général */
     saveMetadata(): void {
         //console.log(`[${now()}][State.saveMetadata]`);
 
@@ -111,7 +111,7 @@ export class StateManager {
 
 
 
-    /** 🔄 Charge l'index des blocks */
+    /** Charge l'index des blocks */
     loadBlocksIndex(): number {
         //console.log(`[${now()}][State.loadBlocksIndex]`);
 
@@ -127,7 +127,7 @@ export class StateManager {
     }
 
 
-    /** 💾 Sauvegarde l’index des blocks */
+    /** Sauvegarde l’index des blocks */
     saveBlocksIndex(): void {
         //console.log(`[${now()}][State.saveBlocksIndex]`);
 
@@ -136,7 +136,7 @@ export class StateManager {
 
 
 
-    /** 🔄 Charge l'index des transactions */
+    /** Charge l'index des transactions */
     loadTransactionsIndex(): number {
         //console.log(`[${now()}][State.loadTransactionsIndex]`);
 
@@ -152,7 +152,7 @@ export class StateManager {
     }
 
 
-    /** 💾 Sauvegarde l’index des transactions */
+    /** Sauvegarde l’index des transactions */
     saveTransactionsIndex(): void {
         //console.log(`[${now()}][State.saveTransactionsIndex]`);
 
@@ -161,7 +161,7 @@ export class StateManager {
 
 
 
-    /** 📤 Charge un block et vérifie son intégrité */
+    /** Charge un block et vérifie son intégrité */
     loadBlock(blockHeight: number): Block | null {
         //console.log(`[${now()}][State.loadBlock]`, blockHeight);
 
@@ -209,7 +209,7 @@ export class StateManager {
     }
 
 
-    /** 📥 Sauvegarde un block et met à jour le hash incrémental */
+    /** Sauvegarde un block et met à jour le hash incrémental */
     saveBlock(block: Block): void {
         //console.log(`[${now()}][State.saveBlock]`, block.blockHeight);
 
@@ -222,7 +222,7 @@ export class StateManager {
 
 
 
-    /** 🔄 Charge l'index des accounts */
+    /** Charge l'index des accounts */
     loadAccountsIndex(): number {
         //console.log(`[${now()}][State.loadAccountsIndex]`);
 
@@ -238,7 +238,7 @@ export class StateManager {
     }
 
 
-    /** 💾 Sauvegarde l’index des accounts */
+    /** Sauvegarde l’index des accounts */
     saveAccountsIndex(): void {
         //console.log(`[${now()}][State.saveAccountsIndex]`);
 
@@ -246,7 +246,7 @@ export class StateManager {
     }
 
 
-    /** 📤 Charge un compte et vérifie son intégrité */
+    /** Charge un compte et vérifie son intégrité */
     loadAccount(address: AccountAddress): Account | null {
         //console.log(`[${now()}][State.loadAccount]`, address);
 
@@ -285,7 +285,7 @@ export class StateManager {
     }
 
 
-    /** 📥 Sauvegarde un compte et met à jour le hash incrémental */
+    /** Sauvegarde un compte et met à jour le hash incrémental */
     saveAccount(account: Account): void {
         //console.log(`[${now()}][State.saveAccount]`, account.address);
 

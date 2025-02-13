@@ -121,7 +121,7 @@ export class Blockchain {
     }
 
 
-    /** 📤 Retourne le hash d’un block à partir de son height */
+    /** Retourne le hash d’un block à partir de son height */
     getBlockHash(blockHeight: number): string | null {
         return this.stateManager.blocksIndex[blockHeight] ?? null;
     }

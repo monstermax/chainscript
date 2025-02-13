@@ -22,6 +22,7 @@ export class BlocksMiner {
     }
 
 
+    /** Démarre la loop où on essayera toutes les N secondes de miner un nouveau block */
     start() {
         const delay = 10_000;
         const miner = this;
@@ -34,6 +35,7 @@ export class BlocksMiner {
     }
 
 
+    /** Essaye de miner un block */
     async tryToMine() {
         console.log(`[${now()}][Miner.tryToMine]`);
 

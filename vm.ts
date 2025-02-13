@@ -110,7 +110,7 @@ export async function execVm(
 
 
 
-// Créé un environnement sandbox pour la VM
+/** Créé un environnement sandbox pour la VM */
 export function createSandbox(blockchain: Blockchain, caller: AccountAddress, contractAddress: AccountAddress, vmMonitor: VmMonitor, memoryState: MemoryState | null): { [methodOrVariable: string]: any } {
 
     // Prépare le contexte d'exécution
@@ -192,7 +192,7 @@ export function createSandbox(blockchain: Blockchain, caller: AccountAddress, co
 
 
 
-// Ce mock sert uniquement lors du déploiement du contrat, pour générer l'Abi
+/** Ce mock sert uniquement lors du déploiement du contrat, pour générer l'Abi */
 export function createSandboxMock(classNames: string[]): { [methodOrVariable: string]: any } {
     const sandboxUtils: { [method: string]: Function } = {
         log: console.log,

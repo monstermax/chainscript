@@ -12,11 +12,12 @@ import type { AbiClassMethod, CodeAbi, CodeAbiClassAttributes, CodeAbiClassMetho
 /* ######################################################### */
 
 
+/** Cherche la classe & method correspondant à la signature (encodée) fournie */
 export function findMethodAbi(abi: CodeAbi, methodSignature: string): AbiClassMethod | null {
     for (const abiClass of abi) {
         for (const [methodName, abiClassMethod] of Object.entries(abiClass.methods)) {
-            // 🔥 Correction du format de signature pour être compatible avec Ethers.js
-            //const inputTypes = (methodData.inputs ?? []).map(type => type === "_address" ? "address" : "string").join(",");
+
+            // On force tous les types (inputs) en string (car JS n'est pas typé)
             const inputTypes = (abiClassMethod.inputs ?? []).map(name => "string").join(",");
             const signatureString = `${methodName}(${inputTypes})`; // 🔄 Supprime le `className.`
 
@@ -57,7 +58,7 @@ export function encodeCallData(className: string, methodName: string, args: any[
 */
 
 
-// Détecte dynamiquement les propriétés et méthodes d'un contrat
+/** Détecte dynamiquement les propriétés et méthodes d'un contrat */
 export function generateContractAbi(contractCode: string): CodeAbi {
     const abi: CodeAbi = [];
 
@@ -164,7 +165,7 @@ export function getFunctionParams(func: Function): { params: string[], isWrite: 
 }
 
 
-
+/** Construit l'Abi de toutes les classes demandées */
 export function buildAbi(classNames: string[]) {
     const abi: CodeAbi = [];
 
@@ -183,6 +184,7 @@ export function buildAbi(classNames: string[]) {
 }
 
 
+/** Trouve et extrait la liste des classes JS dans du code sous forme de string */
 export function extractClassNamesWithAcorn(contractCode: string): string[] {
     const ast = parse(contractCode, { ecmaVersion: "latest" });
     const classNames: string[] = [];

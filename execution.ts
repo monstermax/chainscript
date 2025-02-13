@@ -21,7 +21,7 @@ import type { callTxParams, sendTxParams as SendTxParams } from './types/rpc.typ
 /* ######################################################### */
 
 
-// Execute un contrat (en lecture seule) dans la VM et retourne le résultat
+/** Execute un contrat (en lecture seule) dans la VM et retourne le résultat */
 export async function handleEthCall(blockchain: Blockchain, txParams: callTxParams): Promise<any> {
     const contractAccount = blockchain.getAccount(txParams.to as AccountAddress, null);
     asserts(contractAccount.abi, `[handleEthCall] contract abi not found. may not be a contract...`);
@@ -341,12 +341,12 @@ export function decodeTxData(data: string, abiClassMethod: AbiClassMethod): any[
     //const types = abiClassMethod.method.inputs.map(_ => 'string'); // supposons que tous les parametre de la methode soient des string (le plus safe pour JS)
 
     // On force tous les types (inputs) en string (car JS n'est pas typé)
-    const types = abiClassMethod.method.inputs.map(inputName => "string");
+    const inputTypes = abiClassMethod.method.inputs.map(inputName => "string");
 
     console.log(`[decodeTxData] 📥 Décodage des arguments:`, encodedParams);
 
     try {
-        const result = coder.decode(types, "0x" + encodedParams);
+        const result = coder.decode(inputTypes, "0x" + encodedParams);
         return result;
 
     } catch (err: any) {
@@ -355,3 +355,4 @@ export function decodeTxData(data: string, abiClassMethod: AbiClassMethod): any[
         throw err;
     }
 }
+

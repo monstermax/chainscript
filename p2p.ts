@@ -73,7 +73,7 @@ export class P2PNode {
     }
 
 
-    /** 🎲 Génère un ID unique pour ce nœud */
+    /** Génère un ID unique pour ce nœud */
     private generateNodeId(): string {
         if (typeof crypto.randomUUID === "function") {
             return crypto.randomUUID(); // Méthode moderne (Node.js 14+)
@@ -83,7 +83,7 @@ export class P2PNode {
     }
 
 
-    /** 📡 Démarre un nœud WebSocket */
+    /** Démarre un nœud WebSocket */
     startServer() {
         const server = new WebSocketServer({ port: this.port });
 
@@ -99,7 +99,7 @@ export class P2PNode {
     }
 
 
-    /** 🌍 Connecte aux peers initiaux */
+    /** Connecte aux peers initiaux */
     private connectToInitialPeers() {
         initialPeers.forEach(peer => {
             if (peer === `127.0.0.1:${this.port}`) {
@@ -115,7 +115,7 @@ export class P2PNode {
 
 
 
-    /** 🌍 Se connecte à un autre nœud */
+    /** Se connecte à un autre nœud */
     connectToPeer(peerUrl: string) {
         const ws = new WebSocket(peerUrl);
 
@@ -130,7 +130,7 @@ export class P2PNode {
     }
 
 
-    /** 🔌 Initialise un socket WebSocket */
+    /** Initialise un socket WebSocket */
     private initSocket(ws: WebSocket) {
         this.sockets.push(ws);
 
@@ -139,7 +139,7 @@ export class P2PNode {
     }
 
 
-    /** 📩 Gère les messages reçus */
+    /** Gère les messages reçus */
     private async handleMessage(ws: WebSocket, message: string) {
         try {
             const { type, data }: P2PMessage = JSON.parse(message, jsonReviver);
@@ -178,7 +178,7 @@ export class P2PNode {
     }
 
 
-    /** 📤 Envoie les métadonnées du nœud à un peer */
+    /** Envoie les métadonnées du nœud à un peer */
     private sendMyMetadata(ws: WebSocket, isAcknowledge=false) {
         const message: P2PMessage = {
             type: isAcknowledge ? 'NODE_METADATA_ACK' : 'NODE_METADATA',
@@ -195,7 +195,7 @@ export class P2PNode {
     }
 
 
-    /** ✅ Vérifie si un peer est compatible avant d'autoriser la connexion */
+    /** Vérifie si un peer est compatible avant d'autoriser la connexion */
     private validatePeer(ws: WebSocket, metadata: PeerMetadata, isAcknowledge = false) {
         console.log(`[${now()}][P2P][validatePeer] 🔍 Vérification des métadonnées du peer`, metadata);
 
@@ -245,7 +245,7 @@ export class P2PNode {
     }
 
 
-    /** 🔄 Démarre la synchronisation des blocks manquants */
+    /** Démarre la synchronisation des blocks manquants */
     private startBlockchainSync() {
         if (this.isSyncing) return;
 
@@ -264,7 +264,7 @@ export class P2PNode {
     }
 
 
-    /** 🔄 Traite la file d'attente des blocks manquants */
+    /** Traite la file d'attente des blocks manquants */
     private processBlockSyncQueue() {
         if (this.blockSyncQueue.size === 0) {
             console.log(`[${now()}][P2P][processBlockSyncQueue] ✅ Synchronisation terminée.`);
@@ -305,27 +305,27 @@ export class P2PNode {
     }
 
 
-    /** 📤 Diffuse un nouveau block */
+    /** Diffuse un nouveau block */
     broadcastBlock(block: Block) {
         console.log(`[${now()}][P2P][broadcastBlock] 📢 Diffusion d'un nouveau block`);
         this.broadcast({ type: 'NEW_BLOCK', data: block.toData() });
     }
 
 
-    /** 📤 Diffuse une nouvelle transaction */
+    /** Diffuse une nouvelle transaction */
     broadcastTransaction(transaction: Transaction) {
         console.log(`[${now()}][P2P][broadcastTransaction] 📢 Diffusion d'une nouvelle transaction`);
         this.broadcast({ type: 'NEW_TRANSACTION', data: transaction.toData() });
     }
 
 
-    /** 📤 Envoie un message à tous les peers */
+    /** Envoie un message à tous les peers */
     private broadcast(message: P2PMessage) {
         this.sockets.forEach(ws => ws.send(JSON.stringify(message, jsonReplacer)));
     }
 
 
-    /** 🔄 Gère la réception d'un nouveau block */
+    /** Gère la réception d'un nouveau block */
     private async handleNewBlock(blockData: BlockData) {
         const localHeight = this.blockchain.blockHeight;
 
@@ -364,7 +364,7 @@ export class P2PNode {
     }
 
 
-    /** 🔄 Gère la réception d'une nouvelle transaction */
+    /** Gère la réception d'une nouvelle transaction */
     private handleNewTransaction(txData: TransactionData) {
         console.log(`[${now()}][P2P][handleNewTransaction] 💰 Nouvelle transaction reçue`);
 
@@ -388,7 +388,7 @@ export class P2PNode {
     }
 
 
-    /** 🔄 Envoie un block à un peer */
+    /** Envoie un block à un peer */
     private sendBlock(ws: WebSocket, blockHeight: number) {
         const block = this.blockchain.getBlock(blockHeight);
         if (!block) return;
