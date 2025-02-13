@@ -12,15 +12,15 @@ class ContractToken1 {
 
 
     get name() {
-        return 'Test Token';
+        return 'Bitcoin.JS';
     }
 
     get symbol() {
-        return 'TOK';
+        return 'BTCjs';
     }
 
     get decimals() {
-        return 9;
+        return 8;
     }
 
     get owner() {
@@ -63,7 +63,7 @@ class ContractToken1 {
     }
 
 
-    // ✅ Transfert direct (sender → recipient)
+    // Transfert direct (sender → recipient)
     transfer(recipient, amount) /* write */ {
         const sender = lower(caller);
         recipient = lower(recipient);
@@ -75,7 +75,7 @@ class ContractToken1 {
         this.#memory.accounts[recipient] = (this.#memory.accounts[recipient] ?? 0n) + amount;
     }
 
-    // ✅ Autorisation d’un "spender" pour dépenser les tokens du owner
+    // Autorisation d’un "spender" pour dépenser les tokens du owner
     approve(spender, amount) /* write */ {
 
         // Usage: 
@@ -90,14 +90,14 @@ class ContractToken1 {
         this.#memory.allowances[owner][spender] = amount;
     }
 
-    // ✅ Vérifie combien un "spender" peut dépenser depuis "owner"
+    // Vérifie combien un "spender" peut dépenser depuis "owner"
     allowance(owner, spender) {
         owner = lower(owner);
         spender = lower(spender);
         return this.#memory.allowances[owner]?.[spender] ?? 0n;
     }
 
-    // ✅ Transfert via autorisation (spender → recipient)
+    // Transfert via autorisation (spender → recipient)
     transferFrom(owner, recipient, amount) /* write */ {
 
         // Usage: 

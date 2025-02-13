@@ -72,12 +72,14 @@ export function generateContractAbi(contractCode: string): CodeAbi {
 
 
     // 📌 Exécute le code dans un contexte isolé pour identifier les classes
-    const compiledSourceCode = new Script(contractCode);
+    const compiledSourceCode: Script = new Script(contractCode);
 
-    const getClassPropertiesString = getClassProperties.toString();
-    const getFunctionParamsString = getFunctionParams.toString();
-    const buildAbiString = buildAbi.toString();
+    const getClassPropertiesString = getClassProperties.toString(); // Traduit le code (Typescript) de la fonction "getClassProperties" en string (transcodé en JS).
+    const getFunctionParamsString = getFunctionParams.toString(); // Traduit le code (Typescript) de la fonction "getFunctionParams" en string (transcodé en JS).
+    const buildAbiString = buildAbi.toString(); // Traduit le code (Typescript) de la fonction "buildAbi" en string.
     const classNamesString = '[' + classNames.map(className => `'${className}'`).join(', ') + ']';
+
+    // Note: voir si on pourrait pas accepter un contractCode écrit en Typescript et en le transcodant via new Function(contractCode).toString()
 
     const searchCode = `
         ${getClassPropertiesString}
@@ -86,10 +88,12 @@ export function generateContractAbi(contractCode: string): CodeAbi {
         buildAbi(${classNamesString});
     `;
 
-    const compiledSearchCode = new Script(searchCode);
+    const compiledSearchCode: Script = new Script(searchCode);
 
     // Charge le code source du contrat
     compiledSourceCode.runInContext(vmContext, { breakOnSigint: true, timeout: 10 });
+
+    // Execute l'analyseur de code
     const result = compiledSearchCode.runInContext(vmContext, { breakOnSigint: true, timeout: 10 });
 
     abi.push(...result);

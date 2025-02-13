@@ -1,5 +1,7 @@
 // NFTToken.js
 
+// non testé. merci chatgpt
+
 
 class NFTToken {
     #memory = memory({

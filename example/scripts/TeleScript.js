@@ -1,5 +1,7 @@
 // TeleScript.js
 
+// non testé. merci chatgpt
+
 
 /*
 

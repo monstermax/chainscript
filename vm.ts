@@ -77,10 +77,14 @@ export async function execVm(
     //}
 
 
+    const contractCode: string = contractAccount.code;
+    // Note: voir si on pourrait pas accepter un contractCode écrit en Typescript et en le transcodant via new Function(contractCode).toString()
+
+
     // Compile le code du contrat
-    const compiledCode = new Script(contractAccount.code);
+    const compiledCode: Script = new Script(contractCode);
     //const contructorArgs = contractAccount.contructorArgs;
-    const compiledScript = new Script(`(new ${className}).${methodName}(${stringifyParams(args)})`);
+    const compiledScript: Script = new Script(`(new ${className}).${methodName}(${stringifyParams(args)})`);
 
     const sandbox = createSandbox(blockchain, caller, contractAddress, vmMonitor, memoryState);
     const vmContext = createContext(sandbox)
