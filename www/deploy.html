@@ -371,6 +371,36 @@ function convertCustomAbiToEthersFormat(customAbi) {
 }
 
 
+
+async function addChainToMetamask() {
+    // https://docs.metamask.io/wallet/reference/json-rpc-methods/wallet_addethereumchain/
+
+    const explorerUrlSsl = [ 'http://localhost:8545' ];
+
+    const chainName = "DEV (Localhost)";
+    const chainId = '0x' + (9999999999).toString(16);
+    const rpcUrls = [ explorerUrlSsl ];
+    const blockExplorerUrls = [ explorerUrlSsl ];
+    const nativeCurrency = {
+        name: "DEV",
+        symbol: "DEV",
+        decimals: 18,
+    };
+
+    try {
+        await ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [{ chainId, chainName, nativeCurrency, rpcUrls, blockExplorerUrls }],
+        });
+
+    } catch (e) {
+        console.warn("Failed to add chain");
+    }
+}
+
+
+
+
 </script>
 
 
