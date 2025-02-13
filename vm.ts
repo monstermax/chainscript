@@ -143,6 +143,8 @@ export function createSandbox(blockchain: Blockchain, caller: AccountAddress, co
 
         asserts,
 
+        //revert, // TODO
+
         lower: (str: string): string => str.toLowerCase(),
 
         upper: (str: string): string => str.toUpperCase(),

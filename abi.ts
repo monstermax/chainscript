@@ -145,9 +145,13 @@ export function getFunctionParams(func: Function): { params: string[], isWrite: 
     const commentsMatch = [...headerString.matchAll(/\/\*([\s\S]*?)\*\//g)];
     const comments = commentsMatch.map(match => match[1].trim()).join(" "); // Concaténer tous les commentaires
 
-    // 📌 Extraire les paramètres normalement
+    // 📌 Extraire les paramètres en enlevant les valeurs par défaut (`=` et après)
     const match = headerString.match(/\(([^)]*)\)/);
-    const params = match ? match[1].split(',').map(param => param.trim()).filter(param => param.length > 0) : [];
+    const params = match
+        ? match[1].split(',')
+            .map(param => param.split('=')[0].trim())  // Supprime la valeur par défaut
+            .filter(param => param.length > 0)
+        : [];
 
     // 📝 Vérifier si le commentaire contient " write " (avec espaces pour éviter des faux positifs)
     const isWrite = ` ${comments} `.includes(" write ");
