@@ -489,7 +489,10 @@ export class Blockchain {
 
 
         if (! block.hash) {
-            // Si on est en train de créer un nouveau block, on défini son hash précédemment calculé
+            // Si on est en train de créer un nouveau block, on vérifie le challenge de difficulté puis on défini son hash précédemment calculé
+
+            // TODO: introduire la notion de difficulté et boucler sur la ligne `computeHash()` en incrementant le nonce tant que la condition de difficulté n'est pas remplie
+
             block.hash = blockHash;
 
         } else {
