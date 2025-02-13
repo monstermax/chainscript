@@ -145,12 +145,12 @@ export class Blockchain {
 
     getTransactionByHash(txHash: TransactionHash): Transaction | null {
 
-        // 1. cherche dans les transactions en memoire
+        // 1. Vérifie si la transaction est déjà en mémoire
         //const memoryState: MemoryState = this.memoryState;
-        // non disponible
+        // non disponible => TODO: implémenter un cache (comme blocks & accounts) ou un LRU
 
 
-        // 2. cherche dans les transactions sur disque
+        // 2. Vérifie si la transaction est sur disque
         if (txHash in this.stateManager.transactionsIndex) {
             const blockHeight = this.stateManager.transactionsIndex[txHash];
 
