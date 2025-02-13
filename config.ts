@@ -3,10 +3,10 @@
 
 // Blockchain config
 export const symbol = "DEV";
-export const decimals = 18;
+export const decimals = 18; // ne pas changer pour conserver la compatibilité Metamask (EVM)
 export const fullcoin = BigInt(10 ** decimals);
 export const blockReward = 50n * fullcoin;
-export const chainId = 9999999999; // available in metamask
+export const chainId = 9999999999; // disponible dans metamask
 export const networkVersion = 1;
 
 
@@ -19,8 +19,6 @@ export const initialPeers = [
     "192.168.1.113:6001",
     "127.0.0.1:6002",
     "127.0.0.1:6003",
-    //"127.0.0.1:6004",
-    //"127.0.0.1:6005",
 ];
 
 
