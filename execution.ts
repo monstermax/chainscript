@@ -72,7 +72,7 @@ export async function handleEthSendTransaction(blockchain: Blockchain, txData: T
 
 
 
-// Transcode un txParams (format Ethereum) au format TransactionData (Typescript Blockchain) en y ajoutant des instructions
+/** Transcode un txParams (format Ethereum) au format TransactionData (Typescript Blockchain) en y ajoutant des instructions */
 export function transcodeTx(blockchain: Blockchain, txParams: SendTxParams): TransactionData {
     asserts(typeof txParams.nonce === 'string', `[transcodeTx] missing transaction nonce`);
 
@@ -212,7 +212,7 @@ export function decodeRawTransaction(blockchain: Blockchain, txRawData: string):
 
 
 
-
+/** Exécute une transaction (d'un block) */
 export async function executeTransaction(blockchain: Blockchain, block: Block, tx: Transaction): Promise<TransactionReceipt> {
     let txFees: bigint = 0n;
     let amountUsed: bigint = 0n;
@@ -331,22 +331,17 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
 
 
 
-// Décode un `eth_call` reçu en argument et retourne une liste d'arguments décodés
+/** Décode un `eth_call` (ou les `data` d'un `eth_sendRawTransaction`) reçu en argument et retourne une liste d'arguments décodés */
 export function decodeTxData(data: string, abiClassMethod: AbiClassMethod): any[] {
     if (!abiClassMethod.method.inputs || abiClassMethod.method.inputs.length === 0) return [];
 
     const coder = new AbiCoder();
-    const encodedParams = data.slice(10); // Supprime la signature de 4 bytes
+    const encodedParams = data.slice(10); // TODO: slice à revoir pour éviter le "decodeTxData('00' + txParams.data, ..." dans la fonction transcodeTx
 
     //const types = abiClassMethod.method.inputs.map(_ => 'string'); // supposons que tous les parametre de la methode soient des string (le plus safe pour JS)
 
-    // Utiliser les vrais types des paramètres extraits de l'ABI
-    const types = abiClassMethod.method.inputs.map(inputName => {
-        // 🎯 Corrige le type si nécessaire
-        //if (inputName.includes("address")) return "address";
-        //if (inputName.includes("amount")) return "uint256"; // Supposition logique
-        return "string"; // Fallback pour JS
-    });
+    // On force tous les types (inputs) en string (car JS n'est pas typé)
+    const types = abiClassMethod.method.inputs.map(inputName => "string");
 
     console.log(`[decodeTxData] 📥 Décodage des arguments:`, encodedParams);
 

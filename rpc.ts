@@ -411,9 +411,11 @@ function handleRpcRequest(blockchain: Blockchain, req: http.IncomingMessage, res
 
 
 
-
+/** Formatte (en string) le résultat d'un `eth_call` */
 function formatRpcResult(result: any): any {
     const coder = new AbiCoder();
+
+    // On force tous les types (outputs) en string (car JS n'est pas typé)
 
     if (typeof result === "bigint") {
         return hexlify(coder.encode(["string"], [result.toString()]));
