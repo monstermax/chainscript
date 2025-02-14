@@ -53,6 +53,12 @@ function memory(initialValues: ContractMemory): ContractMemory { return {} };
 /** Retourne une erreur si la condition n'est pas satisfaite */
 function asserts(condition: boolean, message?: string): asserts condition {};
 
+/** Déclenche une exception et stoppe la transaction courante */
+function revert(message?: string): never { throw new Error(); };
+
+/** Calcul le hash d'une chaine */
+function hash(dataToHash: string): string { return ''; };
+
 /** Convertit une chaine en minuscule */
 function lower(str: string): string { return ''; };
 

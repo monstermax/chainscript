@@ -8,6 +8,7 @@ class ContractToken1 {
         accounts: {
             [lower(this.owner)]: 10_000_000_000n * this.fulltoken,
         },
+        allowances: {},
     });
 
 

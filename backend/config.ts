@@ -24,9 +24,9 @@ export const initialPeers = [
 
 
 // Mining config
-export const blockDelayMin = 10_000; // pas plus d'un bloc toutes les N secondes
+export const blockDelayMin =  3_000; // pas plus d'un bloc toutes les N secondes
 export const blockDelayMax = 60_000; // au moins un bloc toutes les N secondes
-export const blockMinTransactions = 0; // au moins N transactions par block
+export const blockMinTransactions = 1; // au moins N transactions par block
 export const blockMaxTransactions = 10; // pas plus de N transactions par block
 
 

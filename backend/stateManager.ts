@@ -33,8 +33,8 @@ export class StateManager {
     public lastBlockHash: HexNumber = '0x';
     public blocksIndex: BlocksIndex = []; // Tableau où l’index représente `blockHeight` et la valeur est `blockHash`
     public accountsIndex: AccountsIndex = {}; // Tableau où l’index représente `address` et la valeur est `accountHash`
-    public transactionsIndex: TransactionsIndex = {}; // Tableau où l’index représente `transactionHash` et la valeur est `blockHeight`
-    private paths: Record<string, string> = {};
+    public transactionsIndex: TransactionsIndex = {}; // Tableau où l’index représente `txHash` et la valeur est `blockHeight`
+    public paths: Record<string, string> = {};
 
 
     constructor(blockchain: Blockchain) {

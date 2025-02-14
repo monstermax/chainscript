@@ -2,7 +2,7 @@
 
 import { createContext, Script } from "vm"; // https://nodejs.org/api/vm.html
 
-import { asserts, stringifyParams } from "./utils";
+import { asserts, computeStrHash, stringifyParams } from "./utils";
 import { decimals, fullcoin } from './config';
 import { Blockchain } from './blockchain';
 import { MemoryState } from "./stateManager";
@@ -30,7 +30,7 @@ export async function execVm(
     args: any[],
     memoryState: MemoryState | null,
     vmMonitor?: VmMonitor,
-): Promise<{ vmResult: any, vmMonitor: VmMonitor }> {
+): Promise<{ vmResult: any | null, vmMonitor: VmMonitor, vmError: any | null }> {
 
     if (! vmMonitor) {
         vmMonitor = { totalCalls: 0, gasUsed: 0n, callStack: []};
@@ -99,11 +99,16 @@ export async function execVm(
 
     // ⚡ Exécute la méthode demandée
     const scriptTimeout = 100; // TODO: à implémenter + l'ajouter à vmMonitor afin de gérer le temps d'execution d'un (sous) call et aussi le temps total d'execution (tous calls et sous-calls additionnés)
-    const vmResult = await compiledScript.runInContext(vmContext, { breakOnSigint: true, timeout: scriptTimeout });
 
-    console.log(`[execVm] ✅ Résultat de ${signatureString}:`, vmResult);
+    try {
+        const vmResult = await compiledScript.runInContext(vmContext, { breakOnSigint: true, timeout: scriptTimeout });
+        //console.log(`[execVm] ✅ Résultat de ${signatureString}:`, vmResult);
 
-    return { vmResult, vmMonitor };
+        return { vmResult, vmMonitor, vmError: null };
+
+    } catch (vmError: any) {
+        return { vmResult: null, vmMonitor, vmError };
+    }
 }
 
 
@@ -145,8 +150,9 @@ export function createSandbox(blockchain: Blockchain, caller: AccountAddress, co
 
         asserts,
 
-        //revert, // TODO
-        //hash, // TODO
+        revert: (message?: string) => { throw new Error(message ?? "Reverted") },
+
+        hash: computeStrHash,
 
         lower: (str: string): string => str.toLowerCase(),
 
@@ -202,21 +208,25 @@ export function createSandboxMock(classNames: string[]): { [methodOrVariable: st
 
         balance: (address: any) => {},
 
-        memory: (initialValues: any): void => {},
+        memory: (initialValues: any) => {},
 
-        asserts: (condition: any): void => {},
+        asserts: (condition: any) => {},
 
-        lower: (str: string): string => "",
+        revert: (message?: string) => {},
 
-        upper: (str: string): string => "",
+        hash: (dataToHash: string) => {},
 
-        getBlock: (blockHeight: number): void => {},
+        lower: (str: string) => {},
 
-        getBlockHash: (blockHeight: number): void => {},
+        upper: (str: string) => {},
 
-        getBlockHeight: (blockHash: any): void => {},
+        getBlock: (blockHeight: number) => {},
 
-        getBlockByHash: (blockHash: any): void => {},
+        getBlockHash: (blockHeight: number) => {},
+
+        getBlockHeight: (blockHash: any) => {},
+
+        getBlockByHash: (blockHash: any) => {},
     }
 
     const sandboxData: { [method: string]: any } = {

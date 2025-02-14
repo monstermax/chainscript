@@ -41,9 +41,15 @@ export async function handleEthCall(blockchain: Blockchain, txParams: callTxPara
     console.log(`[handleEthCall] Arguments décodés:`, args)
 
     // Execution du code dans la VM
-    const { vmResult, vmMonitor } = await execVm(blockchain, txParams.from, txParams.to, abiClassMethod.className, abiClassMethod.methodName, args, null);
+    const { vmResult, vmMonitor, vmError } = await execVm(blockchain, txParams.from, txParams.to, abiClassMethod.className, abiClassMethod.methodName, args, null);
 
-    console.log(`[handleEthCall] ✅ Résultat:`, vmResult);
+    if (vmError) {
+        console.log(`[handleEthCall] ❌ Error:`, vmError);
+
+    } else {
+        console.log(`[handleEthCall] ✅ Résultat:`, vmResult);
+    }
+
     console.log(`[handleEthCall] 🔍 Nombre total de calls:`, vmMonitor.totalCalls);
     console.log(`[handleEthCall] 📜 Stack des calls:`, vmMonitor.callStack.join(" -> "));
 
@@ -277,9 +283,16 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
                 // Execute script
 
                 // Load source code
-                const { vmResult, vmMonitor } = await execVm(blockchain, tx.from, instruction.contractAddress, instruction.className, instruction.methodName, instruction.args, blockchain.memoryState)
+                const { vmResult, vmMonitor, vmError } = await execVm(blockchain, tx.from, instruction.contractAddress, instruction.className, instruction.methodName, instruction.args, blockchain.memoryState)
 
-                console.log(`[executeTransaction][vmResult] ✅ Résultat:`, vmResult); // pas de résultat attendu pour un sendTransaction
+                if (vmError) {
+                    console.log(`[executeTransaction] ❌ Error:`, vmError);
+                    throw new Error(vmError);
+
+                } else {
+                    console.log(`[executeTransaction][vmResult] ✅ Résultat:`, vmResult); // pas de résultat attendu pour un sendTransaction
+                }
+
                 console.log(`[executeTransaction][vmResult] 🔍 Nombre total de calls:`, vmMonitor.totalCalls);
                 console.log(`[executeTransaction][vmResult] 📜 Stack des calls:`, vmMonitor.callStack.join(" -> "));
 

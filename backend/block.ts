@@ -86,11 +86,11 @@ export class Block {
 
     static formatForRpc(block: Block, showTransactionsDetails?: boolean): BlockRpc {
         const blockRpc: BlockRpc = {
-            baseFeePerGas: '0x',
-            difficulty: '0x',
+            baseFeePerGas: '0x00',
+            difficulty: '0x00',
             extraData: '0x',
             gasLimit: '0xf4240', // 1_000_000
-            gasUsed: '0x', // TODO: a recuperer dans le blockReceipt
+            gasUsed: '0x01', // TODO: a gérer dans la VM
             hash: block.hash,
             logsBloom: '0x',
             miner: block.miner,
@@ -100,10 +100,10 @@ export class Block {
             parentHash: block.parentBlockHash,
             receiptsRoot: '0x',
             sha3Uncles: '0x',
-            size: '0x',
+            size: '0x00',
             stateRoot: '0x',
             timestamp: toHex(block.timestamp ?? 0),
-            totalDifficulty: '0x',
+            totalDifficulty: '0x00',
             transactions: block.transactions.map(tx => showTransactionsDetails ? Transaction.formatForRpc(block, tx) : tx.hash),
             transactionsRoot: '0x',
             uncles: [],

@@ -10,7 +10,7 @@ class TeleScript {
     });
 
 
-    /** 🔹 Enregistre un utilisateur */
+    /** Enregistre un utilisateur */
     registerUser() /* write */ {
         const sender = lower(caller);
         asserts(!this.#memory.users[sender], "Utilisateur déjà enregistré");
@@ -18,12 +18,12 @@ class TeleScript {
     }
 
 
-    /** 🔹 Supprime un utilisateur (libère l'espace mémoire) */
+    /** Supprime un utilisateur (libère l'espace mémoire) */
     unregisterUser() /* write */ {
         const sender = lower(caller);
         asserts(this.#memory.users[sender], "Utilisateur non enregistré");
 
-        // 🔥 Vérifier qu'il n'est pas admin d'un chat
+        // Vérifier qu'il n'est pas admin d'un chat
         for (const chatId of this.#memory.users[sender].chats) {
             const chat = this.#memory.chats[chatId];
 
@@ -32,21 +32,21 @@ class TeleScript {
                 chat.admins = chat.admins.filter(admin => admin !== sender);
             }
 
-            // 🔥 Supprimer l'utilisateur du chat
+            // Supprimer l'utilisateur du chat
             chat.members = chat.members.filter(member => member !== sender);
 
-            // 🔥 Supprimer le chat si plus aucun membre
+            // Supprimer le chat si plus aucun membre
             if (chat.members.length === 0) {
                 delete this.#memory.chats[chatId];
             }
         }
 
-        // 🔥 Supprimer complètement l'utilisateur
+        // Supprimer complètement l'utilisateur
         delete this.#memory.users[sender];
     }
 
 
-    /** 🔹 Enregistre une clé de session chiffrée pour un utilisateur */
+    /** Enregistre une clé de session chiffrée pour un utilisateur */
     registerSessionKey(chatId, encryptedSessionKey) /* write */ {
         const sender = lower(caller);
         const chat = this.#memory.chats[chatId];
@@ -60,13 +60,28 @@ class TeleScript {
     }
 
 
-    /** 🔹 Crée un nouveau chat privé ou de groupe */
-    createChat(members, encryptedSessionKeys = {}, isPublic = false) /* write */ {
+    /** Crée un nouveau chat privé ou de groupe */
+    createChat(encryptedSessionKeysList = '', isPublic = '') /* write */ {
         const sender = lower(caller);
         asserts(this.#memory.users[sender], "Utilisateur non enregistré");
-        asserts(members.length >= 1, "Un chat doit avoir au moins un membre");
 
-        const uniqueMembers = [...new Set([...members.map(lower), sender])]; // Inclus le créateur + Suppression des doublons + normalisation
+        const encryptedSessionKeysEntries = encryptedSessionKeysList // Input format: address1:key1,address2:key2,...
+            .split(',') // 1. split by "," => ['adress1:key1', 'adress2:key2', ...]
+            .map(entry => entry
+                .split(':')// 2. split by ":" => [ ['adress1', 'key1'], ['adress2', 'key2'], ... ]
+                .map(entry => entry.trim()) // trim addresses and keys
+                .map(entry => [lower(entry[0]), entry[1]]) // lowercase address
+                .filter(entry => entry[0] && entry[1]) // remove empty items
+            );
+
+        const encryptedSessionKeys = Object.fromEntries(encryptedSessionKeysEntries);
+        const members = Object.keys(encryptedSessionKeys);
+
+        // REVERT si le créateur n'a pas sa propre clé de session
+        asserts(encryptedSessionKeys[sender], "Le créateur doit avoir sa propre clé de session");
+
+
+        const uniqueMembers = [...new Set([...members, sender])]; // Inclus le créateur + Suppression des doublons + normalisation
 
         const chatId = hash(`${sender}-${Date.now()}`);
 
@@ -74,7 +89,7 @@ class TeleScript {
             members: uniqueMembers,
             admins: [sender],
             messages: [],
-            isPublic,
+            isPublic: !!isPublic,
             sessionKeys: encryptedSessionKeys,
         };
 
@@ -87,7 +102,7 @@ class TeleScript {
     }
 
 
-    /** 🔹 Envoie un message chiffré dans un chat */
+    /** Envoie un message chiffré dans un chat */
     sendMessage(chatId, encryptedMessage, nonce) /* write */ {
         const sender = lower(caller);
         const chat = this.#memory.chats[chatId];
@@ -102,20 +117,20 @@ class TeleScript {
     }
 
 
-    /** 🔹 Liste les messages chiffrés d'un chat */
-    getMessages(chatId) {
-        const sender = lower(caller);
+    /** Liste les messages chiffrés d'un chat */
+    getMessages(chatId, userAddress) {
+        const user = lower(userAddress);
         const chat = this.#memory.chats[chatId];
 
-        asserts(this.#memory.users[sender], "Utilisateur non enregistré");
+        asserts(this.#memory.users[user], "Utilisateur non enregistré");
         asserts(chat, "Chat introuvable");
-        asserts(chat.members.includes(sender), "Non autorisé");
+        asserts(chat.members.includes(user), "Non autorisé");
 
         return this.#memory.chats[chatId].messages;
     }
 
 
-    /** 🔹 Ajoute un membre à un chat */
+    /** Ajoute un membre à un chat */
     addMember(chatId, newMember) /* write */ {
         const sender = lower(caller);
         const newMemberLower = lower(newMember);
@@ -178,7 +193,7 @@ class TeleScript {
     }
 
 
-    /** 🔹 Liste les chats d'un utilisateur */
+    /** Liste les chats d'un utilisateur */
     getUserChats() {
         const sender = lower(caller);
         asserts(this.#memory.users[sender], "Utilisateur non enregistré");
@@ -203,12 +218,12 @@ class TeleScript {
 
 
     getSessionKey(chatId, userAddress) {
-        const sender = lower(caller);
+        //const sender = lower(caller);
         const chat = this.#memory.chats[chatId];
         const user = lower(userAddress);
 
         asserts(chat, "Chat introuvable");
-        asserts(chat.members.includes(sender), "Non autorisé");
+        //asserts(chat.members.includes(sender), "Non autorisé");
         asserts(chat.members.includes(user), "Utilisateur non trouvé dans ce chat");
 
         return chat.sessionKeys[user]; // Retourne la clé de session chiffrée pour cet utilisateur

@@ -1,31 +1,52 @@
 {
   "name": "chainscript",
   "version": "1.0.0",
-  "main": "index.js",
   "scripts": {
-    "start": "ts-node cli.ts"
+    "node": "ts-node backend/cli.ts --listen --mine",
+    "web-dev": "webpack --config www/webpack.config.js --mode development --watch",
+    "web-build": "webpack --config www/webpack.config.js --mode production",
+    "clean": "rm -rf www/dist"
   },
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
     "@ethereumjs/tx": "^5.4.0",
+    "@types/react": "^19.0.8",
+    "axios": "^1.7.9",
     "body-parser": "^1.20.3",
+    "bootstrap": "^5.3.3",
     "cors": "^2.8.5",
     "ethers": "^6.13.5",
     "express": "^4.21.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-router-dom": "^7.1.5",
     "ts-node": "^10.9.2",
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.1",
-    "typescript": "^5.7.3",
     "ws": "^8.18.0"
   },
   "devDependencies": {
+    "@babel/core": "^7.26.8",
+    "@babel/preset-env": "^7.26.8",
+    "@babel/preset-react": "^7.26.3",
+    "@metamask/providers": "^20.0.0",
+    "@types/axios": "^0.9.36",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/node": "^22.13.1",
-    "@types/ws": "^8.5.14"
+    "@types/react-dom": "^19.0.3",
+    "@types/react-router-dom": "^5.3.3",
+    "@types/ws": "^8.5.14",
+    "babel-loader": "^9.2.1",
+    "css-loader": "^7.1.2",
+    "html-webpack-plugin": "^5.6.3",
+    "style-loader": "^4.0.0",
+    "ts-loader": "^9.5.2",
+    "typescript": "^5.7.3",
+    "webpack": "^5.98.0",
+    "webpack-cli": "^6.0.1",
+    "webpack-dev-server": "^5.2.0"
   }
 }
