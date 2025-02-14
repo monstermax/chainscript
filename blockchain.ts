@@ -30,7 +30,7 @@ export class Blockchain {
     public stateDir: string;
     public p2p: P2PNode | null = null;
     public miner: BlocksMiner | null = null;
-    public rpc: http.Server<typeof http.IncomingMessage, typeof http.ServerResponse> | null = null;
+    public server: http.Server<typeof http.IncomingMessage, typeof http.ServerResponse> | null = null;
 
 
     constructor(stateDir: string='~/.blockchain-js') {

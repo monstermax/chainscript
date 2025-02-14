@@ -7,7 +7,7 @@ import { defaultStateDir, fullcoin, defaultP2pPort, defaultRpcPort } from './con
 import { asserts, ensureDirectory, getOpt, hasOpt, now } from "./utils";
 import { Blockchain } from "./blockchain";
 import { Transaction } from "./transaction";
-import { rpcListen } from './rpc';
+import { httpListen } from './http';
 import { P2PNode } from './p2p';
 import { BlocksMiner } from './miner';
 
@@ -123,7 +123,7 @@ async function main() {
 
         // Load RPC => Wait for transactions from RPC
         if (rpcPort > 0) {
-            blockchain.rpc = await rpcListen(blockchain, rpcPort);
+            blockchain.server = await httpListen(blockchain, rpcPort);
         }
 
 

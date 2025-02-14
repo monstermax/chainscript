@@ -10,7 +10,12 @@
   "description": "",
   "dependencies": {
     "@ethereumjs/tx": "^5.4.0",
+    "body-parser": "^1.20.3",
+    "cors": "^2.8.5",
     "ethers": "^6.13.5",
+    "express": "^4.21.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "ts-node": "^10.9.2",
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.1",
@@ -18,6 +23,8 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
     "@types/node": "^22.13.1",
     "@types/ws": "^8.5.14"
   }
