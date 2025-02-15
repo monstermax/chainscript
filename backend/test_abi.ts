@@ -2,7 +2,7 @@
 
 import fs from 'fs';
 
-import { generateContractAbi } from "./abi";
+import { instanciateContractAndGenerateAbi } from "./abi";
 
 
 /* ######################################################### */
@@ -10,12 +10,15 @@ import { generateContractAbi } from "./abi";
 
 
 async function main() {
-    const codeFilepath = `${__dirname}/example/scripts/ContractToken1.js`;
+    const caller = "0xee5392913a7930c233Aa711263f715f616114e9B";
+
+    const codeFilepath = `${__dirname}/../example/scripts/ContractToken2.js`;
     const code = fs.readFileSync(codeFilepath).toString();
 
     if (true) {
-        const abi = generateContractAbi(code);
-        console.log('abi:', abi[0]);
+        const { abi, contractMemory: attributes } = instanciateContractAndGenerateAbi(caller, code, 'ContractToken2', ['BitScript', 'BIS']);
+        //console.log('abi:', abi);
+        console.log('attributes:', attributes);
     }
 
 }

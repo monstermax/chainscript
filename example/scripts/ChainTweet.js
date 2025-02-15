@@ -1,28 +1,32 @@
 // ChainTweet.js
 
-// non testé. merci chatgpt
-
 
 class ChainTweet {
 
-    #memory = memory({
-        tweets: [], // Liste des tweets {sender, content, timestamp}
-    });
+    tweets = []; // Liste des tweets {sender, content, timestamp}
 
 
     postTweet(content) /* write */ {
         asserts(content.length > 0, "Message vide interdit");
         asserts(content.length <= 280, "Message trop long (max 280 caractères)");
 
-        this.#memory.tweets.push({
-            sender: caller,
+        const sender = lower(caller);
+
+        this.tweets.push({
+            sender,
             content,
             timestamp: Date.now()
         });
     }
 
-    getTweets() {
-        return this.#memory.tweets;
+
+    getLastTweets(maxMessage="100", offset="0") {
+        offset = Number(offset) || 0;
+        maxMessage = Number(maxMessage) || 100;
+
+        const tweets = [ ...this.tweets ].reverse();
+        return tweets.slice(offset, maxMessage) || [];
     }
 }
+
 

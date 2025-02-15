@@ -65,7 +65,7 @@ export class Transaction {
     }
 
 
-    public create(code: string, amount=0n): this {
+    public create(code: string, contractClass: string, contructorArgs?: string[], amount=0n): this {
         asserts(this.nonce, `[Transaction][create] missing transaction nonce`);
         const contractAddress: AccountAddress = predictContractAddress(this.from, this.nonce)
         console.log(`[${now()}][Transaction][create] Adresse du contrat à créer :`, contractAddress);
@@ -73,7 +73,9 @@ export class Transaction {
         const instruction: TransactionInstructionCreate = {
             type: 'create',
             contractAddress,
+            contractClass,
             code,
+            contructorArgs: contructorArgs ?? [],
             value: amount,
         };
 
@@ -89,7 +91,7 @@ export class Transaction {
             contractAddress,
             className,
             methodName,
-            args,
+            methodArgs: args,
         };
 
         this.instructions.push(instruction);

@@ -1,7 +1,7 @@
 // execution.ts
 
-import { AbiCoder } from 'ethers'
-
+import { createContext, Script } from 'vm';
+import { AbiCoder, Result } from 'ethers'
 import * as ethereumjsTx from '@ethereumjs/tx';
 
 import { asserts, bufferToHex, hexToUint8Array, now, toHex } from './utils';
@@ -10,12 +10,13 @@ import { Block } from './block';
 import { predictContractAddress } from './account';
 import { Transaction } from './transaction';
 import { execVm } from './vm';
-import { findMethodAbi, generateContractAbi } from './abi';
+import { findMethodAbi, instanciateContractAndGenerateAbi } from './abi';
 
 import type { AbiClassMethod, AccountAddress } from './types/account.types';
 import type { TransactionData, TransactionHash, TransactionInstruction, TransactionInstructionExecute, TransactionInstructionCreate, TransactionInstructionTransfer, TransactionReceipt } from './types/transaction.types';
 import type { HexNumber } from './types/types';
 import type { callTxParams, sendTxParams as SendTxParams } from './types/rpc.types';
+
 
 
 /* ######################################################### */
@@ -30,18 +31,17 @@ export async function handleEthCall(blockchain: Blockchain, txParams: callTxPara
     // Signature de la classe+methode à appeler
     asserts(txParams.data && txParams.data.length >= 10);
     const callSignature = txParams.data.slice(0, 10); // 4 premiers bytes
-    const callSignature2 = bufferToHex(Buffer.from(txParams.data).slice(0, 4)); // 4 premiers bytes
 
     // Cherche la classe+methode à partir de la signature
     const abiClassMethod = findMethodAbi(contractAccount.abi, callSignature);
     asserts(abiClassMethod, "[handleEthCall] Méthode inconnue");
 
     // Décodage des parametres de la methode
-    const args = decodeTxData(txParams.data, abiClassMethod);
-    console.log(`[handleEthCall] Arguments décodés:`, args)
+    const methodArgs = decodeTxData(txParams.data.slice(2), abiClassMethod);
+    console.log(`[handleEthCall] Arguments décodés:`, methodArgs)
 
     // Execution du code dans la VM
-    const { vmResult, vmMonitor, vmError } = await execVm(blockchain, txParams.from, txParams.to, abiClassMethod.className, abiClassMethod.methodName, args, null);
+    const { vmResult, vmMonitor, vmError } = await execVm(blockchain, txParams.from, txParams.to, abiClassMethod.className, abiClassMethod.methodName, methodArgs, null);
 
     if (vmError) {
         console.log(`[handleEthCall] ❌ Error:`, vmError);
@@ -111,24 +111,22 @@ export function transcodeTx(blockchain: Blockchain, txParams: SendTxParams): Tra
             asserts(contractAccount.abi, `[transcodeTx] missing contract abi à ${txParams.to}`);
             asserts(contractAccount.code, `[transcodeTx] missing contract code à ${txParams.to}`);
 
-            const callSignature2: string = txParams.data.slice(0, 10); // 4 bytes
             const callSignature: string = "0x" + txParams.data.slice(0, 8);
-            const callSignature1: string = "0x" + bufferToHex(Buffer.from(txParams.data).slice(0, 8));
 
             // Trouver la méthode correspondante dans l'ABI
             const abiClassMethod: AbiClassMethod | null = findMethodAbi(contractAccount.abi, callSignature);
             asserts(abiClassMethod, `[transcodeTx] Méthode inconnue pour la signature ${callSignature}`);
 
             // 🧩 Décoder les arguments
-            const args: any[] = decodeTxData('00' + txParams.data, abiClassMethod);
-            console.log(`[${now()}][transcodeTx] 🔍 Arguments décodés:`, args);
+            const methodArgs: string[] = decodeTxData(txParams.data, abiClassMethod);
+            console.log(`[${now()}][transcodeTx] 🔍 Arguments décodés:`, methodArgs);
 
             instructions.push({
                 type: 'execute',
                 contractAddress: txParams.to,
                 className: abiClassMethod.className,
                 methodName: abiClassMethod.methodName,
-                args,
+                methodArgs,
             } as TransactionInstructionExecute);
 
         } else {
@@ -139,8 +137,8 @@ export function transcodeTx(blockchain: Blockchain, txParams: SendTxParams): Tra
 
 
             const coder = new AbiCoder();
-            //const codes2 = coder.decode(["string", "string"], txParams.data);
-            const codes = coder.decode(["string", "string"], "0x" + txParams.data);
+            //const codes2 = coder.decode(["string", "string", "string"], txParams.data);
+            const codes = coder.decode(["string", "string", "string"], "0x" + txParams.data);
 
 
             if (!codes) {
@@ -148,13 +146,16 @@ export function transcodeTx(blockchain: Blockchain, txParams: SendTxParams): Tra
             }
 
             const contractCode: string = codes[0];
-            const contructorArgs: any[] = codes[1];
+            const contractClass: string = codes[1];
+            const contructorArgsJSON: string = codes[2] ?? '[]';
+            const contructorArgs: string[] = JSON.parse(contructorArgsJSON);
 
             const instruction: TransactionInstructionCreate = {
                 type: 'create',
                 contractAddress,
+                contractClass,
                 code: contractCode,
-                params: contructorArgs,
+                contructorArgs,
                 value,
             };
 
@@ -179,7 +180,7 @@ export function transcodeTx(blockchain: Blockchain, txParams: SendTxParams): Tra
 
 
 /** Décode une transaction Ethereum en un objet TransactionData */
-export function decodeRawTransaction(blockchain: Blockchain, txRawData: string): TransactionData {
+export function decodeRawTransaction(blockchain: Blockchain, txRawData: string): SendTxParams {
     console.log(`[${now()}][decodeTx] 🔄 Début décodage de: ${txRawData}`);
 
     const rawBuffer = hexToUint8Array(txRawData);
@@ -211,9 +212,7 @@ export function decodeRawTransaction(blockchain: Blockchain, txRawData: string):
         data: bufferToHex(tx.data) as HexNumber,
     };
 
-
-    // Transcode le txParams (format Ethereum) au format TransactionData et retourne cette information, prête à être envoyée à handleEthSendTransaction()
-    return transcodeTx(blockchain, txParams);
+    return txParams;
 }
 
 
@@ -269,10 +268,16 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
                 asserts(contractAccount.code === null, `[executeTransaction] account "${createdContractAddress}" already exists (code exists)`);
                 asserts(contractAccount.abi === null, `[executeTransaction] account "${createdContractAddress}" already exists (abi exists)`);
 
-                contractAccount.abi = generateContractAbi(instruction.code);
-                contractAccount.code = instruction.code;
-                //contractAccount.contructorArgs = instruction.params;
+                //contractAccount.contructorArgs = instruction.contructorArgs;
                 contractAccount.memory = {};
+                contractAccount.code = instruction.code;
+
+                // Instancie le contrat (et initialize son constructor) puis retourne l'ABI
+                const { abi, contractMemory } = instanciateContractAndGenerateAbi(tx.from, instruction.code, instruction.contractClass, instruction.contructorArgs, createdContractAddress);
+                contractAccount.abi = abi;
+
+                contractAccount.memory = contractMemory;
+
 
                 amountUsed += instruction.value ?? 0n;
 
@@ -283,7 +288,7 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
                 // Execute script
 
                 // Load source code
-                const { vmResult, vmMonitor, vmError } = await execVm(blockchain, tx.from, instruction.contractAddress, instruction.className, instruction.methodName, instruction.args, blockchain.memoryState)
+                const { vmResult, vmMonitor, vmError } = await execVm(blockchain, tx.from, instruction.contractAddress, instruction.className, instruction.methodName, instruction.methodArgs, blockchain.memoryState)
 
                 if (vmError) {
                     console.log(`[executeTransaction] ❌ Error:`, vmError);
@@ -349,17 +354,15 @@ export function decodeTxData(data: string, abiClassMethod: AbiClassMethod): any[
     if (!abiClassMethod.method.inputs || abiClassMethod.method.inputs.length === 0) return [];
 
     const coder = new AbiCoder();
-    const encodedParams = data.slice(10); // TODO: slice à revoir pour éviter le "decodeTxData('00' + txParams.data, ..." dans la fonction transcodeTx
-
-    //const types = abiClassMethod.method.inputs.map(_ => 'string'); // supposons que tous les parametre de la methode soient des string (le plus safe pour JS)
+    const encodedParams: string = data.slice(8);
 
     // On force tous les types (inputs) en string (car JS n'est pas typé)
-    const inputTypes = abiClassMethod.method.inputs.map(inputName => "string");
+    const inputTypes: string[] = abiClassMethod.method.inputs.map(inputName => "string");
 
-    console.log(`[decodeTxData] 📥 Décodage des arguments:`, encodedParams);
+    console.log(`[decodeTxData] 📥 Décodage des arguments (types: [${inputTypes.join(', ')}]) :`, encodedParams);
 
     try {
-        const result = coder.decode(inputTypes, "0x" + encodedParams);
+        const result: Result = coder.decode(inputTypes, "0x" + encodedParams);
         return result;
 
     } catch (err: any) {

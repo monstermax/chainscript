@@ -4,28 +4,26 @@
 
 
 class TeleScript {
-    #memory = memory({
-        users: {},  // { address: { chats: [chatId, ...] } }
-        chats: {},  // { chatId: { members: [...], admins: [...], messages: [...], isPublic: true, sessionKeys: {} } }
-    });
+    users = {};  // { address: { chats: [chatId, ...] } }
+    chats = {};  // { chatId: { members: [...], admins: [...], messages: [...], isPublic: true, sessionKeys: {} } }
 
 
     /** Enregistre un utilisateur */
     registerUser() /* write */ {
         const sender = lower(caller);
-        asserts(!this.#memory.users[sender], "Utilisateur déjà enregistré");
-        this.#memory.users[sender] = { chats: [] };
+        asserts(!this.users[sender], "Utilisateur déjà enregistré");
+        this.users[sender] = { chats: [] };
     }
 
 
     /** Supprime un utilisateur (libère l'espace mémoire) */
     unregisterUser() /* write */ {
         const sender = lower(caller);
-        asserts(this.#memory.users[sender], "Utilisateur non enregistré");
+        asserts(this.users[sender], "Utilisateur non enregistré");
 
         // Vérifier qu'il n'est pas admin d'un chat
-        for (const chatId of this.#memory.users[sender].chats) {
-            const chat = this.#memory.chats[chatId];
+        for (const chatId of this.users[sender].chats) {
+            const chat = this.chats[chatId];
 
             if (chat.admins.includes(sender)) {
                 asserts(chat.admins.length > 1, "Impossible de quitter : vous êtes le seul admin du chat");
@@ -37,21 +35,21 @@ class TeleScript {
 
             // Supprimer le chat si plus aucun membre
             if (chat.members.length === 0) {
-                delete this.#memory.chats[chatId];
+                delete this.chats[chatId];
             }
         }
 
         // Supprimer complètement l'utilisateur
-        delete this.#memory.users[sender];
+        delete this.users[sender];
     }
 
 
     /** Enregistre une clé de session chiffrée pour un utilisateur */
     registerSessionKey(chatId, encryptedSessionKey) /* write */ {
         const sender = lower(caller);
-        const chat = this.#memory.chats[chatId];
+        const chat = this.chats[chatId];
 
-        asserts(this.#memory.users[sender], "Utilisateur non enregistré");
+        asserts(this.users[sender], "Utilisateur non enregistré");
         asserts(chat, "Chat introuvable");
         asserts(chat.members.includes(sender), "Non autorisé");
         asserts(!chat.sessionKeys[sender], "Clé de session déjà enregistrée");
@@ -63,7 +61,7 @@ class TeleScript {
     /** Crée un nouveau chat privé ou de groupe */
     createChat(encryptedSessionKeysList = '', isPublic = '') /* write */ {
         const sender = lower(caller);
-        asserts(this.#memory.users[sender], "Utilisateur non enregistré");
+        asserts(this.users[sender], "Utilisateur non enregistré");
 
         const encryptedSessionKeysEntries = encryptedSessionKeysList // Input format: address1:key1,address2:key2,...
             .split(',') // 1. split by "," => ['adress1:key1', 'adress2:key2', ...]
@@ -85,7 +83,7 @@ class TeleScript {
 
         const chatId = hash(`${sender}-${Date.now()}`);
 
-        this.#memory.chats[chatId] = {
+        this.chats[chatId] = {
             members: uniqueMembers,
             admins: [sender],
             messages: [],
@@ -94,8 +92,8 @@ class TeleScript {
         };
 
         for (const member of uniqueMembers) {
-            asserts(this.#memory.users[member], "Membre non enregistré");
-            this.#memory.users[member].chats.push(chatId);
+            asserts(this.users[member], "Membre non enregistré");
+            this.users[member].chats.push(chatId);
         }
 
         return chatId;
@@ -105,13 +103,13 @@ class TeleScript {
     /** Envoie un message chiffré dans un chat */
     sendMessage(chatId, encryptedMessage, nonce) /* write */ {
         const sender = lower(caller);
-        const chat = this.#memory.chats[chatId];
+        const chat = this.chats[chatId];
 
-        asserts(this.#memory.users[sender], "Utilisateur non enregistré");
+        asserts(this.users[sender], "Utilisateur non enregistré");
         asserts(chat, "Chat introuvable");
         asserts(chat.members.includes(sender), "Non autorisé");
 
-        this.#memory.chats[chatId].messages.push({ sender, encryptedMessage, nonce });
+        this.chats[chatId].messages.push({ sender, encryptedMessage, nonce });
 
         return true;
     }
@@ -120,13 +118,13 @@ class TeleScript {
     /** Liste les messages chiffrés d'un chat */
     getMessages(chatId, userAddress) {
         const user = lower(userAddress);
-        const chat = this.#memory.chats[chatId];
+        const chat = this.chats[chatId];
 
-        asserts(this.#memory.users[user], "Utilisateur non enregistré");
+        asserts(this.users[user], "Utilisateur non enregistré");
         asserts(chat, "Chat introuvable");
         asserts(chat.members.includes(user), "Non autorisé");
 
-        return this.#memory.chats[chatId].messages;
+        return this.chats[chatId].messages;
     }
 
 
@@ -134,12 +132,12 @@ class TeleScript {
     addMember(chatId, newMember) /* write */ {
         const sender = lower(caller);
         const newMemberLower = lower(newMember);
-        const chat = this.#memory.chats[chatId];
+        const chat = this.chats[chatId];
 
-        asserts(this.#memory.users[sender], "Utilisateur non enregistré");
-        asserts(this.#memory.users[newMemberLower], "Le membre n'est pas enregistré");
+        asserts(this.users[sender], "Utilisateur non enregistré");
+        asserts(this.users[newMemberLower], "Le membre n'est pas enregistré");
         asserts(chat, "Chat introuvable");
-        asserts(this.#memory.chats[chatId].members.includes(sender), "Seul un membre peut ajouter d'autres membres");
+        asserts(this.chats[chatId].members.includes(sender), "Seul un membre peut ajouter d'autres membres");
         asserts(!chat.members.includes(newMemberLower), "Déjà membre");
 
         if (!chat.isPublic) {
@@ -147,7 +145,7 @@ class TeleScript {
         }
 
         chat.members.push(newMemberLower);
-        this.#memory.users[newMemberLower].chats.push(chatId);
+        this.users[newMemberLower].chats.push(chatId);
     }
 
 
@@ -155,10 +153,10 @@ class TeleScript {
     removeMember(chatId, memberToRemove) /* write */ {
         const sender = lower(caller);
         const memberToRemoveLower = lower(memberToRemove);
-        const chat = this.#memory.chats[chatId];
+        const chat = this.chats[chatId];
 
-        asserts(this.#memory.users[sender], "Utilisateur non enregistré");
-        asserts(this.#memory.users[memberToRemoveLower], "Le membre n'est pas enregistré");
+        asserts(this.users[sender], "Utilisateur non enregistré");
+        asserts(this.users[memberToRemoveLower], "Le membre n'est pas enregistré");
         asserts(chat, "Chat introuvable");
         asserts(chat.members.includes(sender), "Non autorisé");
         asserts(chat.members.includes(memberToRemoveLower), "Membre non trouvé dans ce chat");
@@ -173,7 +171,7 @@ class TeleScript {
         delete chat.sessionKeys[memberToRemoveLower];
 
         // Retirer le chat de la liste de l'utilisateur
-        this.#memory.users[memberToRemoveLower].chats = this.#memory.users[memberToRemoveLower].chats.filter(id => id !== chatId);
+        this.users[memberToRemoveLower].chats = this.users[memberToRemoveLower].chats.filter(id => id !== chatId);
 
         // Si un admin quitte, il perd son rôle
         chat.admins = chat.admins.filter(admin => admin !== memberToRemoveLower);
@@ -183,31 +181,33 @@ class TeleScript {
 
         // Suppression automatique des chats fantômes, pour chaque membre du chat en particulier si on est en train de supprimer le chat (en retirer le dernier membre)
         for (const user of chat.members) {
-            this.#memory.users[user].chats = this.#memory.users[user].chats.filter(id => id !== chatId);
+            this.users[user].chats = this.users[user].chats.filter(id => id !== chatId);
         }
 
         // Suppression automatique des chats fantômes
         if (chat.members.length === 0) {
-            delete this.#memory.chats[chatId];
+            delete this.chats[chatId];
         }
     }
 
 
     /** Liste les chats d'un utilisateur */
-    getUserChats() {
-        const sender = lower(caller);
-        asserts(this.#memory.users[sender], "Utilisateur non enregistré");
-        return this.#memory.users[sender].chats;
+    getUserChats(userAddress) {
+        //const sender = lower(caller);
+        const user = lower(userAddress);
+        //asserts(this.users[sender], "Utilisateur non enregistré");
+        asserts(this.users[user], "Utilisateur non enregistré");
+        return this.users[user].chats;
     }
 
 
     promoteToAdmin(chatId, newAdmin) /* write */ {
         const sender = lower(caller);
         const newAdminLower = lower(newAdmin);
-        const chat = this.#memory.chats[chatId];
+        const chat = this.chats[chatId];
 
-        asserts(this.#memory.users[sender], "Utilisateur non enregistré");
-        asserts(this.#memory.users[newAdminLower], "Admin non enregistré");
+        asserts(this.users[sender], "Utilisateur non enregistré");
+        asserts(this.users[newAdminLower], "Admin non enregistré");
         asserts(chat, "Chat introuvable");
         asserts(chat.admins.includes(sender), "Seuls les admins peuvent promouvoir un membre");
         asserts(chat.members.includes(newAdminLower), "Cet utilisateur n'est pas dans le chat");
@@ -219,7 +219,7 @@ class TeleScript {
 
     getSessionKey(chatId, userAddress) {
         //const sender = lower(caller);
-        const chat = this.#memory.chats[chatId];
+        const chat = this.chats[chatId];
         const user = lower(userAddress);
 
         asserts(chat, "Chat introuvable");

@@ -227,7 +227,7 @@ async function testsTransactions(blockchain: Blockchain) {
         const abi: CodeAbi = [ { class: 'ContractTest1', methods: { test_vm_1: {} }, attributes: {} } ];
 
         const tx = new Transaction(txExecutorAddress)
-            .create(code); // CREATE CONTRACT
+            .create(code, 'ContractTest1'); // CREATE CONTRACT
 
         // 2. Add transaction to the mempool
         blockchain.mempool.addTransaction(tx);
@@ -254,7 +254,7 @@ async function testsTransactions(blockchain: Blockchain) {
         const abi: CodeAbi = [ { class: 'ContractTest2', methods: { test_vm_2_a: {}, test_vm_2_b: {} }, attributes: {} } ];
 
         const tx = new Transaction(txExecutorAddress)
-            .create(code); // CREATE TOKEN
+            .create(code, 'ContractTest1'); // CREATE TOKEN
 
         // 2. Add transaction to the mempool
         blockchain.mempool.addTransaction(tx);
@@ -268,7 +268,7 @@ async function testsTransactions(blockchain: Blockchain) {
         const abi: CodeAbi = [ { class: 'ContractToken1', methods: { transfer: {}, balanceOf: {} }, attributes: {} } ];
 
         const tx = new Transaction(txExecutorAddress)
-            .create(code); // CREATE TOKEN
+            .create(code, 'ContractTest1'); // CREATE TOKEN
 
         // 2. Add transaction to the mempool
         blockchain.mempool.addTransaction(tx);

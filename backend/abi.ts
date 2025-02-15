@@ -1,12 +1,15 @@
 // abi.ts
 
+import fs from 'fs';
 import { parse } from 'acorn';
 import { keccak256, toUtf8Bytes } from "ethers";
 import { createContext, Script } from "vm";
 
-import { createSandboxMock } from './vm';
+import { createDeploymentSandbox } from './vm';
 
-import type { AbiClassMethod, CodeAbi, CodeAbiClassAttributes, CodeAbiClassMethods } from "./types/account.types";
+import type { AbiClassMethod, AccountAddress, CodeAbi, CodeAbiClassAttributes, CodeAbiClassMethods, ContractMemory } from "./types/account.types";
+import { hasOpt, stringifyParams } from './utils';
+import { FunctionBody, FunctionDeclaration } from 'typescript';
 
 
 /* ######################################################### */
@@ -21,7 +24,7 @@ export function findMethodAbi(abi: CodeAbi, methodSignature: string): AbiClassMe
             const inputTypes = (abiClassMethod.inputs ?? []).map(name => "string").join(",");
             const signatureString = `${methodName}(${inputTypes})`; // 🔄 Supprime le `className.`
 
-            // 📌 Générer la signature Ethereum standard
+            // Générer la signature Ethereum standard
             const hash = keccak256(toUtf8Bytes(signatureString)).slice(0, 10);
 
             if (hash === methodSignature.slice(0, 10)) {
@@ -58,49 +61,115 @@ export function encodeCallData(className: string, methodName: string, args: any[
 */
 
 
+
+
 /** Détecte dynamiquement les propriétés et méthodes d'un contrat */
-export function generateContractAbi(contractCode: string): CodeAbi {
-    const abi: CodeAbi = [];
+export function instanciateContractAndGenerateAbi(caller: AccountAddress, contractCode: string, className: string, constructorArgs: string[], contractAddress?: AccountAddress): { abi: CodeAbi, contractMemory: object } {
+    // Note: voir si on pourrait pas accepter un contractCode écrit en Typescript et en le transcodant via new Function(contractCode).toString()
 
-    // 📌 Extrait les classes déclarées dans le code source
-    const classNames = extractClassNamesWithAcorn(contractCode);
+    // Extrait les classes déclarées dans le code source
+    //const classNames = extractClassNamesWithAcorn(contractCode);
+    const classNames = className ? [className] : extractClassNamesWithAcorn(contractCode);
 
 
-    // Prépare le contexte d'exécution
-    const sandbox = createSandboxMock(classNames);
-
+    // 0. Créé un contexte d'exécution sandbox
+    const sandbox = createDeploymentSandbox(caller, contractAddress);
     const vmContext = createContext(sandbox)
 
 
-    // 📌 Exécute le code dans un contexte isolé pour identifier les classes
-    const compiledSourceCode: Script = new Script(contractCode);
+    // 1. ABI Analyzer
 
-    const getClassPropertiesString = getClassProperties.toString(); // Traduit le code (Typescript) de la fonction "getClassProperties" en string (transcodé en JS).
-    const getFunctionParamsString = getFunctionParams.toString(); // Traduit le code (Typescript) de la fonction "getFunctionParams" en string (transcodé en JS).
-    const buildAbiString = buildAbi.toString(); // Traduit le code (Typescript) de la fonction "buildAbi" en string.
-    const classNamesString = '[' + classNames.map(className => `'${className}'`).join(', ') + ']';
+    const getClassPropertiesString = ""; //getClassProperties.toString(); // Traduit le code (Typescript) de la fonction "getClassProperties" en string (transcodé en JS).
+    const getFunctionParamsString = ""; //getFunctionParams.toString(); // Traduit le code (Typescript) de la fonction "getFunctionParams" en string (transcodé en JS).
+    const buildAbiString = ""; //buildAbi.toString(); // Traduit le code (Typescript) de la fonction "buildAbi" en string.
+    //const classNamesString = '[' + classNames.map(className => `'${className}'`).join(', ') + ']';
 
-    // Note: voir si on pourrait pas accepter un contractCode écrit en Typescript et en le transcodant via new Function(contractCode).toString()
+    let abiAnalyzerCode = `
+// Code du contrat
+${contractCode}
 
-    const searchCode = `
-        ${getClassPropertiesString}
-        ${getFunctionParamsString}
-        ${buildAbiString}
-        buildAbi(${classNamesString});
+// Dependances de buildAbi
+${getClassPropertiesString}
+${getFunctionParamsString}
+${buildAbiString}
+
+// Construit et retourne l'ABI
+buildAbi(${className}, [${stringifyParams(constructorArgs)}]);
     `;
 
-    const compiledSearchCode: Script = new Script(searchCode);
+    let abiAnalyzerTimeout: number | undefined = 10;
 
-    // Charge le code source du contrat
-    compiledSourceCode.runInContext(vmContext, { breakOnSigint: true, timeout: 10 });
+    if (hasOpt('--debug-vm')) {
+        const debugFilepath = `/tmp/debug_deploy_contract_${contractAddress}.abi-analyzer.js`;
 
-    // Execute l'analyseur de code
-    const result = compiledSearchCode.runInContext(vmContext, { breakOnSigint: true, timeout: 10 });
+        abiAnalyzerCode = `
+${hasOpt('--debug-contract') ? "debugger;" : ""}
 
-    abi.push(...result);
+${abiAnalyzerCode}
 
-    return abi;
+//# sourceURL=file://${debugFilepath}
+`;
+
+        fs.writeFileSync(debugFilepath, abiAnalyzerCode);
+        abiAnalyzerTimeout = undefined;
+    }
+
+    if (hasOpt('--debug-vm')) {
+        abiAnalyzerTimeout = undefined;
+    }
+
+
+    // Instancie le script pour la VM
+    const abiAnalyzerScript: Script = new Script(abiAnalyzerCode);
+
+    // Execute l'analyseur de code pour extraire l'ABI
+    const abiAnalyzerResult: CodeAbi = abiAnalyzerScript.runInContext(vmContext, { breakOnSigint: true, timeout: abiAnalyzerTimeout });
+    const abi: CodeAbi = [ ...abiAnalyzerResult ];
+
+
+
+    // 2. Class Instanciation
+
+    let newInstanceCode = getContractNewInstanceCode(className, constructorArgs);
+
+    let newInstanceTimeout: number | undefined = 10;
+
+    if (hasOpt('--debug-vm')) {
+        const debugFilepath = `/tmp/debug_deploy_contract_${contractAddress}.instantiate.js`;
+
+        newInstanceCode = `
+${hasOpt('--debug-contract') ? "debugger;" : ""}
+
+${newInstanceCode}
+
+//# sourceURL=file://${debugFilepath}
+`;
+
+        fs.writeFileSync(debugFilepath, newInstanceCode);
+        newInstanceTimeout = undefined;
+    }
+
+
+
+    // Instancie la classe (initialize le constructor)
+    console.log('newInstanceCode:', newInstanceCode)
+    const newInstanceScript: Script = new Script(newInstanceCode);
+    const newInstanceResult: object = newInstanceScript.runInContext(vmContext, { breakOnSigint: true, timeout: newInstanceTimeout });
+    console.log('newInstanceResult:', newInstanceResult)
+
+    const contractMemory: ContractMemory = { ...newInstanceResult };
+
+
+    return { abi, contractMemory };
 }
+
+
+
+function getContractNewInstanceCode(className: string, methodArgs: string[]) {
+    const executeCode: string = `new ${className}(${stringifyParams(methodArgs)});`;
+    return executeCode;
+}
+
 
 
 /** Récupère les méthodes publiques d’une classe */
@@ -139,18 +208,18 @@ export function getClassProperties(instance: any): { methods: CodeAbiClassMethod
 export function getFunctionParams(func: Function): { params: string[], isWrite: boolean } {
     let functionString = func.toString().replace(/\n/g, " "); // Supprime les sauts de ligne pour éviter les problèmes d'analyse
 
-    // 🛑 Trouver où commence le corps de la fonction `{`
+    // Trouver où commence le corps de la fonction `{`
     const bodyIndex = functionString.indexOf("{");
     if (bodyIndex === -1) return { params: [], isWrite: false }; // Impossible de récupérer des params
 
-    // 🎯 Extraire uniquement la partie avant `{`
+    // Extraire uniquement la partie avant `{`
     const headerString = functionString.substring(0, bodyIndex);
 
-    // 🔍 Trouver tous les commentaires `/* ... */` AVANT le `{`
+    // Trouver tous les commentaires `/* ... */` AVANT le `{`
     const commentsMatch = [...headerString.matchAll(/\/\*([\s\S]*?)\*\//g)];
     const comments = commentsMatch.map(match => match[1].trim()).join(" "); // Concaténer tous les commentaires
 
-    // 📌 Extraire les paramètres en enlevant les valeurs par défaut (`=` et après)
+    // Extraire les paramètres en enlevant les valeurs par défaut (`=` et après)
     const match = headerString.match(/\(([^)]*)\)/);
     const params = match
         ? match[1].split(',')
@@ -158,7 +227,7 @@ export function getFunctionParams(func: Function): { params: string[], isWrite: 
             .filter(param => param.length > 0)
         : [];
 
-    // 📝 Vérifier si le commentaire contient " write " (avec espaces pour éviter des faux positifs)
+    // Vérifier si le commentaire contient " write " (avec espaces pour éviter des faux positifs)
     const isWrite = ` ${comments} `.includes(" write ");
 
     return { params, isWrite };
@@ -166,11 +235,14 @@ export function getFunctionParams(func: Function): { params: string[], isWrite: 
 
 
 /** Construit l'Abi de toutes les classes demandées */
-export function buildAbi(classNames: string[]) {
+export function buildAbi(classObj: new (...args: any[]) => any, constructorArgs: string[]): CodeAbi {
     const abi: CodeAbi = [];
 
-    for (const className of classNames) {
-        const classInstance = eval("new " + className + "()"); // Instancier la classe
+    //for (const className of classNames) {
+        const className = classObj.name;
+        //const classInstance = eval("new " + className + `(${stringifyParams(constructorArgs)})`); // Instancier la classe (doit être exécuté DANS la VM !)
+        const classInstance = new classObj(...constructorArgs); // Instancier la classe (doit être exécuté DANS la VM !)
+
         const { methods, attributes } = getClassProperties(classInstance);
 
         abi.push({
@@ -178,10 +250,12 @@ export function buildAbi(classNames: string[]) {
             methods,
             attributes,
         });
-    }
+    //}
 
     return abi;
 }
+
+
 
 
 /** Trouve et extrait la liste des classes JS dans du code sous forme de string */

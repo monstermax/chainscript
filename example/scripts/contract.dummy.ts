@@ -26,11 +26,20 @@ type ContractMemory = any;
 
 
 // "sandboxData" variables
+
+/** Nombre de decimals de la monnaie native de la blockchain */
 const decimals = 18; // must be equals to config.ts value
+
+/** Nombre de micro unités dans 1 unité entière de la monnaie native (aka bitcoin vs satoshi) */
 const fullcoin: bigint = BigInt(Math.pow(10, decimals));
 
+/** Adresse de l'utilisateur qui effectue la transaction */
 const caller: AccountAddress = '0x0000000000000000000000000000000000000000';
-const address: AccountAddress = '0x0000000000000000000000000000000000000000'; // TODO: à renommer en "self"
+
+{
+/** Adresse du smart contract */
+const self: AccountAddress = '0x0000000000000000000000000000000000000000';
+}
 
 
 // "sandboxUtils" methods
@@ -48,7 +57,7 @@ async function call(calledScriptAddress: AccountAddress, calledScriptClass: stri
 function balance(address: AccountAddress): bigint { return 0n; };
 
 /** Permet de stocker des informations sur la Blockchain */
-function memory(initialValues: ContractMemory): ContractMemory { return {} };
+//function memory(initialValues: ContractMemory): ContractMemory { return {} };
 
 /** Retourne une erreur si la condition n'est pas satisfaite */
 function asserts(condition: boolean, message?: string): asserts condition {};

@@ -8,7 +8,7 @@ import ContractExecute from "./ContractExecute";
 
 import { AccountAddress, CodeAbi } from "@backend/types/account.types";
 import AccountSelectorModal from "./AccountSelectorModal";
-import { extractAbiMethods } from "../../utils/abiUtils";
+import { extractAbiMethods } from "./abiUtils";
 
 
 const ContractExecution: React.FC<{ walletConnected: boolean }> = ({ walletConnected }) => {
@@ -17,7 +17,7 @@ const ContractExecution: React.FC<{ walletConnected: boolean }> = ({ walletConne
     const [contractAbi, setContractAbi] = useState<CodeAbi | null>(null);
     const [callMethods, setCallMethods] = useState<string[]>([]);
     const [executeMethods, setExecuteMethods] = useState<string[]>([]);
-    
+
     const [selectedCallMethod, setSelectedCallMethod] = useState<string>("");
     const [selectedExecuteMethod, setSelectedExecuteMethod] = useState<string>("");
 

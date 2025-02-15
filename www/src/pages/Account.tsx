@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 
-import { jsonReviver } from "../utils/jsonUtils";
+import { jsonReplacer, jsonReviver } from "../utils/jsonUtils";
 import { divideBigInt } from "../utils/numberUtils";
 import { decimals } from "../config.client";
 
@@ -83,7 +83,7 @@ const Account: React.FC = () => {
                     {showAbi && (
                         <div className="card-body">
                             <pre className="bg-light p-3 rounded" style={{ whiteSpace: "pre-wrap", overflowX: "auto" }}>
-                                <code>{JSON.stringify(account.abi, null, 4)}</code>
+                                <code>{JSON.stringify(account.abi, jsonReplacer, 4)}</code>
                             </pre>
                         </div>
                     )}
@@ -103,7 +103,7 @@ const Account: React.FC = () => {
                     {showMemory && (
                         <div className="card-body">
                             <pre className="bg-light p-3 rounded" style={{ whiteSpace: "pre-wrap", overflowX: "auto" }}>
-                                <code>{JSON.stringify(account.memory, null, 4)}</code>
+                                <code>{JSON.stringify(account.memory, jsonReplacer, 4)}</code>
                             </pre>
                         </div>
                     )}

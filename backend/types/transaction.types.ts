@@ -116,9 +116,10 @@ export type TransactionInstructionMint = {
 export type TransactionInstructionCreate = {
     type: 'create',
     contractAddress: AccountAddress,
+    contractClass: string,
     code: string,
     value?: bigint,
-    params?: any[],
+    contructorArgs: string[],
 }
 
 
@@ -127,6 +128,6 @@ export type TransactionInstructionExecute = {
     contractAddress: AccountAddress,
     className: string,
     methodName: string,
-    args: any[],
+    methodArgs: string[],
 }
 

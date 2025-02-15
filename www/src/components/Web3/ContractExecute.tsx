@@ -2,9 +2,11 @@
 
 import React, { useEffect, useState } from "react";
 import { ContractTransactionResponse, ethers } from "ethers";
-import { convertCustomAbiToEthersFormat } from "../../utils/abiUtils";
+
+import { convertCustomAbiToEthersFormat } from "./abiUtils";
 
 import type { AccountAddress, CodeAbi } from "@backend/types/account.types";
+import { executeSmartContract } from "./contractUtils";
 
 
 interface ContractExecuteProps {
@@ -45,16 +47,9 @@ const ContractExecute: React.FC<ContractExecuteProps> = ({ contractAddress, cont
 
             setLoading(true);
             const provider = new ethers.BrowserProvider(window.ethereum);
-            const signer = await provider.getSigner();
 
-            const ethersAbi = convertCustomAbiToEthersFormat(contractAbi);
-            const contract = new ethers.Contract(contractAddress, ethersAbi, signer);
-
-            const tx: ContractTransactionResponse = await contract[selectedMethod](...args);
-            console.log('Transaction envoyée:', tx);
-
-            const receipt = await tx.wait();
-            console.log('Transaction confirmée:', receipt);
+            const { tx, receipt } = await executeSmartContract(provider, contractAddress, contractAbi, selectedMethod, args);
+            console.log('tx result:', tx, receipt);
 
             setTxHistory(prev => [...prev, { tx, receipt }]);
 
@@ -66,6 +61,7 @@ const ContractExecute: React.FC<ContractExecuteProps> = ({ contractAddress, cont
             setLoading(false);
         }
     };
+
 
     return (
         <div className="container mt-4">

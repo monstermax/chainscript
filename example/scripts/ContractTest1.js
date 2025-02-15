@@ -1,9 +1,11 @@
 // ContractTest1.js
 
+import { log, transfer } from 'vm:dummy';
+
 
 class ContractTest1 {
 
-    async test_vm_1() {
+    async test_vm_1() /* write */ {
         log('DEBUG test_vm_1: START')
 
         // ContractTest1 envoie 2 DEV à addressTest2

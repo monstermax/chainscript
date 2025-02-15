@@ -32,6 +32,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         <li className="nav-item">
                             <Link className="nav-link" to="/web3">🌐 Web3</Link>
                         </li>
+                        <li className="nav-item">
+                            <Link className="nav-link" to="/dapps">💻 dApps</Link>
+                        </li>
                     </ul>
                 </div>
             </nav>

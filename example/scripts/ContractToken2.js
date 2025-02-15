@@ -1,15 +1,15 @@
-// ContractToken1.js
+// ContractToken2.js
 
 
-class ContractToken1 {
+class ContractToken2 {
     // Main config
-    name = 'Token de Test type ERC20';
-    symbol = 'TOKEN';
+    name = 'BitScript';
+    symbol = 'BIS';
     owner = "0x";
 
     // Supply config
-    decimals = 18;
-    supply = 10_000_000_000n * this.fulltoken;
+    decimals = 8;
+    supply = 21_000_000n * this.fulltoken;
 
     // Accounts & Allowances
     accounts = {};

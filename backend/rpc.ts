@@ -3,7 +3,7 @@
 import express from 'express';
 import { AbiCoder, hexlify } from 'ethers';
 
-import { asserts, fromHex, jsonReplacerForRpc, toHex, now } from './utils';
+import { asserts, fromHex, jsonReplacerForRpc, toHex, now, jsonReplacer } from './utils';
 import { Blockchain } from "./blockchain";
 import { Block } from "./block";
 import { Account } from './account';
@@ -228,11 +228,26 @@ export async function handleRpcRequest(blockchain: Blockchain, req: express.Requ
                 break;
             }
 
+            case 'eth_call': {
+                // https://docs.metamask.io/services/reference/ethereum/json-rpc-methods/eth_call/
+                // https://docs.metamask.io/wallet/reference/json-rpc-methods/eth_call/
+                const [txParams, blockParameter] = params as [callTxParams, BlockParameter];
+
+                // Execute l'appel du contrat dans la VM et retourne le résultat
+                const rawResult = await handleEthCall(blockchain, txParams);
+
+                result = formatRpcResult(rawResult);
+                break;
+            }
+
             case 'eth_sendRawTransaction': {
                 const [txRawData] = params as [string];
 
                 // Décode la transaction brute
-                const txData: TransactionData = decodeRawTransaction(blockchain, txRawData.slice(2));
+                const txParams: sendTxParams = decodeRawTransaction(blockchain, txRawData.slice(2));
+
+                // Transcode le txParams (format Ethereum) au format TransactionData et retourne cette information, prête à être envoyée à handleEthSendTransaction()
+                const txData: TransactionData = transcodeTx(blockchain, txParams);
 
                 // Soumet la transaction décodée au mempool
                 const txHash = await handleEthSendTransaction(blockchain, txData);
@@ -252,18 +267,6 @@ export async function handleRpcRequest(blockchain: Blockchain, req: express.Requ
 
                 // Soumet la transaction (non-encodée) au mempool
                 result = await handleEthSendTransaction(blockchain, txData);
-                break;
-            }
-
-            case 'eth_call': {
-                // https://docs.metamask.io/services/reference/ethereum/json-rpc-methods/eth_call/
-                // https://docs.metamask.io/wallet/reference/json-rpc-methods/eth_call/
-                const [txParams, blockParameter] = params as [callTxParams, BlockParameter];
-
-                // Execute l'appel du contrat dans la VM et retourne le résultat
-                const rawResult = await handleEthCall(blockchain, txParams);
-
-                result = formatRpcResult(rawResult);
                 break;
             }
 
@@ -340,11 +343,13 @@ function formatRpcResult(result: any): any {
     }
 
     if (Array.isArray(result)) {
-        return hexlify(coder.encode(["string[]"], [result.map(String)]));
+        const json = JSON.stringify(result);
+        return hexlify(coder.encode(["string"], [json]));
     }
 
     if (typeof result === "object" && result !== null) {
-        return hexlify(coder.encode(["string"], [JSON.stringify(result)]));
+        const json = JSON.stringify(result, jsonReplacer);
+        return hexlify(coder.encode(["string"], [json]));
     }
 
     return hexlify(coder.encode(["string"], [""])); // Retour par défaut pour éviter les erreurs

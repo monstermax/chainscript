@@ -1,6 +1,6 @@
 
 import { Blockchain } from './blockchain';
-import { blockDelayMax, blockDelayMin } from './config';
+import { blockDelayMax, blockDelayMin, blockMinTransactions } from './config';
 
 import type { AccountAddress } from './types/account.types';
 import { asserts, now } from './utils';
@@ -39,7 +39,8 @@ export class BlocksMiner {
     async tryToMine() {
         console.log(`[${now()}][Miner.tryToMine]`);
 
-        const lastBlock = this.blockchain.getBlock(this.blockchain.blockHeight);
+        const blockHeight = this.blockchain.blockHeight;
+        const lastBlock = this.blockchain.getBlock(blockHeight);
         asserts(lastBlock, `[Miner.tryToMine] lastBlock not found`);
         asserts(lastBlock.timestamp, `[Miner.tryToMine] lastBlock has no timestamp`);
 
@@ -50,7 +51,7 @@ export class BlocksMiner {
 
         if (lastBlockAge < blockDelayMin) return;
 
-        if (mempoolSize > 0 || lastBlockAge > blockDelayMax) {
+        if (mempoolSize >= blockMinTransactions || lastBlockAge > blockDelayMax || blockHeight === 0) {
             await this.blockchain.createNewBlock(this.minerAddress);
         }
 

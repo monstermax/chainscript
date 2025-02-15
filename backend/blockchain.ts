@@ -2,7 +2,7 @@
 
 import http from 'http';
 
-import { blockMaxTransactions, blockMinTransactions, blockReward, chainId, genesisTimestamp, MAX_MEMORY_ACCOUNTS, MAX_MEMORY_BLOCKS, networkVersion } from './config';
+import { blockDelayMax, blockMaxTransactions, blockMinTransactions, blockReward, chainId, genesisTimestamp, MAX_MEMORY_ACCOUNTS, MAX_MEMORY_BLOCKS, networkVersion } from './config';
 import { asserts, computeHash, now } from './utils';
 import { StateManager } from './stateManager';
 import { Transaction } from './transaction';
@@ -364,15 +364,19 @@ export class Blockchain {
         console.log(`[${now()}][Chain.createNewBlock]`);
 
         // 1. Charge le dernier block (ajustement de height & hash)
-        const lastBlock = this.blockHeight > -1 ? this.getBlock(this.blockHeight) : { blockHeight: -1, hash: '0x' as BlockHash };
+        const blockHeight = this.blockHeight;
+        const lastBlock = this.getBlock(blockHeight);
         asserts(lastBlock, '[Chain.createNewBlock] parent block not found');
         asserts(lastBlock.hash, '[Chain.createNewBlock] empty parent block hash');
+
+        asserts(lastBlock.timestamp, `[Miner.tryToMine] lastBlock has no timestamp`);
+        const lastBlockAge = Date.now() - lastBlock.timestamp;
 
 
         // 2. Choisi des transactions dans la mempool // TODO: choisir les transactions dans l'ordre decroissant de fees potentielles
         const transactions: Transaction[] = this.mempool.getPendingTransactions();
 
-        if (transactions.length < blockMinTransactions) {
+        if (transactions.length < blockMinTransactions && lastBlockAge < blockDelayMax && blockHeight !== 0) {
             return null;
         }
 

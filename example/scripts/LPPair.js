@@ -1,106 +1,135 @@
 // LPPair.js
 
-// non testé. merci chatgpt
-
 
 class LPPair {
-    #memory = memory({
-        tokenA: null,
-        tokenB: null,
-        reservesA: 0n,
-        reservesB: 0n,
-        totalLiquidity: 0n,
-        liquidityBalances: {},
-        feePercent: 3n, // 0.3% (3 / 1000)
-    });
+    tokenA = null;
+    tokenB = null;
+    reservesA = 0n;
+    reservesB = 0n;
+    totalLiquidity = 0n;
+    liquidityBalances = {};
+    feePercent = 3n; // 0.3% (3 / 1000)
+
 
     constructor(tokenA, tokenB) /* write */ {
+        tokenA = lower(tokenA);
+        tokenB = lower(tokenB);
+
+        asserts(tokenA, "tokenA non fourni");
+        asserts(tokenB, "tokenB non fourni");
         asserts(tokenA !== tokenB, "Les tokens doivent être différents");
-        this.#memory.tokenA = tokenA;
-        this.#memory.tokenB = tokenB;
+
+        this.tokenA = tokenA;
+        this.tokenB = tokenB;
     }
 
-    addLiquidity(amountA, amountB) /* write */ {
+
+    async addLiquidity(amountA, amountB) /* write */ {
+        const sender = lower(caller);
+        amountA = BigInt(amountA);
+        amountB = BigInt(amountB);
+
+        //log(`[addLiquidity] 🔹 Début - Sender: ${sender}, amountA: ${amountA}, amountB: ${amountB}`);
+
         asserts(amountA > 0n && amountB > 0n, "Montants invalides");
 
-        // 🔹 Vérifier si les tokens existent
-        asserts(this.#memory.tokenA && this.#memory.tokenB, "Paire non initialisée");
+        // Vérifier si les tokens existent
+        asserts(this.tokenA && this.tokenB, "Paire non initialisée");
+        log(`[addLiquidity] ✅ Tokens détectés: tokenA = ${this.tokenA}, tokenB = ${this.tokenB}`);
 
-        // 🔹 Vérifier que l'utilisateur a assez de tokens
-        const balanceA = call(this.#memory.tokenA, "Token", "balanceOf", [caller]);
-        const balanceB = call(this.#memory.tokenB, "Token", "balanceOf", [caller]);
+
+        // Vérifier que l'utilisateur a assez de tokens
+        const balanceA = await call(this.tokenA, "", "balanceOf", [sender]);
+        const balanceB = await call(this.tokenB, "", "balanceOf", [sender]);
+        log(`[addLiquidity] 📊 Soldes avant: balanceA = ${balanceA}, balanceB = ${balanceB}`);
+
 
         asserts(balanceA >= amountA, "Solde insuffisant du tokenA");
         asserts(balanceB >= amountB, "Solde insuffisant du tokenB");
 
-        // 🔹 Vérifier que l'utilisateur a approuvé l'utilisation des tokens
-        const allowanceA = call(this.#memory.tokenA, "Token", "allowance", [caller, address]);
-        const allowanceB = call(this.#memory.tokenB, "Token", "allowance", [caller, address]);
+        // Vérifier que l'utilisateur a approuvé l'utilisation des tokens
+        const allowanceA = await call(this.tokenA, "", "allowance", [sender, self]);
+        const allowanceB = await call(this.tokenB, "", "allowance", [sender, self]);
+        log(`[addLiquidity] 🔐 Allowance: allowanceA = ${allowanceA}, allowanceB = ${allowanceB}`);
+
 
         asserts(allowanceA >= amountA, "Autorisation insuffisante pour tokenA");
         asserts(allowanceB >= amountB, "Autorisation insuffisante pour tokenB");
 
-        // 🔹 Effectuer le transfert des tokens vers la LP pair (depuis caller)
-        call(this.#memory.tokenA, "Token", "transferFrom", [caller, address, amountA]);
-        call(this.#memory.tokenB, "Token", "transferFrom", [caller, address, amountB]);
+        // Effectuer le transfert des tokens vers la LP pair (depuis sender)
+        await call(this.tokenA, "", "transferFrom", [sender, self, amountA]);
+        await call(this.tokenB, "", "transferFrom", [sender, self, amountB]);
+        log(`[addLiquidity] 🔄 Transfert effectué: +${amountA} tokenA, +${amountB} tokenB`);
+
 
         // 🔹 Cas 1 : Création du pool
-        if (this.#memory.totalLiquidity === 0n) {
-            this.#memory.reservesA = BigInt(amountA);
-            this.#memory.reservesB = BigInt(amountB);
+        if (this.totalLiquidity === 0n) {
+            this.reservesA = BigInt(amountA);
+            this.reservesB = BigInt(amountB);
 
-            const liquidity = BigInt(Math.sqrt(Number(amountA) * Number(amountB)));
+            const liquidity = BigInt(Math.round(Math.sqrt(Number(amountA) * Number(amountB))));
 
-            this.#memory.liquidityBalances[caller] = liquidity;
-            this.#memory.totalLiquidity = liquidity;
+            this.liquidityBalances[sender] = liquidity;
+            this.totalLiquidity = liquidity;
+
+            log(`[addLiquidity] 🚀 Pool créé ! ReservesA: ${this.reservesA}, ReservesB: ${this.reservesB}, Liquidity: ${liquidity}`);
 
             return liquidity;
         }
 
+
         // 🔹 Cas 2 : Ajout de liquidité à un pool existant
-        const optimalAmountB = (BigInt(amountA) * this.#memory.reservesB) / this.#memory.reservesA;
+        const optimalAmountB = (BigInt(amountA) * this.reservesB) / this.reservesA;
         asserts(amountB >= optimalAmountB, "Déséquilibre de la paire");
 
-        const liquidity = (BigInt(amountA) * this.#memory.totalLiquidity) / this.#memory.reservesA;
+        const liquidity = (BigInt(amountA) * this.totalLiquidity) / this.reservesA;
 
-        // 🔹 Mise à jour des réserves
-        this.#memory.reservesA += BigInt(amountA);
-        this.#memory.reservesB += BigInt(amountB);
-        this.#memory.liquidityBalances[caller] = (this.#memory.liquidityBalances[caller] || 0n) + liquidity;
-        this.#memory.totalLiquidity += liquidity;
+        // Mise à jour des réserves
+        this.reservesA += BigInt(amountA);
+        this.reservesB += BigInt(amountB);
+        this.liquidityBalances[sender] = (this.liquidityBalances[sender] || 0n) + liquidity;
+        this.totalLiquidity += liquidity;
+
+        log(`[addLiquidity] ✅ Ajout réussi: ReservesA: ${this.reservesA}, ReservesB: ${this.reservesB}, TotalLiquidity: ${this.totalLiquidity}`);
 
         return liquidity;
     }
 
 
-    removeLiquidity(liquidityAmount) /* write */ {
+    async removeLiquidity(liquidityAmount) /* write */ {
+        const sender = lower(caller);
+        liquidityAmount = BigInt(liquidityAmount);
+
         asserts(liquidityAmount > 0n, "Montant invalide");
-        asserts(this.#memory.liquidityBalances[caller] >= liquidityAmount, "Fonds insuffisants");
+        asserts(this.liquidityBalances[sender] >= liquidityAmount, "Fonds insuffisants");
 
-        // 🔹 Calcul de la part des réserves à retirer
-        const amountA = (liquidityAmount * this.#memory.reservesA) / this.#memory.totalLiquidity;
-        const amountB = (liquidityAmount * this.#memory.reservesB) / this.#memory.totalLiquidity;
+        // Calcul de la part des réserves à retirer
+        const amountA = (liquidityAmount * this.reservesA) / this.totalLiquidity;
+        const amountB = (liquidityAmount * this.reservesB) / this.totalLiquidity;
 
-        // 🔹 Mise à jour des réserves et des LP tokens
-        this.#memory.reservesA -= amountA;
-        this.#memory.reservesB -= amountB;
-        this.#memory.totalLiquidity -= liquidityAmount;
-        this.#memory.liquidityBalances[caller] -= liquidityAmount;
+        // Mise à jour des réserves et des LP tokens
+        this.reservesA -= amountA;
+        this.reservesB -= amountB;
+        this.totalLiquidity -= liquidityAmount;
+        this.liquidityBalances[sender] -= liquidityAmount;
 
-        // 🔹 Transférer les tokens directement à l'utilisateur
-        call(this.#memory.tokenA, "Token", "transfer", [caller, amountA]);
-        call(this.#memory.tokenB, "Token", "transfer", [caller, amountB]);
+        // Transférer les tokens directement à l'utilisateur
+        await call(this.tokenA, "", "transfer", [sender, amountA]);
+        await call(this.tokenB, "", "transfer", [sender, amountB]);
 
         return { amountA, amountB };
     }
 
 
-
     getAmountOut(amountIn, reserveIn, reserveOut) {
+        amountIn = BigInt(amountIn),
+        reserveIn = BigInt(reserveIn),
+        reserveOut = BigInt(reserveOut),
+
         asserts(amountIn > 0n, "Insufficient input amount");
         asserts(reserveIn > 0n && reserveOut > 0n, "Insufficient liquidity");
 
-        const feePercent = this.#memory.feePercent; // Récupère le fee depuis la mémoire (ex: 3 = 0.3%)
+        const feePercent = this.feePercent; // Récupère le fee depuis la mémoire (ex: 3 = 0.3%)
         const feeDenominator = 1000n;
 
         const amountInWithFee = amountIn * (feeDenominator - feePercent) / feeDenominator;
@@ -110,14 +139,18 @@ class LPPair {
         return numerator / denominator;
     }
 
+
     swap(tokenIn, amountIn) /* write */ {
+        tokenIn = lower(tokenIn),
+        amountIn = BigInt(amountIn),
+
         // Vérifier que la paire supporte ce token
-        asserts(tokenIn === this.#memory.tokenA || tokenIn === this.#memory.tokenB, "Token invalide");
+        asserts(tokenIn === this.tokenA || tokenIn === this.tokenB, "Token invalide");
 
         // Récupérer les réserves
-        const isTokenA = tokenIn === this.#memory.tokenA;
-        const reserveIn = isTokenA ? this.#memory.reservesA : this.#memory.reservesB;
-        const reserveOut = isTokenA ? this.#memory.reservesB : this.#memory.reservesA;
+        const isTokenA = tokenIn === this.tokenA;
+        const reserveIn = isTokenA ? this.reservesA : this.reservesB;
+        const reserveOut = isTokenA ? this.reservesB : this.reservesA;
 
         // Calcul du montant de sortie avec `getAmountOut`
         const amountOut = this.getAmountOut(amountIn, reserveIn, reserveOut);
@@ -125,24 +158,25 @@ class LPPair {
 
         // Mise à jour des réserves
         if (isTokenA) {
-            this.#memory.reservesA += amountIn;
-            this.#memory.reservesB -= amountOut;
+            this.reservesA += amountIn;
+            this.reservesB -= amountOut;
+
         } else {
-            this.#memory.reservesB += amountIn;
-            this.#memory.reservesA -= amountOut;
+            this.reservesB += amountIn;
+            this.reservesA -= amountOut;
         }
 
-        return amountOut; // 🔥 Retourne le montant reçu
+        return amountOut; // Retourne le montant reçu
     }
 
 
     getReserves() {
         return {
-            tokenA: this.#memory.tokenA,
-            tokenB: this.#memory.tokenB,
-            reservesA: this.#memory.reservesA,
-            reservesB: this.#memory.reservesB,
-            totalLiquidity: this.#memory.totalLiquidity
+            tokenA: this.tokenA,
+            tokenB: this.tokenB,
+            reservesA: this.reservesA,
+            reservesB: this.reservesB,
+            totalLiquidity: this.totalLiquidity
         };
     }
 }

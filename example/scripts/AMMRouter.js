@@ -4,20 +4,24 @@
 
 
 class AMMRouter {
-    #memory = memory({
-        pairs: {}, // { pairAddress: { tokenA, tokenB } }
-    });
 
     registerPair(pairAddress, tokenA, tokenB) /* write */ {
-        this.#memory.pairs[pairAddress] = { tokenA, tokenB };
+        pairAddress = lower(pairAddress);
+        tokenA = lower(tokenA);
+        tokenB = lower(tokenB);
+
+        this.pairs[pairAddress] = { tokenA, tokenB };
     }
 
     async findBestPair(tokenIn, tokenOut) {
+        tokenIn = lower(tokenIn);
+        tokenOut = lower(tokenOut);
+
         let bestPair = null;
         let bestRate = 0n;
         let bestReserves = null;
 
-        for (const [pairAddress, { tokenA, tokenB }] of Object.entries(this.#memory.pairs)) {
+        for (const [pairAddress, { tokenA, tokenB }] of Object.entries(this.pairs)) {
             if ((tokenA === tokenIn && tokenB === tokenOut) || (tokenB === tokenIn && tokenA === tokenOut)) {
                 const pair = await call(pairAddress, "LPPair", "getReserves", []);
 
@@ -39,6 +43,10 @@ class AMMRouter {
 
 
     async swap(tokenIn, tokenOut, amountIn) /* write */ {
+        tokenIn = lower(tokenIn);
+        tokenOut = lower(tokenOut);
+        amountIn = BigInt(amountIn);
+
         const bestPair = await this.findBestPair(tokenIn, tokenOut);
         asserts(bestPair, "Aucune paire disponible");
 
@@ -70,11 +78,15 @@ class AMMRouter {
     }
 
 
-    async swapExactTokensForTokens(amountIn, amountOutMin, path) /* write */ {
+    async swapExactTokensForTokens(amountIn, amountOutMin, pathList) /* write */ {
 
         // Usage
         // 1. Cas simple (swap direct A → B)     => ammRouter.swapExactTokensForTokens(1000, 900, ["TokenA", "TokenB"]);
         // 2. Cas complexe (multi-hop A → B → C) => ammRouter.swapExactTokensForTokens(1000, 850, ["TokenA", "TokenB", "TokenC"]);
+
+        amountIn = BigInt(amountIn);
+        amountIn = BigInt(amountOutMin);
+        const path = pathList.split(',').map(address => address.trim()).filter(address => address);
 
         asserts(path.length >= 2, "Path invalide");
 

@@ -2,9 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
-import { convertCustomAbiToEthersFormat } from "../../utils/abiUtils";
+import { convertCustomAbiToEthersFormat } from "./abiUtils";
 
 import type { AccountAddress, CodeAbi } from "@backend/types/account.types";
+import { callSmartContract } from "./contractUtils";
 
 
 interface ContractCallProps {
@@ -18,9 +19,9 @@ interface ContractCallProps {
 
 
 const ContractCall: React.FC<ContractCallProps> = ({ contractAddress, contractAbi, selectedMethod, setSelectedMethod, callMethods, walletConnected }) => {
-    const [args, setArgs] = useState<string[]>(["0xee5392913a7930c233Aa711263f715f616114e9B"]);
-    const [argsNames, setArgsNames] = useState<string[]>(["address"]);
-    const [result, setResult] = useState<string | null>(null);
+    const [methodArgsNames, setMethodArgsNames] = useState<string[]>(["address"]);
+    const [methodArgs, setMethodArgs] = useState<string[]>(["0xee5392913a7930c233Aa711263f715f616114e9B"]);
+    const [callResult, setCallResult] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
 
@@ -32,8 +33,8 @@ const ContractCall: React.FC<ContractCallProps> = ({ contractAddress, contractAb
         if (!methodData) return;
 
         const methodInputs = methodData.methods[selectedMethod].inputs ?? [];
-        setArgs(new Array(methodInputs.length).fill(""));
-        setArgsNames(methodInputs);
+        setMethodArgs(new Array(methodInputs.length).fill(""));
+        setMethodArgsNames(methodInputs);
     }, [selectedMethod, contractAbi]);
 
 
@@ -46,10 +47,10 @@ const ContractCall: React.FC<ContractCallProps> = ({ contractAddress, contractAb
             setLoading(true);
             const provider = new ethers.BrowserProvider(window.ethereum);
 
-            const ethersAbi = convertCustomAbiToEthersFormat(contractAbi);
-            const contract = new ethers.Contract(contractAddress, ethersAbi, provider);
-            const res = await contract[selectedMethod](...args);
-            setResult(res.toString());
+            const res = await callSmartContract(provider, contractAddress, contractAbi, selectedMethod, methodArgs);
+            console.log('eth_call result:', res);
+
+            setCallResult(res.toString());
 
         } catch (err: any) {
             console.error("Erreur d'exécution:", err);
@@ -78,17 +79,17 @@ const ContractCall: React.FC<ContractCallProps> = ({ contractAddress, contractAb
             <div className="mb-3">
                 <label className="form-label">Arguments</label>
 
-                {args.map((arg, index) => (
+                {methodArgs.map((arg, index) => (
                     <input
                         key={index}
                         type="text"
                         className="form-control mb-2"
-                        placeholder={argsNames[index]}
+                        placeholder={methodArgsNames[index]}
                         value={arg}
                         onChange={(e) => {
-                            const newArgs = [...args];
+                            const newArgs = [...methodArgs];
                             newArgs[index] = e.target.value;
-                            setArgs(newArgs);
+                            setMethodArgs(newArgs);
                         }}
                     />
                 ))}
@@ -98,7 +99,7 @@ const ContractCall: React.FC<ContractCallProps> = ({ contractAddress, contractAb
                 {loading ? "⏳ Appel en cours..." : "🔍 Exécuter"}
             </button>
 
-            {result && <p className="alert alert-success mt-3">Résultat: {result}</p>}
+            {callResult !== null && <p className="alert alert-success mt-3">Résultat: {callResult}</p>}
         </div>
     );
 };
