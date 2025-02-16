@@ -1,6 +1,6 @@
 // account.types.ts
 
-import { Account } from "../account";
+import { Account } from "../blockchain/account";
 
 import type { HexNumber, JsType } from "./types";
 

@@ -15,11 +15,14 @@ import Transaction from "./pages/Transaction";
 import Account from "./pages/Account";
 import Web3 from "./pages/Web3";
 import Dapps from "./pages/Dapps";
-import TeleScript from "./components/dApps/TeleScript";
-import ChainTweet from "./components/dApps/ChainTweet";
-import ChainChat from "./components/dApps/ChainChat";
-import LPPair from "./components/dApps/LPPair";
-import AMMRouter from "./components/dApps/AMMRouter";
+import TeleScript from "./components/dApps/TeleScript/TeleScript";
+import ChainTweet from "./components/dApps/ChainTweet/ChainTweet";
+import ChainChat from "./components/dApps/ChainChat/ChainChat";
+import LPPair from "./components/dApps/PoolSwap/LPPair";
+import AMMRouter from "./components/dApps/PoolSwap/AMMRouter";
+import ChainIt from "./components/dApps/ChainIt/ChainIt";
+import TokensSwap from "./components/dApps/PoolSwap/TokensSwap";
+import PoolLiquidity from "./components/dApps/PoolSwap/PoolLiquidity";
 
 
 
@@ -50,7 +53,10 @@ const App = () => {
                     <Route path="/dapps/chaintweet" element={<ChainTweet />} />
                     <Route path="/dapps/chainchat" element={<ChainChat />} />
                     <Route path="/dapps/lppair" element={<LPPair />} />
-                    <Route path="/dapps/swap" element={<AMMRouter />} />
+                    <Route path="/dapps/lprouter" element={<AMMRouter />} />
+                    <Route path="/dapps/chainit" element={<ChainIt />} />
+                    <Route path="/dapps/swap" element={<TokensSwap />} />
+                    <Route path="/dapps/liquidity" element={<PoolLiquidity />} />
                 </Routes>
             </Layout>
         </HashRouter>

@@ -1,8 +1,9 @@
 // ConnectWallet.tsx
 
-import { AccountAddress } from "@backend/types/account.types";
 import { ethers } from "ethers";
 import React, { useEffect, useState } from "react";
+
+import { AccountAddress } from "@backend/types/account.types";
 
 
 const ConnectWallet: React.FC<{ onConnect: (address: AccountAddress) => void }> = ({ onConnect }) => {

@@ -2,8 +2,9 @@
 
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { AccountAddress } from "@backend/types/account.types";
+
 import { HexNumber } from "@backend/types/types";
+import { AccountAddress } from "@backend/types/account.types";
 
 
 interface AccountSelectorModalProps {

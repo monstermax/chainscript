@@ -2,8 +2,8 @@
 import React, { useState } from "react";
 
 import Balance from "../components/Web3/Balance";
-import ContractDeployment from "../components/Web3/ContractDeployment";
-import ContractExecution from "../components/Web3/ContractExecution";
+import ContractDeployment from "../components/Web3/ContractDeployment/ContractDeployment";
+import ContractExecution from "../components/Web3/ContractExecution/ContractExecution";
 import ConnectWallet from "../components/Web3/ConnectWallet";
 
 

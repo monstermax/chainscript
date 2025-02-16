@@ -1,7 +1,5 @@
 // ChainIt.js
 
-// A tester/debuger
-
 
 class ChainIt {
     posts = []; // Liste des posts { id, author, title, content, timestamp, comments }

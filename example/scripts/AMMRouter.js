@@ -72,30 +72,48 @@ class AMMRouter {
 
 
 
-    getAmountsOut(amountIn, pathList) {
-
-        // Usage:
-        // 1. Cas simple   (swap direct A → B)      => getAmountsOut(1000, ["TokenA", "TokenB"]);  // => Retourne : [1000, 980] (avec 2% de frais)
-        // 2. Cas complexe (multi-paires A → B → C) => getAmountsOut(1000, ["TokenA", "TokenB", "TokenC"]); // Retourne : [1000, 980, 950]
+    async getAmountsOut(amountIn, pathList) {
+        asserts(typeof amountIn === "string", "amountIn doit être une string");
+        asserts(typeof pathList === "string", "pathList doit être une string");
 
         const path = pathList.split(',').map(address => address.trim()).filter(address => address);
         asserts(path.length >= 2, "Path invalide");
 
-        let amounts = [amountIn];
+        let amounts = [BigInt(amountIn)];
 
         for (let i = 0; i < path.length - 1; i++) {
             const tokenIn = path[i];
             const tokenOut = path[i + 1];
 
-            const pair = findPair(tokenIn, tokenOut);
-            asserts(pair, "Paire introuvable");
+            const { bestPair } = await this.findBestPair(tokenIn, tokenOut);
+            asserts(bestPair, "Paire introuvable");
 
-            const amountOut = pair.getAmountOut(amounts[i]); // Utilisation de `getAmountOut` dans la paire
+            const reserves = await call(bestPair, "LPPair", "getReserves", []);
+            asserts(reserves, "Impossible de récupérer les réserves");
+
+            let reserveIn, reserveOut;
+
+            if (tokenIn === reserves.tokenA) {
+                reserveIn = BigInt(reserves.reservesA); // normalement c'est deja du bigint
+                reserveOut = BigInt(reserves.reservesB);
+
+            } else {
+                reserveIn = BigInt(reserves.reservesB);
+                reserveOut = BigInt(reserves.reservesA);
+            }
+
+            // Calculer le montant de sortie sans conversion en string
+            let amountOut = await call(bestPair, "LPPair", "getAmountOut", [amounts[i], reserveIn, reserveOut]);
+            amountOut = BigInt(amountOut); // normalement c'est deja du bigint
+            asserts(amountOut > 0n, "Montant de sortie invalide");
+
             amounts.push(amountOut);
         }
 
         return amounts;
     }
+
+
 
 
     async swapExactTokensForTokens(amountIn, amountOutMin, pathList) /* write */ {

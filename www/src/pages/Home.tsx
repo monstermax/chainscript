@@ -13,11 +13,11 @@ const Home: React.FC = () => {
     const [added, setAdded] = useState(false);
 
     async function addChainToMetamask() {
-        const explorerUrlSsl = `http://${rpcHost}`;
+        const explorerUrlSsl = `${location.protocol}//${rpcHost}`;
 
         const chainIdHex = "0x" + (chainId).toString(16);
-        const rpcUrls = [explorerUrlSsl];
-        const blockExplorerUrls = [explorerUrlSsl];
+        const rpcUrls = [explorerUrlSsl]; //.map(url => url.replace('http://', 'https://'));
+        const blockExplorerUrls = [explorerUrlSsl]; //.map(url => url.replace('http://', 'https://'));
 
         const nativeCurrency = {
             name: symbol,
@@ -34,8 +34,8 @@ const Home: React.FC = () => {
             });
             setAdded(true);
 
-        } catch (e) {
-            console.warn("Failed to add chain");
+        } catch (err: any) {
+            console.warn("Failed to add chain:", err);
         }
 
         setIsAdding(false);

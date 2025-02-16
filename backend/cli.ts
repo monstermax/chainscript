@@ -4,12 +4,12 @@ import path from 'path';
 import fs from 'fs';
 
 import { defaultStateDir, fullcoin, defaultP2pPort, defaultRpcPort } from './config';
-import { asserts, ensureDirectory, getOpt, hasOpt, now } from "./utils";
-import { Blockchain } from "./blockchain";
-import { Transaction } from "./transaction";
-import { httpListen } from './http';
-import { P2PNode } from './p2p';
-import { BlocksMiner } from './miner';
+import { asserts, ensureDirectory, getOpt, hasOpt, now } from "./helpers/utils";
+import { Blockchain } from "./blockchain/blockchain";
+import { Transaction } from "./blockchain/transaction";
+import { httpListen } from './http/http';
+import { P2PNode } from './p2p/p2p';
+import { BlocksMiner } from './miner/miner';
 
 import type { AccountAddress, CodeAbi } from './types/account.types';
 
@@ -23,9 +23,6 @@ ts-node cli.ts --init [--force]        # initiialize the blockchain (including g
 
 # Run
 ts-node cli.ts --listen [--mine]       # listen for rpc & p2p transactions + mine new blocks
-
-# Monitoring
-ts-node cli.ts --dump-accounts --dump-memories --dump-blocks
 
 # Options
 ts-node cli.ts --dir ~/.blockchain-js [...]
@@ -49,16 +46,23 @@ async function main() {
     const p2pPort: number = Number(getOpt('--p2p')) || defaultP2pPort; // -1 to disable p2p
 
 
+    // Vérifie que la database n'est pas locké (evite de lancer 2 instances en meme temps)
     if (! lockDb(stateDir)) {
         return;
     }
 
+
+    // Gère le unlock de la database en cas d'arret ou de crash
     handleErrors(() => unlockDb(stateDir));
 
 
 
     if (hasOpt('--init')) {
         // Initialize a new Blockchain
+
+        /*
+            /!\  !!!  WARNING: ALL DATA WILL BE DELETED  !!!  /!\
+        */
 
         if (fs.existsSync(stateDir)) {
             const metadataFilepath = path.join(stateDir, 'metadata.json');
@@ -77,12 +81,12 @@ async function main() {
     }
 
 
-    // Load the Blockchain
+    // Charge la Blockchain (charge les metadata et indexes) et vérifie l'intégrité
     const blockchain = new Blockchain(stateDir);
 
 
     if (hasOpt('--init')) {
-        // Create the Genesis Block
+        // Créé le block Genesis (block 0)
         const { block, blockReceipt } = await blockchain.createGenesisBlock();
 
         console.log(`[${now()}][cli][main] block:`, block);
@@ -90,28 +94,7 @@ async function main() {
     }
 
 
-    if (hasOpt('--test')) {
-        await testsTransactions(blockchain);
-    }
-
-
-    console.log('\n', '#'.repeat(80), '\n');
-
-
-
-    if (hasOpt('--dump-blocks')) {
-        console.log(`[${now()}][cli][main] blocks: `, blockchain.stateManager.dumpBlocks());
-    }
-
-    if (hasOpt('--dump-memories')) {
-        console.log(`[${now()}][cli][main] memories: `, blockchain.stateManager.dumpAccountsMemories());
-    }
-
-    if (hasOpt('--dump-accounts')) {
-        console.log(`[${now()}][cli][main] accounts: `, blockchain.stateManager.dumpAccountsBalances(true));
-    }
-
-
+    // Se met en attente (de nouvelles transactions via rpc ET de nouveaux blocks via p2p) et essaye de miner des blocks
     if (hasOpt('--listen')) {
         // Wait for transactions...
 
@@ -193,125 +176,6 @@ function unlockDb(stateDir: string) {
     }
 }
 
-
-
-async function testsTransactions(blockchain: Blockchain) {
-
-    const addressTest1: AccountAddress = '0xee5392913a7930c233Aa711263f715f616114e9B';
-    const addressTest2: AccountAddress = '0x0000000000000000000000000000000000000020';
-    const addressTest3: AccountAddress = '0x0000000000000000000000000000000000000030';
-    const addressTest4: AccountAddress = '0x0000000000000000000000000000000000000040';
-
-    const addressContract1: AccountAddress = '0xdc0c7f994d58af4e7346ebe8fb0917af55d6ca45';
-    const addressContract2: AccountAddress = '0x84a32d0b52ff252229b49da06d541dce857fb480';
-    const addressToken1: AccountAddress = '0xc9e4facb4b3c1248cbf71203b568ab617453981e';
-
-
-    if (hasOpt('--tx-transfer')) {
-        // 1. Create a transaction
-        const txExecutorAddress = addressTest1;
-        const txAmount = 10n * fullcoin;
-
-        const tx = new Transaction(txExecutorAddress, txAmount)
-            .transfer(addressContract1, txAmount); // TRANSFER AMOUNT
-
-        // 2. Add transaction to the mempool
-        blockchain.mempool.addTransaction(tx);
-    }
-
-    if (hasOpt('--tx-create-contract-1')) {
-        // 1. Create a transaction
-        const txExecutorAddress = addressTest1;
-
-        const code = loadScriptCode('ContractTest1');
-        const abi: CodeAbi = [ { class: 'ContractTest1', methods: { test_vm_1: {} }, attributes: {} } ];
-
-        const tx = new Transaction(txExecutorAddress)
-            .create(code, 'ContractTest1'); // CREATE CONTRACT
-
-        // 2. Add transaction to the mempool
-        blockchain.mempool.addTransaction(tx);
-    }
-
-    if (hasOpt('--tx-exec-contract-1')) {
-        // 1. Create a transaction
-        const txExecutorAddress = addressTest1;
-        const txAmount = 10n * fullcoin;
-
-        const tx = new Transaction(txExecutorAddress, txAmount)
-            .transfer(addressContract1, txAmount) // TRANSFER AMOUNT
-            .execute(addressContract1, 'ContractTest1', 'test_vm_1'); // CALL CONTRACT
-
-        // 2. Add transaction to the mempool
-        blockchain.mempool.addTransaction(tx);
-    }
-
-    if (hasOpt('--tx-create-contract-2')) {
-        // 1. Create a transaction
-        const txExecutorAddress = addressTest1;
-
-        const code = loadScriptCode('ContractTest2');
-        const abi: CodeAbi = [ { class: 'ContractTest2', methods: { test_vm_2_a: {}, test_vm_2_b: {} }, attributes: {} } ];
-
-        const tx = new Transaction(txExecutorAddress)
-            .create(code, 'ContractTest1'); // CREATE TOKEN
-
-        // 2. Add transaction to the mempool
-        blockchain.mempool.addTransaction(tx);
-    }
-
-    if (hasOpt('--tx-create-token-1')) {
-        // 1. Create a transaction
-        const txExecutorAddress = addressTest1;
-
-        const code = loadScriptCode('ContractToken1');
-        const abi: CodeAbi = [ { class: 'ContractToken1', methods: { transfer: {}, balanceOf: {} }, attributes: {} } ];
-
-        const tx = new Transaction(txExecutorAddress)
-            .create(code, 'ContractTest1'); // CREATE TOKEN
-
-        // 2. Add transaction to the mempool
-        blockchain.mempool.addTransaction(tx);
-    }
-
-    if (hasOpt('--tx-exec-token-1')) {
-        // 1. Create a transaction
-        const txExecutorAddress = addressTest1;
-        const txAmount = 0n * fullcoin;
-        const fulltoken = BigInt(10 ** 9); // because this token has 9 decimals
-
-        const tx = new Transaction(txExecutorAddress, txAmount)
-            .execute(addressToken1, 'ContractToken1', 'transfer', ['0x0000000000000000000000000000000000000020', 600n * fulltoken]); // CALL TOKEN
-
-        // 2. Add transaction to the mempool
-        blockchain.mempool.addTransaction(tx);
-    }
-
-    if (hasOpt('--mine')) {
-        const minerAddress: AccountAddress = '0xee5392913a7930c233Aa711263f715f616114e9B'; // addressTest1
-
-        const miningResult = await blockchain.createNewBlock(minerAddress);
-
-        if (miningResult) {
-            const { block, blockReceipt } = miningResult;
-
-            console.log(`[${now()}][cli][main] block:`, block)
-            console.log(`[${now()}][cli][main] blockReceipt:`, blockReceipt)
-        }
-    }
-
-    console.log(`[${now()}][cli][main] mempool:`, blockchain.mempool.toJSON());
-}
-
-
-function loadScriptCode(scriptName: string) {
-    // Load source code
-    const execScriptFile = `${__dirname}/example/scripts/${scriptName}.js`;
-    asserts(fs.existsSync(execScriptFile), "[loadScriptCode] script file not found");
-
-    const execScriptCode = fs.readFileSync(execScriptFile).toString();
-    return execScriptCode;
-}
 
 
 /* ######################################################### */

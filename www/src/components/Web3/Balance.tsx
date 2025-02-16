@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import { ethers, formatEther, parseEther } from "ethers";
 
+import { symbol } from "../../config.client";
+
 import AccountSelectorModal from "./AccountSelectorModal";
 
 import type { AccountAddress } from "@backend/types/account.types";
@@ -39,7 +41,7 @@ const Balance: React.FC<{ walletConnected: boolean }> = ({ walletConnected }) =>
     return (
         <div className="card p-4">
             <h3>💰 Balance</h3>
-            <p>Solde actuel : {balance ? `${balance} ETH` : "N/A"}</p>
+            <p>Solde actuel : {balance ? `${balance} ${symbol}` : "N/A"}</p>
             <button className="btn btn-primary" disabled={!walletConnected} onClick={getBalance}>Récupérer le solde</button>
 
             <h4 className="mt-4">Envoyer des fonds</h4>

@@ -33,6 +33,18 @@ const Dapps: React.FC = () => {
                     </a>
                 </div>
 
+                {/* ChainIt */}
+                <div className="col-md-4">
+                    <a href="#/dapps/chainit" className="text-decoration-none">
+                        <div className="card shadow-sm dapp-card">
+                            <div className="card-body text-center">
+                                <h5 className="card-title">📌 ChainIt</h5>
+                                <p className="card-text">Partagez et discutez sur un forum décentralisé.</p>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
                 {/* Liquidity Pair */}
                 <div className="col-md-4">
                     <a href="#/dapps/lppair" className="text-decoration-none">
@@ -45,13 +57,13 @@ const Dapps: React.FC = () => {
                     </a>
                 </div>
 
-                {/* Token Swap */}
+                {/* AMM Router */}
                 <div className="col-md-4">
-                    <a href="#/dapps/swap" className="text-decoration-none">
+                    <a href="#/dapps/lprouter" className="text-decoration-none">
                         <div className="card shadow-sm dapp-card">
                             <div className="card-body text-center">
-                                <h5 className="card-title">🔄 Tokens Swap</h5>
-                                <p className="card-text">Échangez des tokens en un clic.</p>
+                                <h5 className="card-title">🔄 AMM Router</h5>
+                                <p className="card-text">Échangez des tokens.</p>
                             </div>
                         </div>
                     </a>
@@ -68,6 +80,33 @@ const Dapps: React.FC = () => {
                         </div>
                     </a>
                 </div>
+
+
+                {/* TokenSwap */}
+                <div className="col-md-4">
+                    <a href="#/dapps/swap" className="text-decoration-none">
+                        <div className="card shadow-sm dapp-card">
+                            <div className="card-body text-center">
+                                <h5 className="card-title">🔄 Script Swap</h5>
+                                <p className="card-text">Échangez des tokens en un clic.</p>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+
+                {/* PoolLiquidity */}
+                <div className="col-md-4">
+                    <a href="#/dapps/liquidity" className="text-decoration-none">
+                        <div className="card shadow-sm dapp-card">
+                            <div className="card-body text-center">
+                                <h5 className="card-title">🔄 Pool Liquidity</h5>
+                                <p className="card-text">Ajoutez de la liquidité.</p>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
             </div>
         </div>
     );
