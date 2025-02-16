@@ -11,7 +11,6 @@ ChainScript est une blockchain minimaliste et performante, permettant l'exécuti
 ✅ **Système de P2P** pour la synchronisation entre nœuds.  
 ✅ **Transactions simples et appels de contrats**.  
 ✅ **Exécution de transactions et consensus distribué**.  
-✅ **Gestion des logs et événements dans les smart contracts**.  
 
 ## Installation
 
@@ -39,14 +38,6 @@ ts-node cli.ts --init [--force]  # Initialise la blockchain, y compris le bloc g
 ts-node cli.ts --listen [--mine]  # Écoute les transactions RPC & P2P et mine de nouveaux blocs
 ```
 
-### 🔍 Monitoring & Debug
-```sh
-ts-node cli.ts --dump-accounts   # Affiche les comptes enregistrés
-
-ts-node cli.ts --dump-memories   # Affiche les mémoires des contrats
-
-ts-node cli.ts --dump-blocks     # Affiche la liste des blocs
-```
 
 ### ⚙️ Options supplémentaires
 ```sh
