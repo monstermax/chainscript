@@ -53,19 +53,17 @@ ts-node cli.ts --p2p 6001 [...]              # Définit le port P2P (par défaut
 ### 📜 1. Écrire un contrat simple en JavaScript
 ```js
 class MyToken {
-    #memory = memory({
-        totalSupply: 1000000n,
-        balances: { "0x123...": 1000000n }
-    });
+    totalSupply = 1000000n;
+    balances = { "0x123...": 1000000n };
 
     balanceOf(address) {
-        return this.#memory.balances[address] || 0n;
+        return this.balances[lower(address)] || 0n;
     }
 
     transfer(to, amount) /* write */ {
-        asserts(this.#memory.balances[caller] >= amount, "Insufficient balance");
-        this.#memory.balances[caller] -= amount;
-        this.#memory.balances[to] = (this.#memory.balances[to] || 0n) + amount;
+        asserts(this.balances[lower(caller)] >= BigInt(amount), "Insufficient balance");
+        this.balances[lower(caller)] -= BigInt(amount);
+        this.balances[lower(to)] = (this.balances[lower(to)] || 0n) + BigInt(amount);
     }
 }
 ```
