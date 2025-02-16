@@ -4,93 +4,13 @@ import React, { useState } from "react";
 import { ethers } from "ethers";
 import nacl from "tweetnacl";
 import naclUtil from "tweetnacl-util";
+
+import { TeleScriptAddress } from "../../config.client";
+import { TeleScriptAbi } from "../../abi/TeleScriptAbi";
+
 import { convertCustomAbiToEthersFormat } from "../Web3/abiUtils";
+import { callSmartContract } from "../Web3/contractUtils";
 
-
-// Adresse du smart contract TeleScript
-const TELE_SCRIPT_ADDRESS = "0x540071eF54E8DA6479d33f29684BeF02Cab2b68B";
-
-
-// ABI du smart contract
-const TELE_SCRIPT_ABI = [
-    {
-        "class": "TeleScript",
-        "methods": {
-            "registerUser": {
-                "inputs": [],
-                "write": true
-            },
-            "unregisterUser": {
-                "inputs": [],
-                "write": true
-            },
-            "registerSessionKey": {
-                "inputs": [
-                    "chatId",
-                    "encryptedSessionKey"
-                ],
-                "write": true
-            },
-            "createChat": {
-                "inputs": [
-                    "encryptedSessionKeysList",
-                    "isPublic"
-                ],
-                "write": true
-            },
-            "sendMessage": {
-                "inputs": [
-                    "chatId",
-                    "encryptedMessage",
-                    "nonce"
-                ],
-                "write": true
-            },
-            "getMessages": {
-                "inputs": [
-                    "chatId",
-                    "userAddress"
-                ],
-                "write": false
-            },
-            "addMember": {
-                "inputs": [
-                    "chatId",
-                    "newMember"
-                ],
-                "write": true
-            },
-            "removeMember": {
-                "inputs": [
-                    "chatId",
-                    "memberToRemove"
-                ],
-                "write": true
-            },
-            "getUserChats": {
-                "inputs": [
-                    "userAddress"
-                ],
-                "write": false
-            },
-            "promoteToAdmin": {
-                "inputs": [
-                    "chatId",
-                    "newAdmin"
-                ],
-                "write": true
-            },
-            "getSessionKey": {
-                "inputs": [
-                    "chatId",
-                    "userAddress"
-                ],
-                "write": false
-            }
-        },
-        "attributes": {}
-    }
-];
 
 
 const TeleScript: React.FC = () => {
@@ -109,8 +29,8 @@ const TeleScript: React.FC = () => {
         const browserProvider = new ethers.BrowserProvider(window.ethereum);
         const signer = await browserProvider.getSigner();
 
-        const ethersAbi = convertCustomAbiToEthersFormat(TELE_SCRIPT_ABI)
-        const teleScriptContract = new ethers.Contract(TELE_SCRIPT_ADDRESS, ethersAbi, signer);
+        const ethersAbi = convertCustomAbiToEthersFormat(TeleScriptAbi)
+        const teleScriptContract = new ethers.Contract(TeleScriptAddress, ethersAbi, signer);
 
         setWalletAddress(await signer.getAddress());
         setProvider(browserProvider);
@@ -143,7 +63,7 @@ const TeleScript: React.FC = () => {
     // 💬 Créer un chat avec chiffrement des clés
     const createChat = async () => {
         if (!contract) return alert("Veuillez connecter votre wallet.");
-        const isPublic = prompt("Ce chat est-il public ? (true/false)", "false");
+        const isPublic = prompt("Ce chat est-il public ? (true/false)", "");
         const members = prompt("Adresses des membres (séparées par ,)", "");
 
         const myPrivateKey: Uint8Array | string = ''; // TODO
@@ -159,6 +79,8 @@ const TeleScript: React.FC = () => {
             if (!memberAddress) continue;
 
             const memberPublicKey = await contract.getUserPublicKey(memberAddress); // 🔄 Récupère la clé publique
+            //const memberPublicKey = await callSmartContract(provider, TeleScriptAddress, TeleScriptAbi, "getUserPublicKey", []);
+
             const { encryptedKey, nonce } = encryptSessionKey(sessionKey, naclUtil.decodeBase64(memberPublicKey), naclUtil.decodeBase64(myPrivateKey));
             encryptedSessionKeys[memberAddress] = { encryptedKey, nonce };
         }
@@ -170,6 +92,7 @@ const TeleScript: React.FC = () => {
 
         const tx = await contract.createChat(encryptedSessionKeysList, isPublic);
         setTransactionHash(tx.hash);
+
         const receipt = await tx.wait();
         setChatId(receipt.logs[0].data);
 

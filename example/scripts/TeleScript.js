@@ -1,6 +1,6 @@
 // TeleScript.js
 
-
+// A tester/debuger
 
 
 class TeleScript {

@@ -5,12 +5,27 @@ import { CodeAbi } from "@backend/types/account.types";
 
 export const ChainTweetAbi: CodeAbi = [
     {
-        class: "ChainTweet",
-        methods: { 
-            postTweet: { inputs: ["content"], write: true },
-            getLastTweets: { inputs: ["maxMessage", "offset"] } 
+        "class": "ChainTweet",
+        "methods": {
+            "postTweet": {
+                "inputs": [
+                    "content"
+                ],
+                "write": true
+            },
+            "getLastTweets": {
+                "inputs": [
+                    "maxMessage",
+                    "offset"
+                ],
+                "write": false
+            }
         },
-        attributes: {},
+        "attributes": {
+            "tweets": {
+                "type": "object"
+            }
+        }
     }
 ];
 

@@ -81,3 +81,21 @@ export type AbiSearchResultAttribute = {
 
 
 export type ContractMemory = Record<string, any>;
+
+
+
+
+export type EthersAbi = {
+    type: string;
+    name: string;
+    inputs: {
+        name: string;
+        type: string;
+    }[];
+    outputs: {
+        name: string;
+        type: string;
+    }[];
+    stateMutability: string;
+}[];
+

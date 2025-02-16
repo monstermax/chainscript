@@ -1,6 +1,6 @@
 // NFTToken.js
 
-// non testé. merci chatgpt
+// A tester/debuger
 
 
 class NFTToken {
@@ -13,7 +13,6 @@ class NFTToken {
 
 
     get name() {
-        debugger;
         return this.name;
     }
 

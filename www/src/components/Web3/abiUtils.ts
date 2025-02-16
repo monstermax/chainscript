@@ -3,13 +3,13 @@
 import * as acorn from "acorn";
 import * as walk from "acorn-walk";
 
-import { CodeAbi } from "@backend/types/account.types";
+import { CodeAbi, EthersAbi } from "@backend/types/account.types";
 
 
 
 /** Convertit un ABI personnalisé en un format compatible avec Ethers.js */
-export function convertCustomAbiToEthersFormat(customAbi: CodeAbi) {
-    const ethersAbi = [];
+export function convertCustomAbiToEthersFormat(customAbi: CodeAbi): EthersAbi {
+    const ethersAbi: EthersAbi = [];
 
     for (const abiClass of customAbi) {
 
