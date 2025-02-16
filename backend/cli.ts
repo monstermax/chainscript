@@ -3,15 +3,14 @@
 import path from 'path';
 import fs from 'fs';
 
-import { defaultStateDir, fullcoin, defaultP2pPort, defaultRpcPort } from './config';
-import { asserts, ensureDirectory, getOpt, hasOpt, now } from "./helpers/utils";
+import { defaultStateDir, defaultP2pPort, defaultRpcPort } from './config';
+import { ensureDirectory, getOpt, hasOpt, now } from "./helpers/utils";
 import { Blockchain } from "./blockchain/blockchain";
-import { Transaction } from "./blockchain/transaction";
 import { httpListen } from './http/http';
 import { P2PNode } from './p2p/p2p';
 import { BlocksMiner } from './miner/miner';
 
-import type { AccountAddress, CodeAbi } from './types/account.types';
+import type { AccountAddress } from './types/account.types';
 
 
 /* ######################################################### */

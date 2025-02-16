@@ -4,7 +4,7 @@ import crypto from 'crypto';
 
 import WebSocket, { WebSocketServer } from 'ws';
 
-import { asserts, jsonReplacer, jsonReviver, now } from '../helpers/utils';
+import { asserts, getOpt, hasOpt, jsonReplacer, jsonReviver, now } from '../helpers/utils';
 import { Blockchain } from '../blockchain/blockchain';
 import { Transaction } from '../blockchain/transaction';
 import { Block } from '../blockchain/block';
@@ -101,7 +101,11 @@ export class P2PNode {
 
     /** Connecte aux peers initiaux */
     private connectToInitialPeers() {
-        initialPeers.forEach(peer => {
+        const optionalPeers = getOpt('--peers')?.split(',').map(peer => peer.trim()).filter(peer => peer);
+
+        const peers: string[] = (optionalPeers && optionalPeers.length > 0) ? optionalPeers : initialPeers;
+
+        peers.forEach(peer => {
             if (peer === `127.0.0.1:${this.port}`) {
                 return; // pas de connexion à sois-meme
             }
