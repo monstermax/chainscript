@@ -55,6 +55,21 @@ function handleHttpRequests(blockchain: Blockchain, app: express.Express) {
 
     app.get('/', (req, res) => routeHomepage(blockchain, req, res));
 
+    app.get('/address/*', (req, res) => {
+        const dynamicPart = Object.values(req.params)[0];
+        res.redirect(`/#/accounts/${dynamicPart}`);
+    });
+
+    app.get('/block/*', (req, res) => {
+        const dynamicPart = Object.values(req.params)[0];
+        res.redirect(`/#/blocks/${dynamicPart}`);
+    });
+
+    app.get('/tx/*', (req, res) => {
+        const dynamicPart = Object.values(req.params)[0];
+        res.redirect(`/#/transactions/${dynamicPart}`);
+    });
+
     handleAccountsRoutes(blockchain, app);
     handleBlocksRoutes(blockchain, app);
     handleTransactionsRoutes(blockchain, app);

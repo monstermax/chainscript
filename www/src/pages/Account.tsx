@@ -5,7 +5,7 @@ import { useParams } from "react-router-dom";
 
 import { jsonReplacer, jsonReviver } from "../utils/jsonUtils";
 import { divideBigInt } from "../utils/numberUtils";
-import { decimals } from "../config.client";
+import { decimals, symbol } from "../config.client";
 
 import type { AccountData } from "@backend/types/account.types";
 
@@ -44,7 +44,7 @@ const Account: React.FC = () => {
             {/* Informations principales */}
             <div className="card mb-4">
                 <div className="card-body">
-                    <p><strong>💰 Solde :</strong> {divideBigInt(account.balance, BigInt(10 ** decimals))} ETH</p>
+                    <p><strong>💰 Solde :</strong> {divideBigInt(account.balance, BigInt(10 ** decimals))} {symbol}</p>
                     <p><strong>🔄 Transactions :</strong> {account.transactionsCount}</p>
                     <p><strong>🔗 Hash :</strong> {account.hash}</p>
                 </div>
