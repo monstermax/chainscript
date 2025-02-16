@@ -62,8 +62,8 @@ const Dapps: React.FC = () => {
                     <a href="#/dapps/lprouter" className="text-decoration-none">
                         <div className="card shadow-sm dapp-card">
                             <div className="card-body text-center">
-                                <h5 className="card-title">🔄 AMM Router</h5>
-                                <p className="card-text">Échangez des tokens.</p>
+                                <h5 className="card-title">🔄 Script Swap</h5>
+                                <p className="card-text">Échangez des tokens en un clic.</p>
                             </div>
                         </div>
                     </a>
@@ -81,13 +81,24 @@ const Dapps: React.FC = () => {
                     </a>
                 </div>
 
+                {/* PoolLiquidity */}
+                <div className="col-md-4">
+                    <a href="#/dapps/liquidity" className="text-decoration-none">
+                        <div className="card shadow-sm dapp-card">
+                            <div className="card-body text-center">
+                                <h5 className="card-title">💧 Liquidity Pair (v2)</h5>
+                                <p className="card-text">Ajoutez ou retirez de la liquidité.</p>
+                            </div>
+                        </div>
+                    </a>
+                </div>
 
                 {/* TokenSwap */}
                 <div className="col-md-4">
                     <a href="#/dapps/swap" className="text-decoration-none">
                         <div className="card shadow-sm dapp-card">
                             <div className="card-body text-center">
-                                <h5 className="card-title">🔄 Script Swap</h5>
+                                <h5 className="card-title">🔄 Script Swap (v2)</h5>
                                 <p className="card-text">Échangez des tokens en un clic.</p>
                             </div>
                         </div>
@@ -95,17 +106,6 @@ const Dapps: React.FC = () => {
                 </div>
 
 
-                {/* PoolLiquidity */}
-                <div className="col-md-4">
-                    <a href="#/dapps/liquidity" className="text-decoration-none">
-                        <div className="card shadow-sm dapp-card">
-                            <div className="card-body text-center">
-                                <h5 className="card-title">🔄 Pool Liquidity</h5>
-                                <p className="card-text">Ajoutez de la liquidité.</p>
-                            </div>
-                        </div>
-                    </a>
-                </div>
 
             </div>
         </div>
