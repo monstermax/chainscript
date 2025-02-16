@@ -56,7 +56,7 @@ export class P2PNode {
     private peersMaxBlockHeight: number = 0; // Hauteur max connue parmi les peers
     private blockSyncQueue: Set<number> = new Set(); // Liste des blocks à récupérer
     private activeRequests: Set<number> = new Set(); // Blocks en attente de réponse
-    private isSyncing = false;
+    public isSyncing = false;
 
 
 
@@ -333,16 +333,16 @@ export class P2PNode {
     private async handleNewBlock(blockData: BlockData) {
         const localHeight = this.blockchain.blockHeight;
 
-        console.log('blockData:', blockData)
+        //console.log('blockData:', blockData)
 
         console.log(`[${now()}][P2P][handleNewBlock] ⛓️ Nouveau block reçu ${blockData.blockHeight} (expected: ${localHeight + 1})`);
 
         const block: Block = Block.from(blockData);
-        console.log('block Data:', block.toData()); // DEBUG
+        //console.log('block Data:', block.toData()); // DEBUG
 
 
         if (block.blockHeight === localHeight + 1) {
-            // ✅ Ajout direct du block suivant
+            // Ajout direct du block suivant
             console.log(`[${now()}][P2P] 📥 Ajout immédiat du block`);
             const blockReceipt: BlockReceipt = await this.blockchain.addExistingBlock(block);
 
@@ -358,7 +358,7 @@ export class P2PNode {
         }
 
         if (blockData.blockHeight > localHeight + 1 && blockData.blockHeight < localHeight + 100) {
-            // 🔄 Stocke le bloc manquant dans la file et continue la sync
+            // Stocke le bloc manquant dans la file et continue la sync
             this.blockSyncQueue.add(blockData.blockHeight);
             console.log(`[${now()}][P2P][handleNewBlock] 🔄 Block ${blockData.blockHeight} ajouté à la file d'attente`);
         }

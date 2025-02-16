@@ -40,6 +40,10 @@ export const devAddress = "0xee5392913a7930c233Aa711263f715f616114e9B";
 export const devPrivateKey = "f55ccf8acbef226806fcccf268c1dc6d7365c42009c963a4e9565debc3dba475";
 
 
+// Faucet
+export const faucetAddress = "0xee5392913a7930c233Aa711263f715f616114e9B";
+
+
 export const defaultStateDir = `/home/${process.env.USER}/.blockchain-js`;
 
 export const MAX_MEMORY_BLOCKS = 1000; // Nb maximum de blocks à conserver en mémoire dans le cachee LRU

@@ -62,7 +62,7 @@ export async function handleEthSendTransaction(blockchain: Blockchain, txData: T
     console.log(`[handleEthSendTransaction] 📩 Traitement d'une transaction`, txData);
 
     const amount: bigint = BigInt(txData.value ?? 0);
-    const nonce: bigint = BigInt(txData.nonce ?? 0);
+    const nonce: bigint | undefined = (typeof txData.nonce === 'bigint') ? txData.nonce : undefined;
 
     const tx = new Transaction(txData.from, amount, nonce);
     tx.instructions = txData.instructions;

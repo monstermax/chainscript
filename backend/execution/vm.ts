@@ -192,7 +192,7 @@ ${executeCode}
         const executeScript: Script = new Script(executeCode);
 
         if (callStack === 1 && memoryState) {
-            console.log('Contract memory avant exécution:', contractAccount.memory)
+            //console.log('Contract memory avant exécution:', contractAccount.memory)
         }
 
         // Execute la methode demandée et retourne le résultat
@@ -202,7 +202,7 @@ ${executeCode}
         Object.assign(contractAccount.memory, contractMemory);
 
         if (callStack === 1 && memoryState) {
-            console.log('Contract memory après exécution:', contractAccount.memory);
+            //console.log('Contract memory après exécution:', contractAccount.memory);
         }
 
         return { vmResult, vmMonitor, vmError: null };

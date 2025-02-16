@@ -103,14 +103,14 @@ export class Transaction {
     toData(): TransactionData {
         const tx: Transaction = this;
 
-        asserts(typeof tx.nonce === 'bigint', `[Transaction][toData] invalid transaction nonce "${tx.nonce}"`);
+        asserts(tx.nonce === null || ['bigint', 'undefined'].includes(typeof tx.nonce), `[Transaction][toData] invalid transaction nonce "${tx.nonce}"`);
         asserts(typeof tx.from === 'string', `[Transaction][toData] invalid transaction emitter type "${tx.from}"`);
         asserts(tx.from.startsWith('0x'), `[Transaction][toData] invalid transaction emitter "${tx.nonce}"`);
         asserts(tx.from === '0x' || tx.from.length === 42, `[Transaction][toData] invalid transaction emitter "${tx.nonce}"`);
 
         const transactionData: TransactionData = {
             from: tx.from,
-            nonce: tx.nonce,
+            nonce: tx.nonce ?? undefined,
             value: tx.amount,
             instructions: tx.instructions,
             hash: tx.hash,

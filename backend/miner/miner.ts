@@ -38,6 +38,8 @@ export class BlocksMiner {
 
     /** Essaye de miner un block */
     async tryToMine() {
+        if (this.blockchain.p2p?.isSyncing) return;
+
         console.log(`[${now()}][Miner.tryToMine]`);
 
         const blockHeight = this.blockchain.blockHeight;

@@ -8,6 +8,19 @@ import { AccountAddress } from "@backend/types/account.types";
 
 
 
+export function createEthWallet(): { address: string; privateKey: string, mnemonic?: string } {
+    const wallet = ethers.Wallet.createRandom();
+
+    const result = {
+        address: wallet.address,
+        privateKey: wallet.privateKey,
+        mnemonic: wallet.mnemonic?.phrase || undefined,
+    };
+
+    return result;
+}
+
+
 export async function getCoinBalance(): Promise<bigint | null> {
     if (! window.ethereum || ! window.ethereum.selectedAddress) {
         console.warn('Wallet not connected');

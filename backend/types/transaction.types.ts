@@ -15,7 +15,7 @@ export type TransactionsIndex = Record<TransactionHash, number>; // blockHeight
 
 export type TransactionData = {
     from: AccountAddress;
-    nonce: bigint;
+    nonce?: bigint;
     value: bigint;
     instructions: TransactionInstruction[];
     hash?: TransactionHash | null;

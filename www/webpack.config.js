@@ -12,7 +12,7 @@ module.exports = {
     },
     devServer: {
         static: path.resolve(__dirname, "dist"),
-        port: 3000, // ✅ Webpack Dev Server sur port 3000
+        port: 3366,
     },
     resolve: {
         extensions: [".tsx", ".ts", ".js"],

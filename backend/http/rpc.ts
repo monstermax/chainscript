@@ -1,8 +1,9 @@
 // rpc.ts
 
 import express from 'express';
-import { AbiCoder, hexlify } from 'ethers';
+import { AbiCoder, ethers, hexlify } from 'ethers';
 
+import { faucetAddress, fullcoin } from '../config';
 import { asserts, fromHex, jsonReplacerForRpc, toHex, now, jsonReplacer } from '../helpers/utils';
 import { Blockchain } from "../blockchain/blockchain";
 import { Block } from "../blockchain/block";
@@ -271,6 +272,34 @@ export async function handleRpcRequest(blockchain: Blockchain, req: express.Requ
             }
 
 
+            case 'wallet_create': {
+                const wallet = ethers.Wallet.createRandom();
+
+                result = {
+                    address: wallet.address,
+                    privateKey: wallet.privateKey,
+                    mnemonic: wallet.mnemonic?.phrase || undefined,
+                };
+
+                break;
+            }
+
+
+            case 'eth_faucet': {
+                const [address] = params as [AccountAddress];
+
+                const amount = 1000n * fullcoin;
+
+                const tx = new Transaction(faucetAddress, amount);
+                tx.transfer(address, amount);
+
+                await handleEthSendTransaction(blockchain, tx.toData());
+
+                result = tx.hash as HexNumber;
+                break;
+            }
+
+
             case 'debug_getAccount': {
                 const account: Account = blockchain.getAccount(params[0], null);
 
@@ -284,6 +313,7 @@ export async function handleRpcRequest(blockchain: Blockchain, req: express.Requ
                 result = block ? block.toData() : null;
                 break;
             }
+
 
             default:
                 throw new Error(`[${now()}][RPC] Méthode RPC inconnue: ${method}`);
