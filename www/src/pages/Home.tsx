@@ -187,7 +187,7 @@ const FaucetComponent: React.FC = () => {
                 />
             </div>
 
-            <button className="btn btn-primary w-100" onClick={requestFaucet} disabled={loading || !address}>
+            <button className="btn btn-primary w-100" onClick={requestFaucet} disabled={loading || !address || !window.ethereum}>
                 {loading ? "⏳ Demande en cours..." : "🚰 Demander des tokens"}
             </button>
 
