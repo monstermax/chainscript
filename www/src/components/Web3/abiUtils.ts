@@ -12,6 +12,8 @@ export function convertCustomAbiToEthersFormat(customAbi: CodeAbi) {
     const ethersAbi = [];
 
     for (const abiClass of customAbi) {
+
+        // 1. Methodes
         for (const [methodName, methodData] of Object.entries(abiClass.methods)) {
             const inputs = (methodData.inputs ?? []).map(input => ({
                 name: input,
@@ -31,6 +33,19 @@ export function convertCustomAbiToEthersFormat(customAbi: CodeAbi) {
                 inputs,
                 outputs,
                 stateMutability: methodData.write ? 'non-payable' : 'view',
+            });
+        }
+
+        // 2. Attrributs
+        for (const [attrName, attrData] of Object.entries(abiClass.attributes)) {
+            const outputType = 'string'; // mapJsTypeToSolidity(attrData.type);
+
+            ethersAbi.push({
+                type: "function",
+                name: attrName,
+                inputs: [], // Les variables publiques n'ont pas d'arguments
+                outputs: [{ name: "", type: outputType }],
+                stateMutability: "view",
             });
         }
     }
@@ -82,8 +97,6 @@ export function extractClassNamesWithAcorn(contractCode: string): string[] {
 export function extractConstructorParamsWithAcorn(contractCode: string, className: string): string[] {
     try {
         const ast = acorn.parse(contractCode, { ecmaVersion: "latest" });
-
-        console.log('ast:', ast)
 
         let constructorParams: string[] = [];
 

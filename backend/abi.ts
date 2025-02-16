@@ -6,17 +6,16 @@ import { keccak256, toUtf8Bytes } from "ethers";
 import { createContext, Script } from "vm";
 
 import { createDeploymentSandbox } from './vm';
-
-import type { AbiClassMethod, AccountAddress, CodeAbi, CodeAbiClassAttributes, CodeAbiClassMethods, ContractMemory } from "./types/account.types";
 import { hasOpt, stringifyParams } from './utils';
-import { FunctionBody, FunctionDeclaration } from 'typescript';
+
+import type { AbiSearchResult, AbiSearchResultAttribute, AbiSearchResultMethod, AccountAddress, CodeAbi, CodeAbiClass, CodeAbiClassAttribute, CodeAbiClassAttributes, CodeAbiClassMethod, CodeAbiClassMethods, ContractMemory } from "./types/account.types";
 
 
 /* ######################################################### */
 
 
 /** Cherche la classe & method correspondant à la signature (encodée) fournie */
-export function findMethodAbi(abi: CodeAbi, methodSignature: string): AbiClassMethod | null {
+export function findMethodAbi(abi: CodeAbi, methodSignature: string): AbiSearchResult | null {
     for (const abiClass of abi) {
         for (const [methodName, abiClassMethod] of Object.entries(abiClass.methods)) {
 
@@ -30,10 +29,40 @@ export function findMethodAbi(abi: CodeAbi, methodSignature: string): AbiClassMe
             if (hash === methodSignature.slice(0, 10)) {
                 console.log(`[findMethodAbi] ✅ Méthode trouvée: ${abiClass.class}.${methodName}`);
 
-                return { className: abiClass.class, methodName, class: abiClass, method: abiClass.methods[methodName] };
+                const methodAbi: AbiSearchResultMethod = {
+                    type: 'method',
+                    className: abiClass.class,
+                    methodName,
+                    class: abiClass,
+                    method: abiClass.methods[methodName],
+                };
+
+                return methodAbi;
+            }
+        }
+
+        for (const [attributeName, attributeData] of Object.entries(abiClass.attributes)) {
+            const attributeType = attributeData.type;
+
+            const attributeSignature = `${attributeName}()`;
+            const attributeHash = keccak256(toUtf8Bytes(attributeSignature)).slice(0, 10);
+
+            if (attributeHash === methodSignature.slice(0, 10)) {
+                console.log(`[findMethodAbi] ✅ Attribut trouvé: ${abiClass.class}.${attributeName} (Type: ${attributeType})`);
+
+                const attributeAbi: AbiSearchResultAttribute = {
+                    type: 'attribute',
+                    className: abiClass.class,
+                    methodName: attributeName,
+                    class: abiClass,
+                    attribute: abiClass.attributes[attributeName],
+                };
+
+                return attributeAbi;
             }
         }
     }
+
 
     console.warn(`[findMethodAbi] ❌ Méthode inconnue pour la signature: ${methodSignature}`);
     return null;
@@ -207,6 +236,8 @@ export function getClassProperties(instance: any): { methods: CodeAbiClassMethod
 /** Récupère les noms des paramètres d’une fonction JS et détecte les annotations */
 export function getFunctionParams(func: Function): { params: string[], isWrite: boolean } {
     let functionString = func.toString().replace(/\n/g, " "); // Supprime les sauts de ligne pour éviter les problèmes d'analyse
+
+    // Note: voir si possible de parser avec Acorn (voir extractConstructorParamsWithAcorn)
 
     // Trouver où commence le corps de la fonction `{`
     const bodyIndex = functionString.indexOf("{");

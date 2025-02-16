@@ -1,7 +1,5 @@
 // ContractTest1.js
 
-import { log, transfer } from 'vm:dummy';
-
 
 class ContractTest1 {
 

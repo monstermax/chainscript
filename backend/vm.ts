@@ -8,7 +8,7 @@ import { decimals, fullcoin } from './config';
 import { Blockchain } from './blockchain';
 import { MemoryState } from "./stateManager";
 
-import type { AccountAddress, CodeAbiClass, CodeAbiClassMethod, ContractMemory } from "./types/account.types";
+import type { AccountAddress, CodeAbiClass, CodeAbiClassAttribute, CodeAbiClassMethod, ContractMemory } from "./types/account.types";
 import type { BlockData, BlockHash } from "./types/block.types";
 import { buildAbi, getClassProperties, getFunctionParams } from './abi';
 
@@ -65,20 +65,21 @@ export async function execVm(
     asserts(abiClass, `[execVm] missing abi contract class`);
     className = className || abiClass.class;
 
+    const abiClassAttribute: CodeAbiClassAttribute = abiClass.attributes[methodName];
     const abiClassMethod: CodeAbiClassMethod = abiClass.methods[methodName];
-    asserts(abiClass, `[execVm] missing abi contract method`);
 
-    const inputTypes = (abiClassMethod.inputs ?? []).map(name => "string").join(",");
+    const inputTypes = (abiClassMethod && abiClassMethod.inputs) ? abiClassMethod.inputs.map(name => "string").join(",") : [];
     const signatureString = `${methodName}(${inputTypes})`;
 
 
     // Vérifier si l’ABI contient la classe demandée
-    asserts(abiClassMethod, `[execVm] La méthode "${methodName}" n'existe pas dans "${className}" !`);
+    asserts(abiClassMethod || abiClassAttribute, `[execVm] La méthode "${methodName}" n'existe pas dans "${className}" !`);
 
-    // Vérifier que les arguments correspondent (optionnel)
-    //if (abiClassMethod.inputs) {
-    //    //asserts(method.inputs.length === scriptArgs.length, `[execVm] La méthode "${scriptMethod}" attend ${method.inputs.length} arguments, mais ${scriptArgs.length} ont été fournis !`);
-    //}
+    // Vérifier que les arguments correspondent
+    if (abiClassMethod) {
+        const inputs = abiClassMethod.inputs ?? [];
+        asserts(inputs.length === methodArgs.length, `[execVm] La méthode "${methodName}" attend ${inputs.length} arguments, mais ${methodArgs.length} ont été fournis !`);
+    }
 
 
 
@@ -124,25 +125,27 @@ export async function execVm(
         const contractCode: string = contractAccount.code;
 
         let executeCode: string = `
-{ // wrap code out of global context //
-
 // Code du contrat
 ${contractCode}
 
 // Charge une instance du contrat sans appeler le contructeur
 const instance = __getInstanceAndMemory(${className}.prototype);
 
-// Appelle la methode demandee avec les parametres fournis
 
-${callStack === 1 && memoryState ? "debugger;" : ""}
+${abiClassAttribute ? `
+// Appelle l'attribut demandé
+const __result = instance.${methodName};
 
+// Retourne le resultat
+__result;
+
+` : `
+// Appelle la methode demandée avec les parametres fournis
 const __result = instance.${methodName}(${stringifyParams(methodArgs)});
 
-${callStack === 1 && memoryState ? "debugger;" : ""}
-
+// Sauvegarde les attributs de l'instance et retourne le resultat
 if (__result instanceof Promise) {
     __result.then((resolvedValue) => {
-        ${callStack === 1 && memoryState ? "debugger;" : ""}
         __saveInstanceMemory(instance);
         return resolvedValue;
     });
@@ -152,9 +155,8 @@ if (__result instanceof Promise) {
     __result;
 }
 
-// Retourne le resultat
-//__result;
-}
+`}
+
 `;
 
         let executionTimeout: number | undefined = 100;
@@ -214,9 +216,12 @@ export function createExecutionSandbox(blockchain: Blockchain, caller: AccountAd
         },
 
         call: async (callContractAddress: AccountAddress, callClassName: string, callMethodName: string, callArgs: any[]): Promise<any> => {
-            console.log(`[call] => caller = ${contractAddress} | script = ${callContractAddress} | class = ${callClassName} | method = ${callMethodName}`)
+            const caller = contractAddress;
+            console.log(`[subcall] => caller = ${caller} | script = ${callContractAddress} | class = ${callClassName} | method = ${callMethodName}`)
 
-            const { vmResult, vmError } = await execVm(blockchain, contractAddress, callContractAddress, callClassName, callMethodName, callArgs, memoryState, vmMonitor);
+            asserts(typeof callContractAddress === 'string' && callContractAddress.startsWith('0x') && callContractAddress.length === 42, `Invalid contract address "${callContractAddress}"`);
+
+            const { vmResult, vmError } = await execVm(blockchain, caller, callContractAddress, callClassName, callMethodName, callArgs, memoryState, vmMonitor);
 
             if (vmError) {
                 throw new Error(vmError);
@@ -253,27 +258,6 @@ export function createExecutionSandbox(blockchain: Blockchain, caller: AccountAd
         getBlockByHash: (blockHash: BlockHash): BlockData | null => {
             return blockchain.getBlockByHash(blockHash)?.toData() ?? null;
         },
-
-        jsonReviver,
-
-        //__getInstanceAndMemory: getInstanceAndMemory,
-        //__saveInstanceMemory: saveInstanceMemory,
-
-        import (moduleName: string) {
-            if (moduleName === 'vm:dummy') {
-                return sandbox;
-            }
-
-            throw new Error(`Module ${moduleName} not found`);
-        },
-
-        require (moduleName: string) {
-            if (moduleName === 'vm:dummy') {
-                return sandbox;
-            }
-
-            throw new Error(`Module ${moduleName} not found`);
-        }
     }
 
     const sandboxData: { [method: string]: any } = {
@@ -284,9 +268,14 @@ export function createExecutionSandbox(blockchain: Blockchain, caller: AccountAd
         block: { blockHeight: blockchain.blockHeight },
     }
 
+    const sandboxExecUtils = {
+        jsonReviver,
+    }
+
     const sandbox: { [methodOrVariable: string]: any } = {
         ...sandboxUtils,
         ...sandboxData,
+        ...sandboxExecUtils,
 
         // Note: penser à mettre à jour `createSandboxMock()` ET `contract.dummy.ts` en cas de modification de sandboxUtils ou sandboxData
     };
@@ -308,7 +297,7 @@ export function createDeploymentSandbox(caller: AccountAddress, contractAddress:
 
         transfer: async (to: any, amount: bigint): Promise<void> => { throw new Error(`Not available`) },
 
-        call: async (callContractAddress: any, callClassName: string, callMethodName: string, callArgs: any[]): Promise<any> => { },
+        call: async (callContractAddress: any, callClassName: string, callMethodName: string, callArgs: any[]): Promise<any> => { throw new Error(`Not available`) },
 
         balance: (address: any) => { throw new Error(`Not available`) },
 

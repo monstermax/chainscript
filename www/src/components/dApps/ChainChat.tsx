@@ -3,30 +3,19 @@
 import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
 
+import { ChainChatAddress } from "../../config.client";
+import { ChainChatAbi } from "../../abi/ChainChatAbi";
+
 import { callSmartContract, executeSmartContract } from "../Web3/contractUtils";
 import ConnectWallet from "../Web3/ConnectWallet";
 
-import type { CodeAbi } from "@backend/types/account.types";
-
-
-const contractAddress = "0x28EAfa5D7a29416AECcc3C5620B1F5468092fEE5";
-
-const contractAbi: CodeAbi = [
-    {
-        class: "ChainChat",
-        methods: { 
-            sendMessage: { inputs: ["to", "message"], write: true },
-            getLastMessages: { inputs: ["userAddress", "maxMessage", "offset"] } 
-        },
-        attributes: {},
-    }
-];
+import type { AccountAddress } from "@backend/types/account.types";
 
 
 const ChainChat: React.FC = () => {
-    const [walletAddress, setWalletAddress] = useState<string | null>(null);
+    const [walletAddress, setWalletAddress] = useState<AccountAddress | null>(null);
     const [messages, setMessages] = useState<{ from: string; message: string; timestamp: number }[]>([]);
-    const [recipient, setRecipient] = useState<string>("");
+    const [recipient, setRecipient] = useState<AccountAddress | null>(null);
     const [messageContent, setMessageContent] = useState<string>("");
     const [loading, setLoading] = useState(false);
 
@@ -42,7 +31,7 @@ const ChainChat: React.FC = () => {
         try {
             const provider = new ethers.BrowserProvider(window.ethereum);
 
-            const result = await callSmartContract(provider, contractAddress, contractAbi, "getLastMessages", [walletAddress, "100", "0"]);
+            const result = await callSmartContract(provider, ChainChatAddress, ChainChatAbi, "getLastMessages", [walletAddress, "100", "0"]);
             console.log('result:', result);
 
             setMessages(JSON.parse(result));
@@ -55,13 +44,13 @@ const ChainChat: React.FC = () => {
     const sendMessage = async () => {
         if (!walletAddress) return; // alert("Connecte ton wallet !");
         if (!window.ethereum) return; // alert("Wallet non connecté");
-        if (!recipient.trim()) return alert("Adresse du destinataire requise !");
+        if (!recipient) return alert("Adresse du destinataire requise !");
         if (!messageContent.trim()) return alert("Le message est vide !");
 
         try {
             setLoading(true);
             const provider = new ethers.BrowserProvider(window.ethereum);
-            await executeSmartContract(provider, contractAddress, contractAbi, "sendMessage", [recipient, messageContent]);
+            await executeSmartContract(provider, ChainChatAddress, ChainChatAbi, "sendMessage", [recipient, messageContent]);
             setMessageContent("");
             fetchMessages();
 
@@ -84,8 +73,8 @@ const ChainChat: React.FC = () => {
                     type="text"
                     className="form-control mb-2"
                     placeholder="Adresse du destinataire (0x...)"
-                    value={recipient}
-                    onChange={(e) => setRecipient(e.target.value)}
+                    value={recipient ?? ''}
+                    onChange={(e) => setRecipient(e.target.value as AccountAddress)}
                 />
                 <textarea
                     className="form-control mb-2"
@@ -93,7 +82,7 @@ const ChainChat: React.FC = () => {
                     value={messageContent}
                     onChange={(e) => setMessageContent(e.target.value)}
                 ></textarea>
-                <button className="btn btn-primary w-100" onClick={sendMessage} disabled={loading || !walletAddress}>
+                <button className="btn btn-primary w-100" onClick={sendMessage} disabled={loading || !walletAddress || !recipient}>
                     {loading ? "⏳ Envoi..." : "📩 Envoyer"}
                 </button>
             </div>

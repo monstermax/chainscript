@@ -38,8 +38,8 @@ export type CodeAbiClass = {
 };
 
 
-export type CodeAbiClassMethods = {[method: string]: CodeAbiClassMethod};
-export type CodeAbiClassAttributes = {[attr: string]: { type: JsType } };
+export type CodeAbiClassMethods    = {[method: string]:    CodeAbiClassMethod};
+export type CodeAbiClassAttributes = {[attribute: string]: CodeAbiClassAttribute};
 
 
 export type CodeAbiClassMethod = {
@@ -49,6 +49,10 @@ export type CodeAbiClassMethod = {
 };
 
 
+export type CodeAbiClassAttribute = {
+    type: JsType,
+}
+
 export type CodeAbiCall = {
     className: string,
     methodName: string,
@@ -57,11 +61,22 @@ export type CodeAbiCall = {
 
 
 
-export type AbiClassMethod = {
+export type AbiSearchResult = AbiSearchResultMethod | AbiSearchResultAttribute;
+
+export type AbiSearchResultMethod = {
+    type: 'method',
     className: string,
-    methodName: string,
     class: CodeAbiClass,
+    methodName: string,
     method: CodeAbiClassMethod,
+};
+
+export type AbiSearchResultAttribute = {
+    type: 'attribute',
+    className: string,
+    class: CodeAbiClass,
+    methodName: string,
+    attribute: CodeAbiClassAttribute,
 };
 
 

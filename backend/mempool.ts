@@ -34,8 +34,20 @@ export class Mempool {
             asserts(tx.nonce === BigInt(emitterAccount.transactionsCount), `[Mempool][addTransaction] invalid nonce. (Found: ${tx.nonce} / Expected: ${emitterAccount.transactionsCount})`);
 
         } else {
+            // nonce non fourni, on le force
             tx.nonce = BigInt(emitterAccount.transactionsCount);
         }
+
+
+        const emitterWaitingTransactions = [...this.transactions.values()].filter(_tx => _tx.from === tx.from);
+        const sameNonceWaitingTransaction = emitterWaitingTransactions.find(_tx => _tx.nonce === tx.nonce);
+
+        if (sameNonceWaitingTransaction) {
+            // L'emetteur a deja une transaction en attente avec le meme nonce
+            // TODO
+            var debugme = 1; // TODO: gerer les annulations et remplacements de transactions
+        }
+
 
         tx.hash = tx.computeHash();
 

@@ -1,9 +1,10 @@
 // AMMRouter.js
 
-// non testé. merci chatgpt
 
 
 class AMMRouter {
+    pairs = {};
+
 
     registerPair(pairAddress, tokenA, tokenB) /* write */ {
         pairAddress = lower(pairAddress);
@@ -12,6 +13,7 @@ class AMMRouter {
 
         this.pairs[pairAddress] = { tokenA, tokenB };
     }
+
 
     async findBestPair(tokenIn, tokenOut) {
         tokenIn = lower(tokenIn);
@@ -47,18 +49,37 @@ class AMMRouter {
         tokenOut = lower(tokenOut);
         amountIn = BigInt(amountIn);
 
-        const bestPair = await this.findBestPair(tokenIn, tokenOut);
+        const sender = lower(caller); // L'utilisateur qui fait le swap
+
+        const { bestPair } = await this.findBestPair(tokenIn, tokenOut);
         asserts(bestPair, "Aucune paire disponible");
 
+        // Vérifier que l'utilisateur a assez de fonds et d'allocation
+        const balance = await call(tokenIn, "", "balanceOf", [sender]);
+        const allowance = await call(tokenIn, "", "allowance", [sender, self]); // `self` = ce Router
+
+        asserts(balance >= amountIn, "[Router][swap] Solde insuffisant pour l'utilisateur");
+        asserts(allowance >= amountIn, "[Router][swap] Allowance insuffisante pour le Router");
+
+        // Transférer les tokens de l'utilisateur vers le Router
+        await call(tokenIn, "", "transferFrom", [sender, self, amountIn]);
+
+        // Approuver la LP Pair pour récupérer les tokens du Router
+        await call(tokenIn, "", "approve", [bestPair, amountIn]);
+
+        // Exécuter le swap sur la LP Pair (le Router agit maintenant comme sender)
         return call(bestPair, "LPPair", "swap", [tokenIn, amountIn]);
     }
 
-    getAmountsOut(amountIn, path) {
+
+
+    getAmountsOut(amountIn, pathList) {
 
         // Usage:
         // 1. Cas simple   (swap direct A → B)      => getAmountsOut(1000, ["TokenA", "TokenB"]);  // => Retourne : [1000, 980] (avec 2% de frais)
         // 2. Cas complexe (multi-paires A → B → C) => getAmountsOut(1000, ["TokenA", "TokenB", "TokenC"]); // Retourne : [1000, 980, 950]
 
+        const path = pathList.split(',').map(address => address.trim()).filter(address => address);
         asserts(path.length >= 2, "Path invalide");
 
         let amounts = [amountIn];
@@ -86,8 +107,8 @@ class AMMRouter {
 
         amountIn = BigInt(amountIn);
         amountIn = BigInt(amountOutMin);
-        const path = pathList.split(',').map(address => address.trim()).filter(address => address);
 
+        const path = pathList.split(',').map(address => address.trim()).filter(address => address);
         asserts(path.length >= 2, "Path invalide");
 
         // 1️⃣ Calcul des montants à chaque étape

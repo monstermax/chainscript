@@ -3,120 +3,42 @@
 import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
 
-import { callSmartContract, executeSmartContract } from "../components/Web3/contractUtils";
-import ConnectWallet from "../components/Web3/ConnectWallet";
-import { jsonReviver } from "../utils/jsonUtils";
+import { LPPairAddress } from "../../config.client";
+import { divideBigInt } from "../../utils/numberUtils";
+import { callSmartContract, executeSmartContract } from "../Web3/contractUtils";
 
-import type { AccountAddress, CodeAbi } from "@backend/types/account.types";
+import ConnectWallet from "../Web3/ConnectWallet";
+import { jsonReviver } from "../../utils/jsonUtils";
+import { LPPairAbi } from "../../abi/LPPairAbi";
+import { TokenAbi } from "../../abi/TokenAbi";
 
+import type { AccountAddress } from "@backend/types/account.types";
 
-const contractAddress = "0xd7873deFbdc5c9169704ECC034c1Fe186F766b43";
-
-const LpPairAbi: CodeAbi = [
-    {
-        class: "LPPair",
-        methods: {
-            addLiquidity: { inputs: ["amountA", "amountB"], write: true },
-            removeLiquidity: { inputs: ["liquidityAmount"], write: true },
-            getAmountOut: { inputs: ["amountIn", "reserveIn", "reserveOut"] },
-            swap: { inputs: ["tokenIn", "amountIn"], write: true },
-            getReserves: { inputs: [] }
-        },
-        attributes: {
-            tokenA: { type: "string" },
-            tokenB: { type: "string" },
-            reservesA: { type: "bigint" },
-            reservesB: { type: "bigint" },
-            totalLiquidity: { type: "bigint" },
-            liquidityBalances: { type: "object" },
-            feePercent: { type: "bigint" }
-        }
-    }
-];
-
-const TokenAbi: CodeAbi = [
-    {
-        "class": "ContractToken2",
-        "methods": {
-            "balanceOf": {
-                "inputs": [
-                    "_address"
-                ],
-                "write": false
-            },
-            "transfer": {
-                "inputs": [
-                    "recipient",
-                    "amount"
-                ],
-                "write": true
-            },
-            "approve": {
-                "inputs": [
-                    "spender",
-                    "amount"
-                ],
-                "write": true
-            },
-            "allowance": {
-                "inputs": [
-                    "owner",
-                    "spender"
-                ],
-                "write": false
-            },
-            "transferFrom": {
-                "inputs": [
-                    "owner",
-                    "recipient",
-                    "amount"
-                ],
-                "write": true
-            }
-        },
-        "attributes": {
-            "name": {
-                "type": "undefined"
-            },
-            "symbol": {
-                "type": "undefined"
-            },
-            "owner": {
-                "type": "string"
-            },
-            "decimals": {
-                "type": "number"
-            },
-            "supply": {
-                "type": "bigint"
-            },
-            "accounts": {
-                "type": "object"
-            },
-            "allowances": {
-                "type": "object"
-            }
-        }
-    }
-];
 
 const LPPair: React.FC = () => {
     const [walletAddress, setWalletAddress] = useState<string | null>(null);
     const [reserves, setReserves] = useState<{ tokenA: AccountAddress, tokenB: AccountAddress, reservesA: string, reservesB: string, totalLiquidity: string } | null>(null);
     const [loading, setLoading] = useState(false);
-    const [amountA, setAmountA] = useState<string>("");
-    const [amountB, setAmountB] = useState<string>("");
-    const [liquidityAmount, setLiquidityAmount] = useState<string>("");
+    const [amountA, setAmountA] = useState<bigint>(0n);
+    const [amountB, setAmountB] = useState<bigint>(0n);
+    const [decimalsA, setDecimalsA] = useState<number | null>(null); // TODO
+    const [decimalsB, setDecimalsB] = useState<number | null>(null); // TODO
+    const [liquidityAmount, setLiquidityAmount] = useState<bigint>(0n);
     const [swapAmount, setSwapAmount] = useState<string>("");
     const [swapToken, setSwapToken] = useState<string>("");
-    const [balances, setBalances] = useState<{ balanceA: string, balanceB: string }>({ balanceA: "0", balanceB: "0" });
-    const [allowances, setAllowances] = useState<{ allowanceA: string, allowanceB: string }>({ allowanceA: "0", allowanceB: "0" });
-    const [approveAmountA, setApproveAmountA] = useState<string>("");
-    const [approveAmountB, setApproveAmountB] = useState<string>("");
+    const [balances, setBalances] = useState<{ balanceA: bigint, balanceB: bigint }>({ balanceA: 0n, balanceB: 0n });
+    const [allowances, setAllowances] = useState<{ allowanceA: bigint, allowanceB: bigint }>({ allowanceA: 0n, allowanceB: 0n });
+    const [approveAmountA, setApproveAmountA] = useState<bigint>(0n);
+    const [approveAmountB, setApproveAmountB] = useState<bigint>(0n);
 
     useEffect(() => {
         fetchReserves();
     }, [walletAddress]);
+
+    useEffect(() => {
+        fetchDecimals();
+        fetchBalancesAndAllowances();
+    }, [reserves, allowances]);
 
 
     const fetchReserves = async () => {
@@ -124,7 +46,7 @@ const LPPair: React.FC = () => {
 
         try {
             const provider = new ethers.BrowserProvider(window.ethereum);
-            const result = await callSmartContract(provider, contractAddress, LpPairAbi, "getReserves", []);
+            const result = await callSmartContract(provider, LPPairAddress, LPPairAbi, "getReserves", []);
 
             console.log("Reserves:", result);
 
@@ -138,6 +60,26 @@ const LPPair: React.FC = () => {
         }
     };
 
+    const fetchDecimals = async () => {
+        if (!walletAddress || !reserves || !window.ethereum) return;
+        if (decimalsA !== null && decimalsB !== null) return;
+
+        try {
+            const provider = new ethers.BrowserProvider(window.ethereum);
+
+            const decimalsA = await callSmartContract(provider, reserves.tokenA, TokenAbi, "decimals", []);
+            console.log("decimalsA:", decimalsA);
+            setDecimalsA(Number(decimalsA));
+
+            const decimalsB = await callSmartContract(provider, reserves.tokenB, TokenAbi, "decimals", []);
+            console.log("decimalsB:", decimalsB);
+            setDecimalsB(Number(decimalsB));
+
+        } catch (error) {
+            console.error("Erreur lors de la récupération des décimales :", error);
+        }
+    };
+
     const fetchBalancesAndAllowances = async () => {
         if (!walletAddress || !reserves || !window.ethereum) return;
 
@@ -147,25 +89,26 @@ const LPPair: React.FC = () => {
             const balanceA = await callSmartContract(provider, reserves.tokenA, TokenAbi, "balanceOf", [walletAddress]);
             const balanceB = await callSmartContract(provider, reserves.tokenB, TokenAbi, "balanceOf", [walletAddress]);
 
-            const allowanceA = await callSmartContract(provider, reserves.tokenA, TokenAbi, "allowance", [walletAddress, contractAddress]);
-            const allowanceB = await callSmartContract(provider, reserves.tokenB, TokenAbi, "allowance", [walletAddress, contractAddress]);
+            const allowanceA = await callSmartContract(provider, reserves.tokenA, TokenAbi, "allowance", [walletAddress, LPPairAddress]);
+            const allowanceB = await callSmartContract(provider, reserves.tokenB, TokenAbi, "allowance", [walletAddress, LPPairAddress]);
 
-            setBalances({ balanceA: balanceA.toString(), balanceB: balanceB.toString() });
-            setAllowances({ allowanceA: allowanceA.toString(), allowanceB: allowanceB.toString() });
+            setBalances({ balanceA: BigInt(balanceA), balanceB: BigInt(balanceB) });
+            setAllowances({ allowanceA: BigInt(allowanceA), allowanceB: BigInt(allowanceB) });
 
         } catch (error) {
             console.error("Erreur lors de la récupération des balances/allowances :", error);
         }
     };
 
-    const approveToken = async (token: AccountAddress, amount: string) => {
+    const approveToken = async (token: AccountAddress, amount: bigint) => {
         if (!walletAddress || !window.ethereum) return;
-        if (!amount.trim()) return alert("Veuillez entrer un montant valide");
+        if (!amount) return alert("Veuillez entrer un montant valide");
 
         try {
             setLoading(true);
             const provider = new ethers.BrowserProvider(window.ethereum);
-            await executeSmartContract(provider, token, TokenAbi, "approve", [contractAddress, amount]);
+
+            await executeSmartContract(provider, token, TokenAbi, "approve", [LPPairAddress, amount.toString()]);
 
             fetchBalancesAndAllowances(); // Rafraîchir après approbation
 
@@ -179,15 +122,16 @@ const LPPair: React.FC = () => {
 
     const addLiquidity = async () => {
         if (!walletAddress || !window.ethereum) return;
-        if (!amountA.trim() || !amountB.trim()) return alert("Veuillez entrer des montants valides");
+        if (!amountA || !amountB) return alert("Veuillez entrer des montants valides");
 
         try {
             setLoading(true);
             const provider = new ethers.BrowserProvider(window.ethereum);
-            await executeSmartContract(provider, contractAddress, LpPairAbi, "addLiquidity", [amountA, amountB]);
 
-            setAmountA("");
-            setAmountB("");
+            await executeSmartContract(provider, LPPairAddress, LPPairAbi, "addLiquidity", [amountA.toString(), amountB.toString()]);
+
+            setAmountA(0n);
+            setAmountB(0n);
             fetchReserves();
 
         } catch (error) {
@@ -200,14 +144,14 @@ const LPPair: React.FC = () => {
 
     const removeLiquidity = async () => {
         if (!walletAddress || !window.ethereum) return;
-        if (!liquidityAmount.trim()) return alert("Veuillez entrer un montant valide");
+        if (!liquidityAmount) return alert("Veuillez entrer un montant valide");
 
         try {
             setLoading(true);
             const provider = new ethers.BrowserProvider(window.ethereum);
-            await executeSmartContract(provider, contractAddress, LpPairAbi, "removeLiquidity", [liquidityAmount]);
+            await executeSmartContract(provider, LPPairAddress, LPPairAbi, "removeLiquidity", [liquidityAmount.toString()]);
 
-            setLiquidityAmount("");
+            setLiquidityAmount(0n);
             fetchReserves();
 
         } catch (error) {
@@ -225,7 +169,7 @@ const LPPair: React.FC = () => {
         try {
             setLoading(true);
             const provider = new ethers.BrowserProvider(window.ethereum);
-            await executeSmartContract(provider, contractAddress, LpPairAbi, "swap", [swapToken, swapAmount]);
+            await executeSmartContract(provider, LPPairAddress, LPPairAbi, "swap", [swapToken, swapAmount]);
 
             setSwapAmount("");
             setSwapToken("");
@@ -264,8 +208,8 @@ const LPPair: React.FC = () => {
                 <div className="card p-3 mb-3">
                     <h5>💰 Balances & Allowances</h5>
 
-                    <p><strong>{reserves.tokenA} :</strong> {balances.balanceA} | Allowance : {allowances.allowanceA}</p>
-                    <p><strong>{reserves.tokenB} :</strong> {balances.balanceB} | Allowance : {allowances.allowanceB}</p>
+                    <p><strong>{reserves.tokenA} :</strong> {divideBigInt(balances.balanceA, 10n ** BigInt(decimalsA ?? 0)).toFixed(decimalsA ?? 0)} | Allowance : {divideBigInt(allowances.allowanceA, 10n ** BigInt(decimalsA ?? 0)).toFixed(decimalsA ?? 0)}</p>
+                    <p><strong>{reserves.tokenB} :</strong> {divideBigInt(balances.balanceB, 10n ** BigInt(decimalsB ?? 0)).toFixed(decimalsB ?? 0)} | Allowance : {divideBigInt(allowances.allowanceB, 10n ** BigInt(decimalsB ?? 0)).toFixed(decimalsB ?? 0)}</p>
 
                     <button className="btn btn-outline-secondary btn-sm mb-2" onClick={fetchBalancesAndAllowances} disabled={!walletAddress}>
                         🔄 Rafraîchir
@@ -276,8 +220,8 @@ const LPPair: React.FC = () => {
                         <input
                             className="form-control"
                             placeholder="Approve Token A"
-                            value={approveAmountA}
-                            onChange={(e) => setApproveAmountA(e.target.value)}
+                            value={approveAmountA.toString()}
+                            onChange={(e) => setApproveAmountA(BigInt(e.target.value))}
                         />
                         <button className="btn btn-primary" onClick={() => approveToken(reserves.tokenA, approveAmountA)} disabled={loading || !walletAddress}>
                             ✅ Approuver
@@ -288,8 +232,8 @@ const LPPair: React.FC = () => {
                         <input
                             className="form-control"
                             placeholder="Approve Token B"
-                            value={approveAmountB}
-                            onChange={(e) => setApproveAmountB(e.target.value)}
+                            value={approveAmountB.toString()}
+                            onChange={(e) => setApproveAmountB(BigInt(e.target.value))}
                         />
                         <button className="btn btn-primary" onClick={() => approveToken(reserves.tokenB, approveAmountB)} disabled={loading || !walletAddress}>
                             ✅ Approuver
@@ -303,16 +247,18 @@ const LPPair: React.FC = () => {
             <div className="card p-3 mb-3">
                 <h5>➕ Ajouter de la liquidité</h5>
                 <input
+                    type="number"
                     className="form-control mb-2"
                     placeholder="Montant Token A"
-                    value={amountA}
-                    onChange={(e) => setAmountA(e.target.value)}
+                    value={amountA.toString()}
+                    onChange={(e) => setAmountA(BigInt(e.target.value))}
                 />
                 <input
+                    type="number"
                     className="form-control mb-2"
                     placeholder="Montant Token B"
-                    value={amountB}
-                    onChange={(e) => setAmountB(e.target.value)}
+                    value={amountB.toString()}
+                    onChange={(e) => setAmountB(BigInt(e.target.value))}
                 />
                 <button className="btn btn-success w-100" onClick={addLiquidity} disabled={loading || !walletAddress}>
                     {loading ? "⏳ Ajout..." : "➕ Ajouter"}
@@ -323,10 +269,11 @@ const LPPair: React.FC = () => {
             <div className="card p-3 mb-3">
                 <h5>➖ Retirer de la liquidité</h5>
                 <input
+                    type="number"
                     className="form-control mb-2"
                     placeholder="Montant de liquidité"
-                    value={liquidityAmount}
-                    onChange={(e) => setLiquidityAmount(e.target.value)}
+                    value={liquidityAmount.toString()}
+                    onChange={(e) => setLiquidityAmount(BigInt(e.target.value))}
                 />
                 <button className="btn btn-danger w-100" onClick={removeLiquidity} disabled={loading || !walletAddress}>
                     {loading ? "⏳ Retrait..." : "➖ Retirer"}
@@ -343,6 +290,7 @@ const LPPair: React.FC = () => {
                     onChange={(e) => setSwapToken(e.target.value)}
                 />
                 <input
+                    type="number"
                     className="form-control mb-2"
                     placeholder="Montant à échanger"
                     value={swapAmount}

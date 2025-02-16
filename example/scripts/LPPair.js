@@ -69,7 +69,7 @@ class LPPair {
 
             const liquidity = BigInt(Math.round(Math.sqrt(Number(amountA) * Number(amountB))));
 
-            this.liquidityBalances[sender] = liquidity;
+            this.liquidityBalances[sender] = liquidity; // aka LP Tokens
             this.totalLiquidity = liquidity;
 
             log(`[addLiquidity] 🚀 Pool créé ! ReservesA: ${this.reservesA}, ReservesB: ${this.reservesB}, Liquidity: ${liquidity}`);
@@ -89,6 +89,9 @@ class LPPair {
         this.reservesB += BigInt(amountB);
         this.liquidityBalances[sender] = (this.liquidityBalances[sender] || 0n) + liquidity;
         this.totalLiquidity += liquidity;
+
+        asserts(this.reservesA * this.reservesB >= (this.totalLiquidity ** 2n), "[addLiquidity] Incohérence dans les réserves et la liquidité totale");
+
 
         log(`[addLiquidity] ✅ Ajout réussi: ReservesA: ${this.reservesA}, ReservesB: ${this.reservesB}, TotalLiquidity: ${this.totalLiquidity}`);
 
@@ -112,6 +115,8 @@ class LPPair {
         this.reservesB -= amountB;
         this.totalLiquidity -= liquidityAmount;
         this.liquidityBalances[sender] -= liquidityAmount;
+
+        asserts(this.reservesA * this.reservesB >= (this.totalLiquidity ** 2n), "[addLiquidity] Incohérence dans les réserves et la liquidité totale");
 
         // Transférer les tokens directement à l'utilisateur
         await call(this.tokenA, "", "transfer", [sender, amountA]);
@@ -140,9 +145,11 @@ class LPPair {
     }
 
 
-    swap(tokenIn, amountIn) /* write */ {
-        tokenIn = lower(tokenIn),
-        amountIn = BigInt(amountIn),
+    async swap(tokenIn, amountIn) /* write */ {
+        tokenIn = lower(tokenIn);
+        amountIn = BigInt(amountIn);
+
+        const sender = lower(caller); // L'utilisateur qui swap
 
         // Vérifier que la paire supporte ce token
         asserts(tokenIn === this.tokenA || tokenIn === this.tokenB, "Token invalide");
@@ -156,15 +163,31 @@ class LPPair {
         const amountOut = this.getAmountOut(amountIn, reserveIn, reserveOut);
         asserts(amountOut > 0n, "Montant de sortie invalide");
 
-        // Mise à jour des réserves
+        // Étape 1 : L'utilisateur envoie `amountIn` à la LP Pair
+        await call(tokenIn, "", "transferFrom", [sender, self, amountIn]); // BUG ici si on vient du routeur. alors sender=router or le router n'a pas de liquidité
+
+        // Étape 2 : La LP Pair envoie `amountOut` à l'utilisateur
+        const tokenOut = isTokenA ? this.tokenB : this.tokenA;
+        await call(tokenOut, "", "transfer", [sender, amountOut]);
+
+        // Mise à jour des réserves après le swap
         if (isTokenA) {
             this.reservesA += amountIn;
             this.reservesB -= amountOut;
-
         } else {
             this.reservesB += amountIn;
             this.reservesA -= amountOut;
         }
+
+        asserts(
+            this.reservesA > 0n && this.reservesB > 0n,
+            "[swap] Erreur : Réserves invalides après échange"
+        );
+
+        asserts(
+            this.reservesA * this.reservesB >= (this.totalLiquidity ** 2n),
+            "[swap] Erreur : Ratio de liquidité incohérent après échange"
+        );
 
         return amountOut; // Retourne le montant reçu
     }

@@ -67,7 +67,7 @@ class ContractToken2 {
         recipient = lower(recipient);
         amount = BigInt(amount);
 
-        asserts(this.accounts[sender] ?? 0n >= amount, "Insufficient balance");
+        asserts(this.accounts[sender] ?? 0n >= amount, `[ContractToken1][transferFrom] Insufficient balance`);
 
         this.accounts[sender] -= amount;
         this.accounts[recipient] = (this.accounts[recipient] ?? 0n) + amount;
@@ -110,8 +110,10 @@ class ContractToken2 {
         recipient = lower(recipient);
         amount = BigInt(amount);
 
-        asserts(this.accounts[owner] ?? 0n >= amount, "Insufficient balance");
-        asserts(this.allowances[owner]?.[spender] ?? 0n >= amount, "Allowance exceeded");
+        asserts(this.accounts[owner] ?? 0n >= amount, `[ContractToken1][transferFrom] Insufficient balance for ${owner} : ${this.accounts[owner]} < ${amount}`);
+        asserts(this.allowances[owner], `[ContractToken1][transferFrom] Allowance not set for ${owner}`);
+        asserts(this.allowances[owner][spender] >= amount, `[ContractToken1][transferFrom] Allowance not set for ${owner} to ${spender}`);
+        asserts(this.allowances[owner][spender] ?? 0n >= amount, `[ContractToken1][transferFrom] Allowance exceeded for ${owner} : ${this.allowances[owner][spender]} < ${amount}`);
 
         // Déduire l'allocation et les tokens du owner
         this.allowances[owner][spender] -= amount;

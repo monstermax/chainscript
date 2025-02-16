@@ -18,7 +18,8 @@ import Dapps from "./pages/Dapps";
 import TeleScript from "./components/dApps/TeleScript";
 import ChainTweet from "./components/dApps/ChainTweet";
 import ChainChat from "./components/dApps/ChainChat";
-import LPPair from "./pages/LPPair";
+import LPPair from "./components/dApps/LPPair";
+import AMMRouter from "./components/dApps/AMMRouter";
 
 
 
@@ -49,6 +50,7 @@ const App = () => {
                     <Route path="/dapps/chaintweet" element={<ChainTweet />} />
                     <Route path="/dapps/chainchat" element={<ChainChat />} />
                     <Route path="/dapps/lppair" element={<LPPair />} />
+                    <Route path="/dapps/swap" element={<AMMRouter />} />
                 </Routes>
             </Layout>
         </HashRouter>

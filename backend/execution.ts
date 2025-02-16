@@ -12,7 +12,7 @@ import { Transaction } from './transaction';
 import { execVm } from './vm';
 import { findMethodAbi, instanciateContractAndGenerateAbi } from './abi';
 
-import type { AbiClassMethod, AccountAddress } from './types/account.types';
+import type { AbiSearchResult, AccountAddress } from './types/account.types';
 import type { TransactionData, TransactionHash, TransactionInstruction, TransactionInstructionExecute, TransactionInstructionCreate, TransactionInstructionTransfer, TransactionReceipt } from './types/transaction.types';
 import type { HexNumber } from './types/types';
 import type { callTxParams, sendTxParams as SendTxParams } from './types/rpc.types';
@@ -33,15 +33,15 @@ export async function handleEthCall(blockchain: Blockchain, txParams: callTxPara
     const callSignature = txParams.data.slice(0, 10); // 4 premiers bytes
 
     // Cherche la classe+methode à partir de la signature
-    const abiClassMethod = findMethodAbi(contractAccount.abi, callSignature);
-    asserts(abiClassMethod, "[handleEthCall] Méthode inconnue");
+    const abisearchResult = findMethodAbi(contractAccount.abi, callSignature);
+    asserts(abisearchResult, "[handleEthCall] Méthode inconnue");
 
     // Décodage des parametres de la methode
-    const methodArgs = decodeTxData(txParams.data.slice(2), abiClassMethod);
+    const methodArgs = decodeTxData(txParams.data.slice(2), abisearchResult);
     console.log(`[handleEthCall] Arguments décodés:`, methodArgs)
 
     // Execution du code dans la VM
-    const { vmResult, vmMonitor, vmError } = await execVm(blockchain, txParams.from, txParams.to, abiClassMethod.className, abiClassMethod.methodName, methodArgs, null);
+    const { vmResult, vmMonitor, vmError } = await execVm(blockchain, txParams.from, txParams.to, abisearchResult.className, abisearchResult.methodName, methodArgs, null);
 
     if (vmError) {
         console.log(`[handleEthCall] ❌ Error:`, vmError);
@@ -114,7 +114,7 @@ export function transcodeTx(blockchain: Blockchain, txParams: SendTxParams): Tra
             const callSignature: string = "0x" + txParams.data.slice(0, 8);
 
             // Trouver la méthode correspondante dans l'ABI
-            const abiClassMethod: AbiClassMethod | null = findMethodAbi(contractAccount.abi, callSignature);
+            const abiClassMethod: AbiSearchResult | null = findMethodAbi(contractAccount.abi, callSignature);
             asserts(abiClassMethod, `[transcodeTx] Méthode inconnue pour la signature ${callSignature}`);
 
             // 🧩 Décoder les arguments
@@ -350,8 +350,8 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
 
 
 /** Décode un `eth_call` (ou les `data` d'un `eth_sendRawTransaction`) reçu en argument et retourne une liste d'arguments décodés */
-export function decodeTxData(data: string, abiClassMethod: AbiClassMethod): any[] {
-    if (!abiClassMethod.method.inputs || abiClassMethod.method.inputs.length === 0) return [];
+export function decodeTxData(data: string, abiClassMethod: AbiSearchResult): any[] {
+    if (abiClassMethod.type !== 'method' || !abiClassMethod.method.inputs || abiClassMethod.method.inputs.length === 0) return [];
 
     const coder = new AbiCoder();
     const encodedParams: string = data.slice(8);

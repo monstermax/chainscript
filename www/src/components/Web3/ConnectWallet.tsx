@@ -5,7 +5,7 @@ import { ethers } from "ethers";
 import React, { useEffect, useState } from "react";
 
 
-const ConnectWallet: React.FC<{ onConnect: (address: string) => void }> = ({ onConnect }) => {
+const ConnectWallet: React.FC<{ onConnect: (address: AccountAddress) => void }> = ({ onConnect }) => {
     const [walletAddress, setWalletAddress] = useState<AccountAddress | null>(null);
 
     const connectWallet = async () => {
@@ -17,10 +17,10 @@ const ConnectWallet: React.FC<{ onConnect: (address: string) => void }> = ({ onC
 
         try {
             const provider = new ethers.BrowserProvider(window.ethereum);
-            const accounts = await provider.send("eth_requestAccounts", []) as AccountAddress;
+            const accounts = await provider.send("eth_requestAccounts", []) as AccountAddress[];
 
             if (accounts.length > 0) {
-                setWalletAddress(accounts[0] as AccountAddress);
+                setWalletAddress(accounts[0]);
                 onConnect(accounts[0]); // Informe le parent du statut connecté
             }
 
@@ -34,7 +34,7 @@ const ConnectWallet: React.FC<{ onConnect: (address: string) => void }> = ({ onC
             window.ethereum.on("accountsChanged", (accounts) => {
                 const accountList = accounts as AccountAddress[];
                 setWalletAddress(accountList.length > 0 ? accountList[0] : null);
-                onConnect(accountList.length > 0 ? accountList[0] : "");
+                onConnect(accountList.length > 0 ? accountList[0] : "0x");
             });
         }
     }, []);

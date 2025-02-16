@@ -9,6 +9,8 @@ import type { AccountAddress, CodeAbi } from "@backend/types/account.types";
 
 export async function callSmartContract(providerOrSigner: ethers.BrowserProvider | ethers.JsonRpcSigner, contractAddress: AccountAddress, contractAbi: CodeAbi, methodName: string, methodArgs: string[]): Promise<any> {
     const ethersAbi = convertCustomAbiToEthersFormat(contractAbi);
+    //console.log('ethersAbi', ethersAbi)
+
     const contract = new ethers.Contract(contractAddress, ethersAbi, providerOrSigner);
 
     const result: any = await contract[methodName](...methodArgs);

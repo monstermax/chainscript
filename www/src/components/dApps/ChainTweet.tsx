@@ -3,29 +3,19 @@
 import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
 
+import { ChainTweetAddress } from "../../config.client";
+import { ChainTweetAbi } from "../../abi/ChainTweetAbi";
+
 import { callSmartContract, executeSmartContract } from "../Web3/contractUtils";
 import ConnectWallet from "../Web3/ConnectWallet";
 
-import type { CodeAbi } from "@backend/types/account.types";
+import type { AccountAddress } from "@backend/types/account.types";
 
-
-const contractAddress = "0x86F250b0d899b44C59F123D65e117e784695216f";
-
-const contractAbi: CodeAbi = [
-    {
-        class: "ChainTweet",
-        methods: { 
-            postTweet: { inputs: ["content"], write: true },
-            getLastTweets: { inputs: ["maxMessage", "offset"] } 
-        },
-        attributes: {},
-    }
-];
 
 
 const ChainTweet: React.FC = () => {
-    const [walletAddress, setWalletAddress] = useState<string | null>(null);
-    const [tweets, setTweets] = useState<{ sender: string; content: string; timestamp: number }[]>([]);
+    const [walletAddress, setWalletAddress] = useState<AccountAddress | null>(null);
+    const [tweets, setTweets] = useState<{ sender: AccountAddress; content: string; timestamp: number }[]>([]);
     const [tweetContent, setTweetContent] = useState<string>("");
     const [loading, setLoading] = useState(false);
 
@@ -41,7 +31,7 @@ const ChainTweet: React.FC = () => {
         try {
             const provider = new ethers.BrowserProvider(window.ethereum);
 
-            const result = await callSmartContract(provider, contractAddress, contractAbi, "getLastTweets", ["100", "0"]);
+            const result = await callSmartContract(provider, ChainTweetAddress, ChainTweetAbi, "getLastTweets", ["100", "0"]);
             //console.log('result:', result);
 
             setTweets(JSON.parse(result));
@@ -61,7 +51,7 @@ const ChainTweet: React.FC = () => {
             setLoading(true);
             const provider = new ethers.BrowserProvider(window.ethereum);
 
-            await executeSmartContract(provider, contractAddress, contractAbi, "postTweet", [tweetContent]);
+            await executeSmartContract(provider, ChainTweetAddress, ChainTweetAbi, "postTweet", [tweetContent]);
 
             setTweetContent("");
             fetchTweets();
