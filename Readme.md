@@ -73,8 +73,19 @@ class MyToken {
 Utilisez une interface Web ou un script pour envoyer une transaction avec le **bytecode du contrat**.
 
 ```js
-const bytecode = ethers.utils.defaultAbiCoder.encode(["string", "string"], [contractCode, "[]"]);
-await signer.sendTransaction({ data: bytecode });
+const signer = await provider.getSigner();
+
+const constructorParamsJSON = JSON.stringify(constructorParams, jsonReplacer);
+
+const coder = new AbiCoder();
+const bytecode = coder.encode(["string", "string", "string"], [code, className, constructorParamsJSON]);
+
+const factory = new ethers.ContractFactory([], bytecode, signer);
+const contract = await factory.deploy();
+
+await contract.deploymentTransaction()?.wait();
+
+const contractAddress: AccountAddress = await contract.getAddress() as AccountAddress;
 ```
 
 ### 🔍 3. Lire un smart contract
