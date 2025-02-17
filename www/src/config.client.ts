@@ -17,6 +17,8 @@ export const ChainChatAddress = "0xC10a2805C1610d81eA3037B041b6669CB4944251"; //
 
 export const ChainItAddress = "0x6D98d47b07f78911935C40cC73673BB49686D1C3"; // ChainIt
 
+export const ChainStoreAddress = "0xAE1f4196F37092473FF6F5Ebc62cC5Bf26FFa2Bb"; // ChainStore
+
 export const LPPairAddress = "0x9352f038834a3ff50C95Afde74d46a1bC84477F8"; // LPPair
 
 export const AMMRouterAddress = "0xd7873deFbdc5c9169704ECC034c1Fe186F766b43"; // AMMRouter

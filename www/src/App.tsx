@@ -23,6 +23,7 @@ import AMMRouter from "./components/dApps/PoolSwap/AMMRouter";
 import ChainIt from "./components/dApps/ChainIt/ChainIt";
 import TokensSwap from "./components/dApps/PoolSwap/TokensSwap";
 import PoolLiquidity from "./components/dApps/PoolSwap/PoolLiquidity";
+import TeleScript2 from "./components/dApps/TeleScript/TeleScript2";
 
 
 
@@ -49,7 +50,7 @@ const App = () => {
                     <Route path="/accounts/:accountAddress" element={<Account />} />
                     <Route path="/web3" element={<Web3 />} />
                     <Route path="/dapps" element={<Dapps />} />
-                    <Route path="/dapps/telescript" element={<TeleScript />} />
+                    <Route path="/dapps/telescript" element={<TeleScript2 />} />
                     <Route path="/dapps/chaintweet" element={<ChainTweet />} />
                     <Route path="/dapps/chainchat" element={<ChainChat />} />
                     <Route path="/dapps/lppair" element={<LPPair />} />

@@ -3,8 +3,9 @@
 import { Block } from "../blockchain/block";
 
 import type { HexNumber } from "./types";
-import type { AccountAddress } from "./account.types";
+import type { AccountAddress, Accounts } from "./account.types";
 import type { TransactionData, TransactionReceipt } from "./transaction.types";
+import { BlockchainMetadata } from "./blockchain.types";
 
 
 /* ######################################################### */
@@ -29,6 +30,8 @@ export type BlockData = {
     //updatedAccounts: Accounts; // TODO: permet de recuperer un etat precedent des accounts
     //lastBlockchainState: BlockchainMetadata; // TODO: permet de recuperer un etat precedent de la blockchain (si on veut retourner au block n-1)
     nonce: bigint,
+    _blockchainMetadata?: BlockchainMetadata | null;
+    _blockchainAccounts?: Accounts | null;
 }
 
 export type BlockRpc = {

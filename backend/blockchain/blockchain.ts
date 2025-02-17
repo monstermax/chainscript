@@ -25,7 +25,7 @@ import type { AccountAddress } from '../types/account.types';
 export class Blockchain {
     public memoryState: MemoryState;
     public stateManager: StateManager;
-    public mempool: Mempool = new Mempool(this);
+    public mempool: Mempool;
     public totalSupply: bigint = 0n;
     public stateDir: string;
     public p2p: P2PNode | null = null;
@@ -37,8 +37,10 @@ export class Blockchain {
         this.stateDir = stateDir;
         this.memoryState = new MemoryState;
         this.stateManager = new StateManager(this);
+        this.mempool = new Mempool(this);
 
         this.loadBlockchain();
+        this.mempool.loadMempoolTransactions();
     }
 
 
@@ -105,7 +107,6 @@ export class Blockchain {
             console.warn(`⚠️ Le accountsHash a été modifié ! (expected: "${accountsHash}" found: "${this.stateManager.accountsHash}")`);
             debugger;
         }
-
 
         console.log(`[${now()}]Blockchain chargée : ${metadata.totalBlocks} blocks, ${metadata.totalAccounts} comptes.`);
     }
@@ -539,8 +540,6 @@ export class Blockchain {
             this.stateManager.transactionsIndex[txHash] = block.blockHeight;
         }
 
-        // Sauvegarde du block sur le disque
-        this.stateManager.saveBlock(block);
 
         // Ajout du block à blocksIndex
         this.stateManager.lastBlockHash = block.hash;
@@ -568,8 +567,12 @@ export class Blockchain {
         this.stateManager.saveAccountsIndex();
         this.stateManager.saveBlocksIndex();
         this.stateManager.saveTransactionsIndex();
-        this.stateManager.saveMetadata();
+        const metadata = this.stateManager.saveMetadata();
 
+        // Sauvegarde du block sur le disque
+        //block.setBlockchainMetadata(metadata);
+        //block.setBlockchainAccounts(this.memoryState.accounts);
+        this.stateManager.saveBlock(block);
 
         // Supprime les transactions de la mempool
         this.mempool.clearMempool(block.transactions);

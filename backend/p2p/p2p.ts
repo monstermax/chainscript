@@ -130,7 +130,9 @@ export class P2PNode {
             this.sendMyMetadata(ws);
         });
 
-        ws.on('error', (err) => console.error(`[${now()}][P2P][connectToPeer] ❌ Erreur de connexion :`, err));
+        ws.on('error', (err) => {
+            console.error(`[${now()}][P2P][connectToPeer] ❌ Erreur de connexion :`, err);
+        });
     }
 
 
@@ -138,8 +140,14 @@ export class P2PNode {
     private initSocket(ws: WebSocket) {
         this.sockets.push(ws);
 
-        ws.on('message', (message: string) => this.handleMessage(ws, message));
-        ws.on('close', () => this.sockets = this.sockets.filter(s => s !== ws));
+        ws.on('message', (message: string) => {
+            this.handleMessage(ws, message)
+        });
+
+        ws.on('close', () => {
+            console.error(`[${now()}][P2P][initSocket] ❌ Connexion avec ${ws.url?.split('/')[2]} terminée`)
+            this.sockets = this.sockets.filter(s => s !== ws);
+        });
     }
 
 
@@ -271,6 +279,7 @@ export class P2PNode {
     /** Traite la file d'attente des blocks manquants */
     private processBlockSyncQueue() {
         if (this.blockSyncQueue.size === 0) {
+            this.isSyncing = false;
             console.log(`[${now()}][P2P][processBlockSyncQueue] ✅ Synchronisation terminée.`);
             return;
         }
@@ -351,10 +360,18 @@ export class P2PNode {
 
             if (block.blockHeight >= this.peersMaxBlockHeight) {
                 this.peersMaxBlockHeight = block.blockHeight;
-                this.isSyncing = false;
+                //this.isSyncing = false;
             }
 
-            return;
+            //return;
+        }
+
+        if (this.blockchain.blockHeight < this.peersMaxBlockHeight && ! this.isSyncing) {
+            this.startBlockchainSync();
+        }
+
+        if (this.blockchain.blockHeight >= this.peersMaxBlockHeight && this.isSyncing) {
+            this.isSyncing = false;
         }
 
         if (blockData.blockHeight > localHeight + 1 && blockData.blockHeight < localHeight + 100) {

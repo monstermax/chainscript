@@ -13,7 +13,8 @@ import type { HexNumber } from '../types/types';
 import type { AccountAddress, AccountData, AccountHash, Accounts, AccountsIndex, ContractMemory } from '../types/account.types';
 import type { BlockData, BlockHash, Blocks, BlocksIndex } from '../types/block.types';
 import type { BlockchainMetadata } from '../types/blockchain.types';
-import type { TransactionsIndex } from '../types/transaction.types';
+import type { TransactionHash, TransactionsIndex } from '../types/transaction.types';
+import { Transaction } from './transaction';
 
 
 /* ######################################################### */
@@ -42,6 +43,7 @@ export class StateManager {
 
         this.paths.BLOCKS_DIR = path.join(blockchain.stateDir, 'blocks');
         this.paths.ACCOUNTS_DIR = path.join(blockchain.stateDir, 'accounts');
+        this.paths.MEMPOOL_DIR = path.join(blockchain.stateDir, 'mempool');
         this.paths.METADATA_FILE = path.join(blockchain.stateDir, 'metadata.json');
         this.paths.BLOCKS_INDEX_FILE = path.join(blockchain.stateDir, 'blocksIndex.json');
         this.paths.ACCOUNTS_INDEX_FILE = path.join(blockchain.stateDir, 'accountsIndex.json');
@@ -49,6 +51,7 @@ export class StateManager {
 
         ensureDirectory(this.paths.BLOCKS_DIR);
         ensureDirectory(this.paths.ACCOUNTS_DIR);
+        ensureDirectory(this.paths.MEMPOOL_DIR);
     }
 
 
@@ -89,7 +92,7 @@ export class StateManager {
 
 
     /** Sauvegarde l'état général */
-    saveMetadata(): void {
+    saveMetadata(): BlockchainMetadata {
         //console.log(`[${now()}][State.saveMetadata]`);
 
         const metadata: BlockchainMetadata = {
@@ -107,6 +110,8 @@ export class StateManager {
         fs.writeFileSync(this.paths.METADATA_FILE, metadataJson);
 
         //console.log(`[${now()}][State.saveMetadata] Metadata sauvegardée !`);
+
+        return metadata;
     }
 
 
@@ -206,6 +211,17 @@ export class StateManager {
 
 
         return block;
+    }
+
+
+    deleteMempoolTransaction(txHash: TransactionHash): void {
+        //console.log(`[${now()}][State.deleteMempoolTransaction]`, txHash);
+
+        const txPath = path.join(this.paths.MEMPOOL_DIR, `${txHash}.json`);
+
+        if (fs.existsSync(txPath)) {
+            fs.unlinkSync(txPath);
+        }
     }
 
 

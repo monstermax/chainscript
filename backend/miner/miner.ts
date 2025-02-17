@@ -25,7 +25,7 @@ export class BlocksMiner {
 
     /** Démarre la loop où on essayera toutes les N secondes de miner un nouveau block */
     start() {
-        const delay = 10_000;
+        const delay = blockDelayMin;
         const miner = this;
 
         function _loop() {
@@ -48,14 +48,20 @@ export class BlocksMiner {
         asserts(lastBlock.timestamp, `[Miner.tryToMine] lastBlock has no timestamp`);
 
         const lastBlockAge = Date.now() - lastBlock.timestamp;
-        asserts(lastBlockAge > 0, `lastBlock is in the future`);
+        asserts(lastBlockAge > 0, `lastBlock is in the future (age = ${lastBlockAge/1000} seconds)`); // TODO: gérer autrement ou synchroniser les dacalages d'horloge de chaque peer
 
         const mempoolSize = this.blockchain.mempool.getPendingTransactions().length;
 
-        if (lastBlockAge < blockDelayMin) return;
+        if (lastBlockAge < blockDelayMin) {
+            console.log(`[Miner.tryToMine] Too early to mine`)
+            return;
+        }
 
         if (mempoolSize >= blockMinTransactions || lastBlockAge > blockDelayMax || blockHeight === 0) {
             await this.blockchain.createNewBlock(this.minerAddress);
+
+        } else {
+            console.log(`[Miner.tryToMine] Nothing to mine`)
         }
 
     }

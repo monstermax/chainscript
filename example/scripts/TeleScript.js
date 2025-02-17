@@ -64,14 +64,12 @@ class TeleScript {
         asserts(this.users[sender], "Utilisateur non enregistré");
 
         const encryptedSessionKeysEntries = encryptedSessionKeysList // Input format: address1:key1,address2:key2,...
-            .split(',') // 1. split by "," => ['adress1:key1', 'adress2:key2', ...]
-            .map(entry => entry
-                .split(':')// 2. split by ":" => [ ['adress1', 'key1'], ['adress2', 'key2'], ... ]
-                .map(entry => entry.trim()) // trim addresses and keys
-                .map(entry => [lower(entry[0]), entry[1]]) // lowercase address
-                .filter(entry => entry[0] && entry[1]) // remove empty items
-            );
+            .split(',')
+            .map(entry => entry.split(':').map(entry => entry.trim()))
+            .filter(entry => entry.length === 2)
+            .map(entry => [lower(entry[0]), entry[1]]);
 
+        //const encryptedSessionKeysEntries = JSON.parse(encryptedSessionKeysList);
         const encryptedSessionKeys = Object.fromEntries(encryptedSessionKeysEntries);
         const members = Object.keys(encryptedSessionKeys);
 
@@ -108,6 +106,8 @@ class TeleScript {
         asserts(this.users[sender], "Utilisateur non enregistré");
         asserts(chat, "Chat introuvable");
         asserts(chat.members.includes(sender), "Non autorisé");
+        asserts(encryptedMessage.length > 0, "Message vide");
+        asserts(nonce.length > 0, "Nonce manquant");
 
         this.chats[chatId].messages.push({ sender, encryptedMessage, nonce });
 
@@ -116,20 +116,22 @@ class TeleScript {
 
 
     /** Liste les messages chiffrés d'un chat */
-    getMessages(chatId, userAddress) {
+    getMessages(chatId, userAddress, limit="100", offset="0") {
         const user = lower(userAddress);
         const chat = this.chats[chatId];
+        limit = Number(limit) || 100;
+        offset = Number(offset) || 0;
 
         asserts(this.users[user], "Utilisateur non enregistré");
         asserts(chat, "Chat introuvable");
         asserts(chat.members.includes(user), "Non autorisé");
 
-        return this.chats[chatId].messages;
+        return [...chat.messages].reverse().slice(offset, limit);
     }
 
 
     /** Ajoute un membre à un chat */
-    addMember(chatId, newMember) /* write */ {
+    addMember(chatId, newMember, encryptedSessionKey) /* write */ {
         const sender = lower(caller);
         const newMemberLower = lower(newMember);
         const chat = this.chats[chatId];
@@ -139,12 +141,14 @@ class TeleScript {
         asserts(chat, "Chat introuvable");
         asserts(this.chats[chatId].members.includes(sender), "Seul un membre peut ajouter d'autres membres");
         asserts(!chat.members.includes(newMemberLower), "Déjà membre");
+        asserts(encryptedSessionKey, "La clé de session chiffrée est requise");
 
         if (!chat.isPublic) {
             asserts(chat.admins.includes(sender), "Seuls les admins peuvent ajouter des membres dans un chat privé");
         }
 
         chat.members.push(newMemberLower);
+        chat.sessionKeys[newMemberLower] = encryptedSessionKey;
         this.users[newMemberLower].chats.push(chatId);
     }
 

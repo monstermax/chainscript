@@ -8,8 +8,9 @@ import { Transaction } from './transaction';
 import { executeTransaction } from '../execution/execution';
 
 import type { BlockData, BlockHash, BlockRpc } from '../types/block.types';
-import type { AccountAddress } from '../types/account.types';
+import type { AccountAddress, Accounts } from '../types/account.types';
 import type { TransactionHash, TransactionReceipt } from '../types/transaction.types';
+import { BlockchainMetadata } from '@backend/types/blockchain.types';
 
 
 /* ######################################################### */
@@ -25,6 +26,8 @@ export class Block {
     public timestamp: number | null = null;
     public transactions: Transaction[] = [];
     public receipts: TransactionReceipt[] = [];
+    private _blockchainMetadata: BlockchainMetadata | null = null;
+    private _blockchainAccounts: Accounts | null = null;
     //public updatedAccounts: Accounts = {}; // TODO: stocker les accounts modifiés (avec le diff) dans le contenu de chaque block respectif (si on veut retourner au block n-1)
     //public lastBlockchainState: BlockchainMetadata | null = null; // TODO: permet de recuperer un etat precedent de la blockchain (si on veut retourner au block n-1)
 
@@ -71,6 +74,8 @@ export class Block {
             transactions: block.transactions.map(tx => tx.toData()),
             receipts: block.transactions.map((tx, idx) => Transaction.toReceiptData(tx, block.receipts[idx])),
             nonce: block.nonce,
+            _blockchainMetadata: block._blockchainMetadata,
+            _blockchainAccounts: block._blockchainAccounts,
         };
 
         return blockData;
@@ -127,6 +132,10 @@ export class Block {
 
     computeHash(): BlockHash {
         const blockFormatted: BlockData = this.toData();
+
+        delete blockFormatted._blockchainMetadata;
+        delete blockFormatted._blockchainAccounts;
+
         const blockHash: BlockHash = computeHash(blockFormatted);
 
         if (true && fs.existsSync('/tmp/blockchain-js-debug')) {
@@ -136,6 +145,15 @@ export class Block {
         }
 
         return blockHash;
+    }
+
+
+    setBlockchainMetadata(metadata: BlockchainMetadata) {
+        this._blockchainMetadata = metadata;
+    }
+
+    setBlockchainAccounts(accounts: Accounts) {
+        this._blockchainAccounts = accounts;
     }
 }
 

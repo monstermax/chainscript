@@ -103,7 +103,7 @@ export async function execVm(
 
             // Charge une instance du contrat sans appeler le constructeur
             const instance = Object.create(classPrototype);
-            instance.prototype = classPrototype;
+            //instance.prototype = classPrototype;
             Object.assign(instance, contractMemory);
 
             return instance;
@@ -173,7 +173,7 @@ if (__result instanceof Promise) {
 
         let executionTimeout: number | undefined = 100;
 
-        if (hasOpt('--debug-vm')) {
+        if (hasOpt('--debug-vm') || hasOpt('--debug-contract')) {
             const debugFilepath = `/tmp/debug_execute_contract_${contractAddress}.js`;
 
             executeCode = `
@@ -246,6 +246,8 @@ export function createExecutionSandbox(blockchain: Blockchain, caller: AccountAd
         },
 
         asserts,
+
+        //emit, // TODO
 
         revert: (message?: string) => { throw new Error(message ?? "Reverted") },
 
