@@ -366,7 +366,7 @@ export function decodeTxData(data: string, abiClassMethod: AbiSearchResult): any
     // On force tous les types (inputs) en string (car JS n'est pas typé)
     const inputTypes: string[] = abiClassMethod.method.inputs.map(inputName => "string");
 
-    console.log(`[decodeTxData] 📥 Décodage des arguments (types: [${inputTypes.join(', ')}]) :`, encodedParams);
+    console.log(`[decodeTxData] 📥 Décodage des arguments (types: [${inputTypes.join(', ')}]) :`, encodedParams.slice(0, 50));
 
     try {
         const result: Result = coder.decode(inputTypes, "0x" + encodedParams);

@@ -1,7 +1,7 @@
 
 import { ethers, getCreateAddress } from "ethers";
 
-import { jsonReplacer } from "./utils";
+import { jsonReplacer, toHex } from "./utils";
 import { convertCustomAbiToEthersFormat } from "./abiUtils";
 
 import type { AccountAddress, CodeAbi } from "@backend/types/account.types";
@@ -63,24 +63,28 @@ export async function deployContract(signer: ethers.Wallet, code: string, classN
 }
 
 
-export async function callSmartContract(providerOrSigner: ethers.JsonRpcProvider | ethers.JsonRpcSigner, contractAddress: AccountAddress, contractAbi: CodeAbi, methodName: string, methodArgs: string[], value?: bigint): Promise<any> {
+export async function callSmartContract(providerOrSigner: ethers.JsonRpcProvider | ethers.Wallet, contractAddress: AccountAddress, contractAbi: CodeAbi, methodName: string, methodArgs: string[], value?: bigint, nonce?: bigint): Promise<any> {
     const ethersAbi = convertCustomAbiToEthersFormat(contractAbi);
     //console.log('ethersAbi', ethersAbi)
 
     const contract = new ethers.Contract(contractAddress, ethersAbi, providerOrSigner);
 
-    const result: any = await contract[methodName](...methodArgs);
+    const params: (string | { value: string, nonce?: bigint })[] = value ? [...methodArgs, { value: value.toString(), nonce: nonce }] : methodArgs;
+
+    const result: any = await contract[methodName](...params);
     return result;
 }
 
 
-export async function executeSmartContract(provider: ethers.JsonRpcProvider, contractAddress: AccountAddress, contractAbi: CodeAbi, methodName: string, methodArgs: string[], value?: bigint) {
-    const signer = await provider.getSigner();
+export async function executeSmartContract(signer: ethers.Wallet, contractAddress: AccountAddress, contractAbi: CodeAbi, methodName: string, methodArgs: string[], value?: bigint, nonce?: bigint) {
+    if (typeof nonce !== 'bigint') {
+        nonce = BigInt(await signer.getNonce());
+    }
 
     const tx: ethers.ContractTransactionResponse = await callSmartContract(signer, contractAddress, contractAbi, methodName, methodArgs);
     console.log('Transaction envoyée:', tx);
 
-    const receipt = await tx.wait();
+    const receipt = await tx.wait(1, 10_000);
     console.log('Transaction confirmée:', receipt);
 
     return { tx, receipt };

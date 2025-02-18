@@ -4,11 +4,16 @@ import path from 'path';
 import fs from 'fs';
 import { ethers, resolveProperties, Transaction, TransactionResponse } from 'ethers';
 
-import { deployContract } from '../helpers/contractUtils';
+import { deployContract, executeSmartContract } from '../helpers/contractUtils';
 import { defaultRpcPort, devPrivateKey } from '../config';
 
-import { AccountAddress } from '@backend/types/account.types';
+import { AMMRouterAbi } from '../../www/src/abi/AMMRouterAbi';
+import { contractsAddresses } from '../../www/src/config.client';
 
+
+/* ######################################################### */
+
+type Addresses = Awaited<ReturnType<typeof deployContracts>>;
 
 /* ######################################################### */
 
@@ -25,53 +30,14 @@ async function main() {
     const { signer } = getProvider();
     nonce = BigInt(await signer.getNonce());
 
-    const addresses: Record<string, AccountAddress | Record<string, AccountAddress>> = {};
-
-
-    // Tokens
-    addresses.Tokens = {
-        WDEV: await deployToken1(signer, ['Wrapped DEV', 'WDEV']), // 18 decimals / 10 milliards de supply
-        Token1: await deployToken1(signer), // 18 decimals / 10 milliards de supply
-        Token2: await deployToken2(signer), // 8 decimals / 21 millions de supply
-        ChainCoin: await deployToken2(signer, ['ChainCoin', 'CHC']), // 8 decimals / 21 millions de supply
-        BTCjs: await deployToken2(signer, ['Bitcoin JS', 'BTCjs']), // 8 decimals / 21 millions de supply
-        EtherJS: await deployToken1(signer, ['Ether JS', 'ETHjs']), // 18 decimals / 10 milliards de supply
-        USDjs: await deployToken1(signer, ['USD-JS', 'USDjs']), // 18 decimals / 10 milliards de supply
-    }
-
-
-    // Lp Pairs
-    addresses.LpPairs = {
-        WDEV_Token1: await deployLpPair(signer, [addresses.Tokens.WDEV, addresses.Tokens.Token1]),
-        WDEV_Token2: await deployLpPair(signer, [addresses.Tokens.WDEV, addresses.Tokens.Token2]),
-        WDEV_ChainCoin: await deployLpPair(signer, [addresses.Tokens.WDEV, addresses.Tokens.ChainCoin]),
-        WDEV_BTCjs: await deployLpPair(signer, [addresses.Tokens.WDEV, addresses.Tokens.BTCjs]),
-        WDEV_EtherJS: await deployLpPair(signer, [addresses.Tokens.WDEV, addresses.Tokens.EtherJS]),
-        WDEV_USDjs: await deployLpPair(signer, [addresses.Tokens.WDEV, addresses.Tokens.USDjs]),
-    };
-
-    //addresses.LpPair = addresses.LpPairs.WDEV_Token1;
-
-
-    // AMM Router
-    addresses.AmmRouter = await deployAmmRouter(signer);
-
-
-    // NFT
-    addresses.NftToken = await deployNftToken(signer);
-
-
-    // dApps
-    addresses.dApps = {
-        ChainChat: await deployChainChat(signer),
-        ChainIt: await deployChainIt(signer),
-        ChainTweet: await deployChainTweet(signer),
-        TeleScript: await deployTeleScript(signer),
-        ChainStore: await deployChainStore(signer),
-    }
-
-
+    // Deploiement des contrats
+    const addresses = contractsAddresses as Addresses;
+    //const addresses = await deployContracts(signer);
     console.log(addresses);
+
+    // Configuration des contrats
+    await configureContracts(signer, addresses);
+
 }
 
 
@@ -104,6 +70,73 @@ function getProvider(): { provider: ethers.JsonRpcProvider, signer: ethers.Walle
 
     return { provider, signer };
 }
+
+
+
+async function deployContracts(signer: ethers.Wallet) {
+
+    // Tokens
+    const Tokens = {
+        WDEV: await deployToken1(signer, ['Wrapped DEV', 'WDEV']), // 18 decimals / 10 milliards de supply
+        Token1: await deployToken1(signer), // 18 decimals / 10 milliards de supply
+        Token2: await deployToken2(signer), // 8 decimals / 21 millions de supply
+        ChainCoin: await deployToken2(signer, ['ChainCoin', 'CHC']), // 8 decimals / 21 millions de supply
+        BTCjs: await deployToken2(signer, ['Bitcoin JS', 'BTCjs']), // 8 decimals / 21 millions de supply
+        EtherJS: await deployToken1(signer, ['Ether JS', 'ETHjs']), // 18 decimals / 10 milliards de supply
+        USDjs: await deployToken1(signer, ['USD-JS', 'USDjs']), // 18 decimals / 10 milliards de supply
+    }
+
+
+    // Lp Pairs
+    const LpPairs = {
+        WDEV_Token1: await deployLpPair(signer, [Tokens.WDEV, Tokens.Token1]),
+        WDEV_Token2: await deployLpPair(signer, [Tokens.WDEV, Tokens.Token2]),
+        WDEV_ChainCoin: await deployLpPair(signer, [Tokens.WDEV, Tokens.ChainCoin]),
+        WDEV_BTCjs: await deployLpPair(signer, [Tokens.WDEV, Tokens.BTCjs]),
+        WDEV_EtherJS: await deployLpPair(signer, [Tokens.WDEV, Tokens.EtherJS]),
+        WDEV_USDjs: await deployLpPair(signer, [Tokens.WDEV, Tokens.USDjs]),
+    };
+
+
+    // AMM Router
+    const AmmRouter = await deployAmmRouter(signer);
+
+
+    // NFT
+    const NftToken = await deployNftToken(signer);
+
+
+    // dApps
+    const dApps = {
+        ChainChat: await deployChainChat(signer),
+        ChainIt: await deployChainIt(signer),
+        ChainTweet: await deployChainTweet(signer),
+        TeleScript: await deployTeleScript(signer),
+        ChainStore: await deployChainStore(signer),
+    }
+
+
+    const addresses = {
+        Tokens,
+        LpPairs,
+        AmmRouter,
+        NftToken,
+        dApps,
+    };
+
+    return addresses;
+}
+
+
+
+async function configureContracts(signer: ethers.Wallet, addresses: Addresses) {
+
+    // AMM Router
+    await configureAmmRouter(signer, addresses);
+
+}
+
+
 
 
 async function deployToken1(signer: ethers.Wallet, constructorArgs=['','']) {
@@ -186,6 +219,49 @@ async function deployChainStore(signer: ethers.Wallet, constructorArgs=[]) {
 }
 
 
+
+async function configureAmmRouter(signer: ethers.Wallet, addresses: Addresses) {
+    const ammRouterAddress = addresses.AmmRouter;
+    const pairs = addresses.LpPairs;
+    const tokens = addresses.Tokens;
+
+    // registerPair WDEV / ChainCoin
+    await executeSmartContract(signer, ammRouterAddress, AMMRouterAbi, 'registerPair', [
+        pairs.WDEV_ChainCoin, tokens.WDEV, tokens.ChainCoin,
+    ])
+    .catch((err) => console.warn(err.message))
+
+    // registerPair WDEV / BTCjs
+    await executeSmartContract(signer, ammRouterAddress, AMMRouterAbi, 'registerPair', [
+        pairs.WDEV_BTCjs, tokens.WDEV, tokens.BTCjs,
+    ])
+    .catch((err) => console.warn(err.message))
+
+    // registerPair WDEV / EtherJS
+    await executeSmartContract(signer, ammRouterAddress, AMMRouterAbi, 'registerPair', [
+        pairs.WDEV_EtherJS, tokens.WDEV, tokens.EtherJS,
+    ])
+    .catch((err) => console.warn(err.message))
+
+    // registerPair WDEV / Token1
+    await executeSmartContract(signer, ammRouterAddress, AMMRouterAbi, 'registerPair', [
+        pairs.WDEV_Token1, tokens.WDEV, tokens.Token1,
+    ])
+    .catch((err) => console.warn(err.message))
+
+    // registerPair WDEV / Token2
+    await executeSmartContract(signer, ammRouterAddress, AMMRouterAbi, 'registerPair', [
+        pairs.WDEV_Token2, tokens.WDEV, tokens.Token2,
+    ])
+    .catch((err) => console.warn(err.message))
+
+    // registerPair WDEV / USDjs
+    await executeSmartContract(signer, ammRouterAddress, AMMRouterAbi, 'registerPair', [
+        pairs.WDEV_USDjs, tokens.WDEV, tokens.USDjs,
+    ])
+    .catch((err) => console.warn(err.message))
+
+}
 
 
 /* ######################################################### */
