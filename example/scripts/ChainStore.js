@@ -2,13 +2,14 @@
 
 
 class ChainStore {
-    name;
+    name = "On-Chain Shopping";
+
     collections = {};
     products = {};
 
 
     constructor(name) {
-        this.name = name || "On-Chain Shopping";
+        this.name = name || this.name;
     }
 
 
