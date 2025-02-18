@@ -2,10 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
-import { convertCustomAbiToEthersFormat } from "../../../utils/abiUtils";
+
+import { callSmartContract } from "@frontend/utils/contractUtils";
 
 import type { AccountAddress, CodeAbi } from "@backend/types/account.types";
-import { callSmartContract } from "../../../utils/contractUtils";
 
 
 interface ContractCallProps {

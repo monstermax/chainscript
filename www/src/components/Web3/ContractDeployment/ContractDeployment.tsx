@@ -2,11 +2,10 @@
 
 import axios from "axios";
 import React, { useEffect, useState } from "react";
-import { AbiCoder, ethers } from "ethers";
+import { ethers } from "ethers";
 
-import { jsonReplacer } from "../../../utils/jsonUtils";
-import { extractClassNamesWithAcorn, extractConstructorParamsWithAcorn } from "../../../utils/abiUtils";
-import { deployContract } from "../../../utils/contractUtils";
+import { extractClassNamesWithAcorn, extractConstructorParamsWithAcorn } from "@frontend/utils/abiUtils";
+import { deployContract } from "@frontend/utils/contractUtils";
 
 
 const defaultCode = `\nclass MyContract {}\n`;

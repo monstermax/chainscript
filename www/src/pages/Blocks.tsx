@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { BlockHash } from "@backend/types/block.types";
+
+import type { BlockHash } from "@backend/types/block.types";
 
 
 const Blocks: React.FC = () => {

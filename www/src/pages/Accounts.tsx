@@ -2,8 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { AccountAddress } from "@backend/types/account.types";
-import { HexNumber } from "@backend/types/types";
+
+import type { HexNumber } from "@backend/types/types";
+
+import type { AccountAddress } from "@backend/types/account.types";
 
 
 const Accounts: React.FC = () => {
@@ -34,10 +36,10 @@ const Accounts: React.FC = () => {
                     </tr>
                 </thead>
                 <tbody>
-                    {accounts.map((account) => (
+                    {accounts.map((account, index) => (
                         <tr key={account.accountAddress}>
                             <td>
-                                <a href={`#/accounts/${account.accountAddress}`}>{account.accountAddress}</a>
+                                {index} <a href={`#/accounts/${account.accountAddress}`}>{account.accountAddress}</a>
                             </td>
                         </tr>
                     ))}

@@ -11,7 +11,7 @@ class ChainWallet {
 
     // Obtenir la balance des tokens natifs (coins)
     coinsBalance() {
-        return balance(self);
+        return balanceOf(self);
     }
 
     // Obtenir la balance d'un token ERC-20
@@ -33,11 +33,11 @@ class ChainWallet {
     }
 
     // Récupérer les balances de tous les tokens enregistrés
-    async getTokensBalances() {
+    async getTokensBalances(forceUpdate) {
         const balances = {};
 
         for (const tokenAddress of Object.keys(this.tokens)) {
-            balances[tokenAddress] = await this.tokensBalance(tokenAddress, 'yes');
+            balances[tokenAddress] = await this.tokensBalance(tokenAddress, forceUpdate);
         }
 
         return balances;
@@ -47,7 +47,7 @@ class ChainWallet {
     // Transférer des tokens natifs (coins)
     async coinsTransfer(recipientAddress, amount) /* write */ {
         amount = BigInt(amount);
-        const sender = lower(caller);
+        const sender = lower(msg.sender);
 
         asserts(sender === this.owner, `Seul le propriétaire (${this.owner}) peut effectuer cette action.`);
         asserts(amount > 0n, "Le montant doit être positif.");
@@ -59,7 +59,7 @@ class ChainWallet {
     // Transférer des tokens ERC-20
     async tokensTransfer(tokenAddress, recipientAddress, amount) /* write */ {
         amount = BigInt(amount);
-        const sender = lower(caller);
+        const sender = lower(msg.sender);
 
         asserts(sender === this.owner, `Seul le propriétaire (${this.owner}) peut effectuer cette action.`);
         asserts(amount > 0n, "Le montant doit être positif.");
@@ -72,7 +72,7 @@ class ChainWallet {
 
     // Appeler un autre contrat (avec restrictions)
     async callContract(contractAddress, method, argsJson) /* write */ {
-        const sender = lower(caller);
+        const sender = lower(msg.sender);
 
         asserts(sender === this.owner, `Seul le propriétaire (${this.owner}) peut effectuer cette action.`);
         asserts(isValidAddress(contractAddress), "Adresse du contrat invalide.");

@@ -2,13 +2,14 @@
 
 import fs from 'fs';
 import { parse } from 'acorn';
-import { keccak256, toUtf8Bytes } from "ethers";
+import { AbiCoder, keccak256, toUtf8Bytes } from "ethers";
 import { createContext, Script } from "vm";
 
 import { createDeploymentSandbox } from './vm';
 import { hasOpt, stringifyParams } from '../helpers/utils';
 
-import type { AbiSearchResult, AbiSearchResultAttribute, AbiSearchResultMethod, AccountAddress, CodeAbi, CodeAbiClass, CodeAbiClassAttribute, CodeAbiClassAttributes, CodeAbiClassMethod, CodeAbiClassMethods, ContractMemory } from "../types/account.types";
+import type { AbiSearchResult, AbiSearchResultAttribute, AbiSearchResultMethod, AccountAddress } from "../types/account.types";
+import type { CodeAbi, CodeAbiClassAttributes, CodeAbiClassMethod, CodeAbiClassMethods, ContractMemory } from "../types/account.types";
 
 
 /* ######################################################### */
@@ -70,24 +71,26 @@ export function findMethodAbi(abi: CodeAbi, methodSignature: string): AbiSearchR
 
 
 
-/*
-// Encode une transaction en `eth_call` compatible avec Metamask
-export function encodeCallData(className: string, methodName: string, args: any[], abiClassMethod: CodeAbiClassMethod): string {
+
+// Encode un appel de smart contract en `eth_call` compatible avec Metamask
+export function encodeCallData(methodName: string, methodArgs: string[], abiClassMethod: CodeAbiClassMethod): string {
     const coder = new AbiCoder();
 
     // Encoder les paramètres en ABI
-    const encodedParams = coder.encode(abiClassMethod.inputs ?? [], args);
+    const encodedParams = coder.encode(abiClassMethod.inputs ?? [], methodArgs);
 
-    // ✅ Format de signature : `className.methodName(types)`
-    //const inputTypes = (methodAbi.inputs ?? []).join(",");
+    // On force tous les types (inputs) en string (car JS n'est pas typé)
     const inputTypes = (abiClassMethod.inputs ?? []).map(name => "string").join(",");
-    const signatureString = `${className}.${methodName}(${inputTypes})`;
 
-    const signatureHash = keccak256(toUtf8Bytes(signatureString)).slice(0, 10); // 4 bytes de signature
+    // Format de signature : `className.methodName(types)`
+    const signatureString = `${methodName}(${inputTypes})`; // 🔄 Supprime le `className.`
 
-    return signatureHash + encodedParams.slice(2);
+    // Générer la signature Ethereum standard
+    const hash = keccak256(toUtf8Bytes(signatureString)).slice(0, 10);
+
+    return hash + encodedParams.slice(2);
 }
-*/
+
 
 
 
@@ -128,7 +131,7 @@ buildAbi(${className}, [${stringifyParams(constructorArgs)}]);
 
     let abiAnalyzerTimeout: number | undefined = 10;
 
-    if (hasOpt('--debug-vm')) {
+    if (hasOpt('--debug-vm') || hasOpt('--debug-contract')) {
         const debugFilepath = `/tmp/debug_deploy_contract_${contractAddress}.abi-analyzer.js`;
 
         abiAnalyzerCode = `
@@ -181,7 +184,6 @@ ${newInstanceCode}
 
 
     // Instancie la classe (initialize le constructor)
-    console.log('newInstanceCode:', newInstanceCode)
     const newInstanceScript: Script = new Script(newInstanceCode);
     const newInstanceResult: object = newInstanceScript.runInContext(vmContext, { breakOnSigint: true, timeout: newInstanceTimeout });
     console.log('newInstanceResult:', newInstanceResult)
@@ -234,14 +236,14 @@ export function getClassProperties(instance: any): { methods: CodeAbiClassMethod
 
 
 /** Récupère les noms des paramètres d’une fonction JS et détecte les annotations */
-export function getFunctionParams(func: Function): { params: string[], isWrite: boolean } {
+export function getFunctionParams(func: Function): { params: string[], isWrite: boolean, isPayable: boolean } {
     let functionString = func.toString().replace(/\n/g, " "); // Supprime les sauts de ligne pour éviter les problèmes d'analyse
 
     // Note: voir si possible de parser avec Acorn (voir extractConstructorParamsWithAcorn)
 
     // Trouver où commence le corps de la fonction `{`
     const bodyIndex = functionString.indexOf("{");
-    if (bodyIndex === -1) return { params: [], isWrite: false }; // Impossible de récupérer des params
+    if (bodyIndex === -1) return { params: [], isWrite: false, isPayable: false }; // Impossible de récupérer des params
 
     // Extraire uniquement la partie avant `{`
     const headerString = functionString.substring(0, bodyIndex);
@@ -260,8 +262,9 @@ export function getFunctionParams(func: Function): { params: string[], isWrite: 
 
     // Vérifier si le commentaire contient " write " (avec espaces pour éviter des faux positifs)
     const isWrite = ` ${comments} `.includes(" write ");
+    const isPayable = ` ${comments} `.includes(" payable ");
 
-    return { params, isWrite };
+    return { params, isWrite, isPayable };
 }
 
 

@@ -2,6 +2,7 @@
 
 import path from 'path';
 import fs from 'fs';
+import * as repl from 'node:repl';
 
 import { defaultStateDir, defaultP2pPort, defaultRpcPort } from './config';
 import { ensureDirectory, getOpt, hasOpt, now } from "./helpers/utils";
@@ -93,6 +94,7 @@ async function main() {
     }
 
 
+
     // Se met en attente (de nouvelles transactions via rpc ET de nouveaux blocks via p2p) et essaye de miner des blocks
     if (hasOpt('--listen')) {
         // Wait for transactions...
@@ -112,6 +114,12 @@ async function main() {
         // Start local miner
         if (hasOpt('--mine')) {
             blockchain.miner = new BlocksMiner(blockchain, minerAddress);
+        }
+
+
+        if (hasOpt('--console')) {
+            const replServer = repl.start('> ')
+            replServer.context.blockchain = blockchain;
         }
     }
 }

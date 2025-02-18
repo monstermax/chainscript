@@ -29,6 +29,12 @@ export const TeleScriptAbi: CodeAbi = [
                 ],
                 "write": true
             },
+            "parseSessionKeys": {
+                "inputs": [
+                    "keysList"
+                ],
+                "write": false
+            },
             "sendMessage": {
                 "inputs": [
                     "chatId",
@@ -40,14 +46,17 @@ export const TeleScriptAbi: CodeAbi = [
             "getMessages": {
                 "inputs": [
                     "chatId",
-                    "userAddress"
+                    "userAddress",
+                    "limit",
+                    "offset"
                 ],
                 "write": false
             },
             "addMember": {
                 "inputs": [
                     "chatId",
-                    "newMember"
+                    "newMember",
+                    "encryptedSessionKey"
                 ],
                 "write": true
             },

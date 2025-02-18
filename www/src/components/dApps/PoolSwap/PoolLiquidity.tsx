@@ -5,15 +5,18 @@ import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
 
 
+import { contractsAddresses, swapableTokens } from "@frontend/config.client";
+import { callSmartContract, executeSmartContract } from "@frontend/utils/contractUtils";
+import { TokenAbi } from "@frontend/abi/TokenAbi";
+import { LPPairAbi } from "@frontend/abi/LPPairAbi";
+
+import ConnectWallet from "@frontend/components/Web3/ConnectWallet";
 import TokenSelectorModal from "./TokenSelectorModal";
 
-import { callSmartContract, executeSmartContract } from "../../../utils/contractUtils";
-import { TokenAbi } from "../../../abi/TokenAbi";
-import { LPPairAddress, swapableTokens } from "../../../config.client";
-import { LPPairAbi } from "../../../abi/LPPairAbi";
-import ConnectWallet from "../../../components/Web3/ConnectWallet";
-
 import type { AccountAddress } from "@backend/types/account.types";
+
+
+const LPPairAddress = contractsAddresses.LpPairs.WDEV_ChainCoin as AccountAddress;
 
 
 const PoolLiquidity: React.FC = () => {

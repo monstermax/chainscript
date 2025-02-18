@@ -11,6 +11,7 @@ import { handleRpcRequests } from './rpc';
 import { Account } from '../blockchain/account';
 import { AccountAddress } from '../types/account.types';
 import { Block } from '../blockchain/block';
+import { jsonReplacer } from '../helpers/utils';
 
 import type { TransactionHash } from '../types/transaction.types';
 
@@ -208,22 +209,32 @@ export function handleTransactionsRoutes(blockchain: Blockchain, app: express.Ex
     // Récupérer une transaction
     app.get("/api/transactions/:txHash", (req, res) => {
         try {
-            const { txHash } = req.params;
-            const tx = blockchain.getTransactionByHash(txHash as TransactionHash);
+            const { txHash } = req.params as { txHash: TransactionHash };
+            const tx = blockchain.getTransactionByHash(txHash);
+
+            const blockHeight = tx?.blockHeight ?? blockchain.stateManager.transactionsIndex[txHash];
+            const block = blockchain.getBlock(blockHeight);
+
+            const receipt = block?.getTransactionReceipt(txHash);
 
             if (!tx) {
                 res.status(404).json({ error: "Transaction non trouvée" });
                 return;
             }
 
-            res.json(JSON.parse(tx.toJSON()));
+            const result = {
+                tx: tx.toData(),
+                receipt,
+            }
+
+            const json = JSON.stringify(result, jsonReplacer);
+            res.json(JSON.parse(json));
 
         } catch (err: any) {
             res.status(500).json({ error: "Erreur Blockchain" });
         }
     });
 }
-
 
 
 

@@ -10,7 +10,7 @@ class TeleScript {
 
     /** Enregistre un utilisateur */
     registerUser() /* write */ {
-        const sender = lower(caller);
+        const sender = lower(msg.sender);
         asserts(!this.users[sender], "Utilisateur déjà enregistré");
         this.users[sender] = { chats: [] };
     }
@@ -18,7 +18,7 @@ class TeleScript {
 
     /** Supprime un utilisateur (libère l'espace mémoire) */
     unregisterUser() /* write */ {
-        const sender = lower(caller);
+        const sender = lower(msg.sender);
         asserts(this.users[sender], "Utilisateur non enregistré");
 
         // Vérifier qu'il n'est pas admin d'un chat
@@ -46,7 +46,7 @@ class TeleScript {
 
     /** Enregistre une clé de session chiffrée pour un utilisateur */
     registerSessionKey(chatId, encryptedSessionKey) /* write */ {
-        const sender = lower(caller);
+        const sender = lower(msg.sender);
         const chat = this.chats[chatId];
 
         asserts(this.users[sender], "Utilisateur non enregistré");
@@ -60,17 +60,17 @@ class TeleScript {
 
     /** Crée un nouveau chat privé ou de groupe */
     createChat(encryptedSessionKeysList = '', isPublic = '') /* write */ {
-        const sender = lower(caller);
+        const sender = lower(msg.sender);
         asserts(this.users[sender], "Utilisateur non enregistré");
 
-        const encryptedSessionKeysEntries = encryptedSessionKeysList // Input format: address1:key1,address2:key2,...
-            .split(',')
-            .map(entry => entry.split(':').map(entry => entry.trim()))
-            .filter(entry => entry.length === 2)
-            .map(entry => [lower(entry[0]), entry[1]]);
+        //const encryptedSessionKeysEntries = encryptedSessionKeysList // Input format: address1:key1,address2:key2,...
+        //    .split(',')
+        //    .map(entry => entry.split(':').map(entry => entry.trim()))
+        //    .filter(entry => entry.length === 2)
+        //    .map(entry => [lower(entry[0]), entry[1]]);
 
-        //const encryptedSessionKeysEntries = JSON.parse(encryptedSessionKeysList);
-        const encryptedSessionKeys = Object.fromEntries(encryptedSessionKeysEntries);
+        //const encryptedSessionKeys = Object.fromEntries(encryptedSessionKeysEntries);
+        const encryptedSessionKeys = this.parseSessionKeys(encryptedSessionKeysList);
         const members = Object.keys(encryptedSessionKeys);
 
         // REVERT si le créateur n'a pas sa propre clé de session
@@ -97,10 +97,21 @@ class TeleScript {
         return chatId;
     }
 
+    parseSessionKeys(keysList) {
+        log('parseSessionKeys START')
+        return keysList
+            .split(',')
+            .map(entry => entry.split(':').map(e => e.trim()))
+            .reduce((acc, [address, key]) => {
+                acc[address.toLowerCase()] = key;
+                return acc;
+            }, {});
+    }
+
 
     /** Envoie un message chiffré dans un chat */
     sendMessage(chatId, encryptedMessage, nonce) /* write */ {
-        const sender = lower(caller);
+        const sender = lower(msg.sender);
         const chat = this.chats[chatId];
 
         asserts(this.users[sender], "Utilisateur non enregistré");
@@ -132,7 +143,7 @@ class TeleScript {
 
     /** Ajoute un membre à un chat */
     addMember(chatId, newMember, encryptedSessionKey) /* write */ {
-        const sender = lower(caller);
+        const sender = lower(msg.sender);
         const newMemberLower = lower(newMember);
         const chat = this.chats[chatId];
 
@@ -155,7 +166,7 @@ class TeleScript {
 
 
     removeMember(chatId, memberToRemove) /* write */ {
-        const sender = lower(caller);
+        const sender = lower(msg.sender);
         const memberToRemoveLower = lower(memberToRemove);
         const chat = this.chats[chatId];
 
@@ -197,7 +208,7 @@ class TeleScript {
 
     /** Liste les chats d'un utilisateur */
     getUserChats(userAddress) {
-        //const sender = lower(caller);
+        //const sender = lower(msg.sender);
         const user = lower(userAddress);
         //asserts(this.users[sender], "Utilisateur non enregistré");
         asserts(this.users[user], "Utilisateur non enregistré");
@@ -206,7 +217,7 @@ class TeleScript {
 
 
     promoteToAdmin(chatId, newAdmin) /* write */ {
-        const sender = lower(caller);
+        const sender = lower(msg.sender);
         const newAdminLower = lower(newAdmin);
         const chat = this.chats[chatId];
 
@@ -222,7 +233,7 @@ class TeleScript {
 
 
     getSessionKey(chatId, userAddress) {
-        //const sender = lower(caller);
+        //const sender = lower(msg.sender);
         const chat = this.chats[chatId];
         const user = lower(userAddress);
 

@@ -15,7 +15,6 @@ const ConnectWallet: React.FC<{ onConnect: (address: AccountAddress) => void }> 
             return;
         }
 
-
         try {
             const provider = new ethers.BrowserProvider(window.ethereum);
             const accounts = await provider.send("eth_requestAccounts", []) as AccountAddress[];
@@ -32,6 +31,8 @@ const ConnectWallet: React.FC<{ onConnect: (address: AccountAddress) => void }> 
 
     useEffect(() => {
         if (window.ethereum) {
+            connectWallet();
+
             window.ethereum.on("accountsChanged", (accounts) => {
                 const accountList = accounts as AccountAddress[];
                 setWalletAddress(accountList.length > 0 ? accountList[0] : null);

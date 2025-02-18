@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { ethers, formatEther, parseEther } from "ethers";
 
-import { symbol } from "../../config.client";
+import { symbol } from "@frontend/config.client";
 
 import AccountSelectorModal from "./AccountSelectorModal";
 

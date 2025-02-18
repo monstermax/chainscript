@@ -2,10 +2,13 @@
 
 import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
-import { swapableTokens, AMMRouterAddress } from "../../../config.client";
-import { TokenAbi } from "../../../abi/TokenAbi";
-import { callSmartContract } from "../../../utils/contractUtils";
-import { AccountAddress } from "@backend/types/account.types";
+
+import { swapableTokens } from "@frontend/config.client";
+import { callSmartContract } from "@frontend/utils/contractUtils";
+import { TokenAbi } from "@frontend/abi/TokenAbi";
+
+import type { AccountAddress } from "@backend/types/account.types";
+
 
 interface TokenSelectorModalProps {
     show: boolean;

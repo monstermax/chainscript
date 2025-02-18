@@ -13,13 +13,15 @@
 /* ######################################################### */
 
 
-type HexString = `0x${string}`;
-type AccountAddress = HexString;
-type BlockHash = HexString;
+type HexNumber = `0x${string}`;
+type AccountAddress = HexNumber;
+type BlockHash = HexNumber;
 
 type Block = any;
 type Account = any;
 type ContractMemory = any;
+type BytesLike = any;
+type ParamType = any;
 
 
 /* ######################################################### */
@@ -27,19 +29,29 @@ type ContractMemory = any;
 
 // "sandboxData" variables
 
-/** Nombre de decimals de la monnaie native de la blockchain */
-const decimals = 18; // must be equals to config.ts value
+/** Nombre de decimals de la monnaie native de la Blockchain - DEPPRECATED => use chain.decimals */
+//const decimals = 18; // must be equals to config.ts value
 
-/** Nombre de micro unités dans 1 unité entière de la monnaie native (aka bitcoin vs satoshi) */
-const fullcoin: bigint = BigInt(Math.pow(10, decimals));
+/** Nombre de micro unités dans 1 unité entière de la monnaie native (aka bitcoin vs satoshi) - DEPPRECATED => use chain.fullcoin */
+//const fullcoin: bigint = BigInt(Math.pow(10, decimals));
 
-/** Adresse de l'utilisateur qui effectue la transaction */
-const caller: AccountAddress = '0x0000000000000000000000000000000000000000';
+/** Adresse de l'utilisateur qui effectue la transaction - DEPPRECATED => use msg.sender */
+//const caller: AccountAddress = '0x0000000000000000000000000000000000000000';
 
 {
 /** Adresse du smart contract */
 const self: AccountAddress = '0x0000000000000000000000000000000000000000';
 }
+
+/** Message informationnel contenant l'emetteur de la transaction et la valeur monetaire */
+const msg: { sender: AccountAddress, value: bigint } = { sender: '0x', value: 0n };
+
+/** Message informationnel contenant les informations sur le block en construction */
+const block: { blockHeight: number, parentBlockHash: HexNumber } = { blockHeight: 0, parentBlockHash: '0x' };
+
+/** Message informationnel contenant les informations sur la blockchain */
+const chain: { decimals: number, fullcoin: bigint } = { decimals: 18, fullcoin: BigInt(Math.pow(10, 18)) };
+
 
 
 // "sandboxUtils" methods
@@ -54,7 +66,7 @@ async function transfer(to: AccountAddress, amount: bigint): Promise<void> {};
 async function call(calledScriptAddress: AccountAddress, calledScriptClass: string, calledScriptMethod: string, args: any[]): Promise<void> {};
 
 /** Retourne le solde d'un compte */
-function balance(address: AccountAddress): bigint { return 0n; };
+function balanceOf(address: AccountAddress): bigint { return 0n; };
 
 /** Permet de stocker des informations sur la Blockchain */
 //function memory(initialValues: ContractMemory): ContractMemory { return {} };
@@ -67,6 +79,10 @@ function revert(message?: string): never { throw new Error(); };
 
 /** Calcul le hash d'une chaine */
 function hash(dataToHash: string): string { return ''; };
+
+function keccak256(_data: BytesLike): string { return '' };
+
+function encode(types: ReadonlyArray<string | ParamType>, values: ReadonlyArray<any>): string { return '' };
 
 /** Convertit une chaine en minuscule */
 function lower(str: string): string { return ''; };

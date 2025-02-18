@@ -118,7 +118,7 @@ export type TransactionInstructionCreate = {
     contractAddress: AccountAddress,
     contractClass: string,
     code: string,
-    value?: bigint,
+    amount?: bigint,
     contructorArgs: string[],
 }
 
@@ -129,5 +129,6 @@ export type TransactionInstructionExecute = {
     className: string,
     methodName: string,
     methodArgs: string[],
+    amount?: bigint,
 }
 

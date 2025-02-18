@@ -32,11 +32,13 @@ export function convertCustomAbiToEthersFormat(customAbi: CodeAbi): EthersAbi {
                 name: methodName,
                 inputs,
                 outputs,
-                stateMutability: methodData.write ? 'non-payable' : 'view',
+                stateMutability: (methodData.write || methodData.payable)
+                    ? (methodData.payable ? 'payable' : 'non-payable')
+                    : 'view',
             });
         }
 
-        // 2. Attrributs
+        // 2. Attributs
         for (const [attrName, attrData] of Object.entries(abiClass.attributes)) {
             const outputType = 'string'; // mapJsTypeToSolidity(attrData.type);
 
@@ -61,8 +63,9 @@ export function extractAbiMethods(abi: CodeAbi): { calls: string[], executes: st
 
     abi.forEach(contract => {
         Object.entries(contract.methods).forEach(([methodName, methodData]) => {
-            if (methodData.write) {
+            if (methodData.write || methodData.payable) {
                 executes.push(methodName);
+
             } else {
                 calls.push(methodName);
             }

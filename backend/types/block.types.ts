@@ -47,10 +47,11 @@ export type BlockRpc = {
     nonce: string | null;
     number: string | null;
     parentHash: string;
-    receiptsRoot: string;
+    receiptsRoot: string | null;
     sha3Uncles: string;
     size: string;
-    stateRoot: string;
+    stateRoot: string | null;
+    prevRandao: string | null;
     timestamp: string;
     totalDifficulty: string;
     transactions: any[]; // Peut contenir des transactions, définir précisément si besoin

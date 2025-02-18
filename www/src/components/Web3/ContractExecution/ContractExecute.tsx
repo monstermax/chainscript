@@ -3,10 +3,9 @@
 import React, { useEffect, useState } from "react";
 import { ContractTransactionResponse, ethers } from "ethers";
 
-import { convertCustomAbiToEthersFormat } from "../../../utils/abiUtils";
+import { executeSmartContract } from "@frontend/utils/contractUtils";
 
 import type { AccountAddress, CodeAbi } from "@backend/types/account.types";
-import { executeSmartContract } from "../../../utils/contractUtils";
 
 
 interface ContractExecuteProps {

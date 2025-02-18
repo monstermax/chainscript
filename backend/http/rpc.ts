@@ -32,7 +32,7 @@ export function handleRpcRequests(blockchain: Blockchain, app: express.Express) 
 export async function handleRpcRequest(blockchain: Blockchain, req: express.Request, res: express.Response): Promise<void> {
     try {
         const { jsonrpc, id, method, params } = req.body;
-        console.log(`[${now()}][RPC] 📩 Requête RPC "${id}" reçue: ${method}`, params);
+        console.log(`[${now()}][RPC] 📩 Requête RPC "${id}" reçue: ${method}`, (typeof params === 'string') ? params.slice(0, 512) : JSON.stringify(params).slice(0, 512));
 
 
         let result: string | object | null | boolean = null;
@@ -203,6 +203,13 @@ export async function handleRpcRequest(blockchain: Blockchain, req: express.Requ
                 break;
             }
 
+            case 'eth_maxPriorityFeePerGas': {
+                // https://docs.metamask.io/services/reference/ethereum/json-rpc-methods/eth_maxPriorityFeePerGas/
+
+                result = '0x55d4a80' as HexNumber;
+                break;
+            }
+
             case 'eth_estimateGas': {
                 // https://docs.metamask.io/services/reference/ethereum/json-rpc-methods/eth_estimategas/
                 const [args] = params as [args: { from: AccountAddress, value: HexNumber, gasPrice: HexNumber, data: HexNumber, to: AccountAddress }];
@@ -316,7 +323,7 @@ export async function handleRpcRequest(blockchain: Blockchain, req: express.Requ
 
 
             default:
-                throw new Error(`[${now()}][RPC] Méthode RPC inconnue: ${method}`);
+                throw new Error(`[${now()}][RPC] ❌ Méthode RPC inconnue: ${method}`);
         }
 
 

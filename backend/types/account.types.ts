@@ -25,7 +25,7 @@ export type AccountData = {
     memory: ContractMemory | null;
     transactionsCount: number;
     hash: AccountHash | null;
-    //lastBlockUpdate: number; // TODO: indiquer le blockHeight de la derniere modif du compte
+    lastBlockUpdate?: number;
 }
 
 
@@ -43,9 +43,9 @@ export type CodeAbiClassAttributes = {[attribute: string]: CodeAbiClassAttribute
 
 
 export type CodeAbiClassMethod = {
-    //public?: boolean,
     inputs?: string[],
     write?: boolean,
+    payable?: boolean,
 };
 
 

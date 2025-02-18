@@ -3,15 +3,15 @@
 import path from 'path';
 import fs from 'fs';
 
-import { defaultStateDir, fullcoin, defaultP2pPort, defaultRpcPort } from './config';
-import { asserts, ensureDirectory, getOpt, hasOpt, now } from "./helpers/utils";
-import { Blockchain } from "./blockchain/blockchain";
-import { Transaction } from "./blockchain/transaction";
-import { httpListen } from './http/http';
-import { P2PNode } from './p2p/p2p';
-import { BlocksMiner } from './miner/miner';
+import { defaultStateDir, fullcoin, defaultP2pPort, defaultRpcPort } from '../config';
+import { asserts, ensureDirectory, getOpt, hasOpt, now } from "../helpers/utils";
+import { Blockchain } from "../blockchain/blockchain";
+import { Transaction } from "../blockchain/transaction";
+import { httpListen } from '../http/http';
+import { P2PNode } from '../p2p/p2p';
+import { BlocksMiner } from '../miner/miner';
 
-import type { AccountAddress, CodeAbi } from './types/account.types';
+import type { AccountAddress, CodeAbi } from '../types/account.types';
 
 
 /* ######################################################### */
@@ -240,7 +240,7 @@ async function testsTransactions(blockchain: Blockchain) {
 
         const tx = new Transaction(txExecutorAddress, txAmount)
             .transfer(addressContract1, txAmount) // TRANSFER AMOUNT
-            .execute(addressContract1, 'ContractTest1', 'test_vm_1'); // CALL CONTRACT
+            .execute(addressContract1, 'ContractTest1', 'test_vm_1', [], 0n); // CALL CONTRACT
 
         // 2. Add transaction to the mempool
         blockchain.mempool.addTransaction(tx);
@@ -306,7 +306,7 @@ async function testsTransactions(blockchain: Blockchain) {
 
 function loadScriptCode(scriptName: string) {
     // Load source code
-    const execScriptFile = `${__dirname}/example/scripts/${scriptName}.js`;
+    const execScriptFile = `${__dirname}/../../example/scripts/${scriptName}.js`;
     asserts(fs.existsSync(execScriptFile), "[loadScriptCode] script file not found");
 
     const execScriptCode = fs.readFileSync(execScriptFile).toString();

@@ -3,26 +3,28 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 
-import { jsonReviver } from "../utils/jsonUtils";
-
-import { divideBigInt } from "../utils/numberUtils";
 import { decimals } from "../config.client";
+import { jsonReviver } from "../utils/jsonUtils";
+import { divideBigInt } from "../utils/numberUtils";
 
-import type { TransactionData } from "@backend/types/transaction.types";
+import type { TransactionData, TransactionReceiptData } from "@backend/types/transaction.types";
 
 
 
 const Transaction: React.FC = () => {
     const { txHash } = useParams<{ txHash: string }>();
     const [transaction, setTransaction] = useState<TransactionData | null>(null);
+    const [receipt, setReceipt] = useState<TransactionReceiptData | null>(null);
 
     useEffect(() => {
         const fetchTransaction = async () => {
             try {
                 const response = await fetch(`/api/transactions/${txHash}`);
                 const json = await response.text();
-                const block = JSON.parse(json, jsonReviver) as TransactionData;
-                setTransaction(block);
+
+                const { tx, receipt } = JSON.parse(json, jsonReviver) as { tx: TransactionData, receipt: TransactionReceiptData };
+                setTransaction(tx);
+                setReceipt(receipt);
 
             } catch (error) {
                 console.error("Erreur lors de la récupération de la transaction :", error);
@@ -42,6 +44,7 @@ const Transaction: React.FC = () => {
             <p><strong>Nonce :</strong> {transaction.nonce}</p>
             <p><strong>Valeur :</strong> {divideBigInt(transaction.value, 10n ** BigInt(decimals))}</p>
             <p><strong>Instructions :</strong> {transaction.instructions.map(instruction => instruction.type).join(', ')}</p>
+            <p><strong>Result :</strong> {(receipt?.success ?? false) ? 'success' : 'failed'}</p>
         </div>
     );
 };

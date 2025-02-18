@@ -4,11 +4,12 @@
 class ChainIt {
     posts = []; // Liste des posts { id, author, title, content, timestamp, comments }
 
+
     postThread(title, content) /* write */ {
         asserts(title.length > 0, "Le titre ne peut pas être vide");
         asserts(content.length > 0, "Le contenu ne peut pas être vide");
 
-        const sender = lower(caller);
+        const sender = lower(msg.sender);
         const id = this.posts.length.toString(); // ID basé sur l'index du post
 
         this.posts.push({
@@ -24,7 +25,7 @@ class ChainIt {
 
     commentThread(postId, comment) /* write */ {
         asserts(comment.length > 0, "Commentaire vide interdit");
-        const sender = lower(caller);
+        const sender = lower(msg.sender);
 
         const post = this.posts.find(p => p.id === postId);
         asserts(post, "Post introuvable");

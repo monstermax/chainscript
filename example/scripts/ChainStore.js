@@ -1,29 +1,28 @@
 // ChainStore.js
 
 
-
 class ChainStore {
     collections = {};
     products = {};
 
 
     // Ajouter une nouvelle collection
-    registerCollection(collectionId, name, description) /* write */ {
+    async registerCollection(collectionId, name, description) /* write */ {
         collectionId = lower(collectionId);
         name = name.trim();
         description = description.trim();
 
-        asserts(!this.collections[collectionId], "Collection déjà existante");
+        asserts(! (collectionId in this.collections), "Collection déjà existante");
 
         this.collections[collectionId] = {
             name,
             description,
-            products: []
+            products: [],
         };
     }
 
     // Ajouter un nouveau produit à une collection
-    registerProduct(collectionId, productId, name, description, price, stock) /* write */ {
+    async registerProduct(collectionId, productId, name, description, price, stock) /* write */ {
         collectionId = lower(collectionId);
         productId = lower(productId);
         name = name.trim();
@@ -31,8 +30,10 @@ class ChainStore {
         price = BigInt(price);
         stock = BigInt(stock);
 
-        asserts(this.collections[collectionId], "Collection introuvable");
-        asserts(!this.products[productId], "Produit déjà existant");
+        asserts(collectionId in this.collections, "Collection introuvable");
+        asserts(! (productId in this.products), "Produit déjà existant");
+        asserts(price > 0n, "Prix invalide");
+        asserts(stock >= 0n, "Stock invalide");
 
         this.products[productId] = {
             collectionId,
@@ -46,58 +47,51 @@ class ChainStore {
     }
 
     // Acheter un produit
-    async buyProduct(productId, amount) /* write */ {
+    async buyProduct(productId, amount) /* payable */ {
         productId = lower(productId);
         amount = BigInt(amount);
 
-        const sender = lower(caller); // L'utilisateur qui achète le produit
+        const sender = lower(msg.sender);
 
-        asserts(this.products[productId], "Produit introuvable");
-        asserts(this.products[productId].stock >= amount, "Stock insuffisant");
+        const product = this.products[productId];
+        asserts(product, "Produit introuvable");
+        asserts(product.stock >= amount, "Stock insuffisant");
+        asserts(amount > 0n, "Quantité invalide");
 
-        const totalCost = this.products[productId].price * amount;
+        const totalCost = product.price * amount;
+        asserts(msg.value === totalCost, `Montant invalide`);
 
-        // Vérifier que l'utilisateur a assez de fonds
-        const balance = await call("Token", "", "balanceOf", [sender]);
-        asserts(balance >= totalCost, "Solde insuffisant pour acheter le produit");
+        // Mettre à jour le stock
+        product.stock -= amount;
 
-        // Transférer les tokens de l'utilisateur vers le contrat
-        await call("Token", "", "transferFrom", [sender, self, totalCost]);
-
-        // Mettre à jour le stock du produit
-        this.products[productId].stock -= amount;
-
-        // Envoyer le produit à l'utilisateur (par exemple, en émettant un événement ou en enregistrant la commande)
-        await this.#recordPurchase(sender, productId, amount);
-
-        return { success: true, productId, amount };
+        // Enregistrer l'achat
+        await this._recordPurchase(sender, productId, amount);
     }
 
     // Enregistrer l'achat (fonction interne)
-    async #recordPurchase(buyer, productId, amount) {
-        // Ici, vous pouvez enregistrer l'achat dans un historique ou émettre un événement
-        // Par exemple :
-        // emit("ProductPurchased", { buyer, productId, amount });
+    async _recordPurchase(buyer, productId, amount) {
+        // Future implémentation avec events
     }
 
     // Obtenir les informations d'une collection
     async getCollectionInfo(collectionId) {
         collectionId = lower(collectionId);
-
-        asserts(this.collections[collectionId], "Collection introuvable");
+        asserts(collectionId in this.collections, "Collection introuvable");
 
         const collection = this.collections[collectionId];
+        const productsInfo = [];
 
-        const productsInfo = await Promise.all(collection.products.map(async productId => {
+        for (const productId of collection.products) {
             const product = this.products[productId];
-            return {
+
+            productsInfo.push({
                 productId,
                 name: product.name,
                 description: product.description,
-                price: product.price.toString(),
-                stock: product.stock.toString()
-            };
-        }));
+                price: product.price,
+                stock: product.stock
+            });
+        }
 
         return {
             collectionId,
@@ -108,24 +102,34 @@ class ChainStore {
     }
 
     // Obtenir les informations d'un produit
-    async getProductInfo(productId) {
+    getProductInfo(productId) {
         productId = lower(productId);
 
-        asserts(this.products[productId], "Produit introuvable");
-
         const product = this.products[productId];
+        asserts(product, "Produit introuvable");
 
         return {
             productId,
             name: product.name,
             description: product.description,
-            price: product.price.toString(),
-            stock: product.stock.toString(),
+            price: product.price,
+            stock: product.stock,
             collectionId: product.collectionId
         };
     }
 
-    async getCollections() {
-        return this.collections;
+    getCollections() {
+        const result = {};
+
+        for (const [id, collection] of Object.entries(this.collections)) {
+
+            result[id] = {
+                name: collection.name,
+                description: collection.description,
+                products: collection.products,
+            };
+        }
+        return result;
     }
 }
+

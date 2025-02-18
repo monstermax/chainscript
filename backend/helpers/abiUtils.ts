@@ -28,7 +28,9 @@ export function convertCustomAbiToEthersFormat(customAbi: CodeAbi): EthersAbi {
                 name: methodName,
                 inputs,
                 outputs,
-                stateMutability: methodData.write ? 'non-payable' : 'view',
+                stateMutability: (methodData.write || methodData.payable)
+                    ? (methodData.payable ? 'payable' : 'non-payable')
+                    : 'view',
             });
         }
 

@@ -76,7 +76,7 @@ export class Transaction {
             contractClass,
             code,
             contructorArgs: contructorArgs ?? [],
-            value: amount,
+            amount,
         };
 
         this.instructions.push(instruction);
@@ -85,13 +85,14 @@ export class Transaction {
     }
 
 
-    public execute(contractAddress: AccountAddress, className: string, methodName: string, args: any[]=[]): this {
+    public execute(contractAddress: AccountAddress, className: string, methodName: string, args: any[]=[], amount=0n): this {
         const instruction: TransactionInstructionExecute = {
             type: 'execute',
             contractAddress,
             className,
             methodName,
             methodArgs: args,
+            amount,
         };
 
         this.instructions.push(instruction);
@@ -197,6 +198,8 @@ export class Transaction {
         const transactionIndex = block.transactions.findIndex(_tx => _tx.hash === tx.hash);
         asserts(transactionIndex > -1, `[Transaction.formatForRpc] transaction not found`);
 
+        const receipt = block.getTransactionReceipt(tx.hash);
+
         const receiptRpc: TransactionReceiptRpc = {
             blockHash: block.hash,
             blockNumber: toHex(block.blockHeight),
@@ -207,7 +210,7 @@ export class Transaction {
             gasUsed: "0x00",
             logs: [],
             logsBloom: "0x",
-            status: "0x1",
+            status: receipt?.success ? "0x1" : "0x0",
             to: to,
             transactionHash: tx.hash,
             transactionIndex: toHex(transactionIndex),

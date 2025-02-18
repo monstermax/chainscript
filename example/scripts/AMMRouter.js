@@ -48,7 +48,7 @@ class AMMRouter {
         tokenOut = lower(tokenOut);
         amountIn = BigInt(amountIn);
 
-        const sender = lower(caller); // L'utilisateur qui fait le swap
+        const sender = lower(msg.sender); // L'utilisateur qui fait le swap
 
         const { bestPair } = await this.findBestPair(tokenIn, tokenOut);
         asserts(bestPair, "Aucune paire disponible");

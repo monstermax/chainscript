@@ -35,7 +35,7 @@ export class Mempool {
         asserts(emitterAccount, `[Mempool][addTransaction] emitter account not found`);
 
         if (typeof tx.nonce === 'bigint') {
-            asserts(tx.nonce === BigInt(emitterAccount.transactionsCount), `[Mempool][addTransaction] invalid nonce. (Found: ${tx.nonce} / Expected: ${emitterAccount.transactionsCount})`);
+            asserts(tx.nonce >= BigInt(emitterAccount.transactionsCount), `[Mempool][addTransaction] invalid nonce. (Found: ${tx.nonce} / Expected: ${emitterAccount.transactionsCount})`);
 
         } else {
             // nonce non fourni, on le force

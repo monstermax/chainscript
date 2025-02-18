@@ -17,7 +17,7 @@ class ContractToken2 {
 
 
     constructor(name, symbol) {
-        const sender = lower(caller);
+        const sender = lower(msg.sender);
 
         this.name = name || this.name;
         this.symbol = symbol || this.symbol;
@@ -56,14 +56,14 @@ class ContractToken2 {
         // Usage:
         // await token.transfer("0x123...", "1000");
 
-        this.#burn(lower(caller), BigInt(amount));
+        this.#burn(lower(msg.sender), BigInt(amount));
         this.#mint(lower(recipient), BigInt(amount));
     }
 
 
     // Transfert direct (sender → recipient)
     transfer(recipient, amount) /* write */ {
-        const sender = lower(caller);
+        const sender = lower(msg.sender);
         recipient = lower(recipient);
         amount = BigInt(amount);
 
@@ -81,7 +81,7 @@ class ContractToken2 {
         // 1. => await token.approve("0xPoolContract", "5000");
         // 2. => await token.transferFrom("0xUser", "0xLPContract", "5000");
 
-        const owner = lower(caller);
+        const owner = lower(msg.sender);
         spender = lower(spender);
         amount = BigInt(amount);
 
@@ -105,7 +105,7 @@ class ContractToken2 {
         // 1. => await token.approve("0xPoolContract", "5000");
         // 2. => await token.transferFrom("0xUser", "0xLPContract", "5000");
 
-        const spender = lower(caller);
+        const spender = lower(msg.sender);
         owner = lower(owner);
         recipient = lower(recipient);
         amount = BigInt(amount);

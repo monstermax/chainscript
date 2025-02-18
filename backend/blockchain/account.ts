@@ -5,6 +5,7 @@ import { encodeRlp, getAddress, keccak256 } from 'ethers';
 import { asserts, computeHash, encodeBigintRLP, jsonReplacer } from '../helpers/utils';
 
 import type { AccountAddress, AccountData, AccountHash, CodeAbi, ContractMemory } from '../types/account.types';
+import { TransactionsIndex } from '@backend/types/transaction.types';
 
 
 /* ######################################################### */
@@ -18,7 +19,7 @@ export class Account {
     public memory: ContractMemory | null = null;
     public transactionsCount: number = 0;
     public hash: AccountHash | null = null;
-    //public lastBlockUpdate: number | null = null; // TODO: indiquer le blockHeight de la derniere modif du compte
+    private transactionsIndex: TransactionsIndex = {}; // TODO: lister les transactions de chaque compte et l'enregistrer dans le fichier JSON
 
 
     constructor(address: AccountAddress, balance=0n, abi: CodeAbi | null=null, code: string | null=null, transactionsCount=0, memory: ContractMemory | null=null, hash: AccountHash | null=null) {
@@ -63,6 +64,7 @@ export class Account {
             memory: account.memory,
             transactionsCount: account.transactionsCount,
             hash: account.hash,
+            //lastBlockUpdate: Math.max(...Object.values(account.transactionsIndex)),
         };
 
         return accountData;

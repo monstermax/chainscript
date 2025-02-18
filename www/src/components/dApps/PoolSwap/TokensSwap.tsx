@@ -3,17 +3,19 @@
 import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
 
-import { AMMRouterAddress, swapableTokens } from "../../../config.client";
-import { jsonReplacer, jsonReviver } from "../../../utils/jsonUtils";
-import { divideBigInt } from "../../../utils/numberUtils";
-import { AMMRouterAbi } from "../../../abi/AMMRouterAbi";
-import { TokenAbi } from "../../../abi/TokenAbi";
-import { callSmartContract, executeSmartContract } from "../../../utils/contractUtils";
+import { contractsAddresses, swapableTokens } from "@frontend/config.client";
+import { jsonReplacer, jsonReviver } from "@frontend/utils/jsonUtils";
+import { AMMRouterAbi } from "@frontend/abi/AMMRouterAbi";
+import { TokenAbi } from "@frontend/abi/TokenAbi";
+import { callSmartContract, executeSmartContract } from "@frontend/utils/contractUtils";
 
-import ConnectWallet from "../../Web3/ConnectWallet";
+import ConnectWallet from "@frontend/components/Web3/ConnectWallet";
 import TokenSelectorModal from "./TokenSelectorModal";
 
 import type { AccountAddress } from "@backend/types/account.types";
+
+
+const AMMRouterAddress = contractsAddresses.AmmRouter as AccountAddress;
 
 
 const TokensSwap: React.FC = () => {

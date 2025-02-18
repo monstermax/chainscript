@@ -10,7 +10,7 @@ class ChainTweet {
         asserts(content.length > 0, "Message vide interdit");
         asserts(content.length <= 280, "Message trop long (max 280 caractères)");
 
-        const sender = lower(caller);
+        const sender = lower(msg.sender);
 
         this.tweets.push({
             sender,

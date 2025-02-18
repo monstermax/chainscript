@@ -59,7 +59,7 @@ export async function handleEthCall(blockchain: Blockchain, txParams: callTxPara
 
 // Gère l'envoi d'une transaction Ethereum
 export async function handleEthSendTransaction(blockchain: Blockchain, txData: TransactionData): Promise<TransactionHash> {
-    console.log(`[handleEthSendTransaction] 📩 Traitement d'une transaction`, txData);
+    console.log(`[handleEthSendTransaction] 📩 Traitement d'une transaction`, { from: txData.from, nonce: txData.nonce, value: txData.value });
 
     const amount: bigint = BigInt(txData.value ?? 0);
     const nonce: bigint | undefined = (typeof txData.nonce === 'bigint') ? txData.nonce : undefined;
@@ -87,8 +87,8 @@ export function transcodeTx(blockchain: Blockchain, txParams: SendTxParams): Tra
     const instructions: TransactionInstruction[] = [];
 
 
-    // Ajout instruction de transfert si `amount > 0`
-    if (value > 0n && txParams.to) {
+    // Ajout instruction de transfert si `amount > 0` (et si pas d'appel à un smart contract)
+    if (value > 0n && txParams.to && ! txParams.data) {
         const instruction: TransactionInstructionTransfer = {
             type: 'transfer',
             amount: value,
@@ -120,13 +120,15 @@ export function transcodeTx(blockchain: Blockchain, txParams: SendTxParams): Tra
             const methodArgs: string[] = decodeTxData(txParams.data, abiClassMethod);
             console.log(`[${now()}][transcodeTx] 🔍 Arguments décodés:`, methodArgs);
 
-            instructions.push({
+            const instruction: TransactionInstructionExecute = {
                 type: 'execute',
                 contractAddress: txParams.to,
                 className: abiClassMethod.className,
                 methodName: abiClassMethod.methodName,
                 methodArgs,
-            } as TransactionInstructionExecute);
+                amount: value,
+            };
+            instructions.push(instruction);
 
         } else {
             // Créer un nouveau contrat
@@ -155,7 +157,7 @@ export function transcodeTx(blockchain: Blockchain, txParams: SendTxParams): Tra
                 contractClass,
                 code: contractCode,
                 contructorArgs,
-                value,
+                amount: value,
             };
 
             instructions.push(instruction);
@@ -172,7 +174,7 @@ export function transcodeTx(blockchain: Blockchain, txParams: SendTxParams): Tra
         //hash: '0x' + bufferToHex(tx.hash()) as TransactionHash,
     };
 
-    console.log(`[${now()}][decodeTx] ✅ Transaction décodée:`, txData);
+    console.log(`[${now()}][transcodeTx] ✅ Transaction décodée:`, { from: txData.from, nonce: txData.nonce, value: txData.value });
     return txData;
 }
 
@@ -180,7 +182,7 @@ export function transcodeTx(blockchain: Blockchain, txParams: SendTxParams): Tra
 
 /** Décode une transaction Ethereum en un objet TransactionData */
 export function decodeRawTransaction(blockchain: Blockchain, txRawData: string): SendTxParams {
-    console.log(`[${now()}][decodeTx] 🔄 Début décodage de: ${txRawData}`);
+    console.log(`[${now()}][decodeRawTransaction] 🔄 Début décodage de: ${txRawData.length} caracteres hexa`);
 
     const rawBuffer = hexToUint8Array(txRawData);
     let tx: ethereumjsTx.FeeMarketEIP1559Transaction | ethereumjsTx.LegacyTransaction;
@@ -188,18 +190,18 @@ export function decodeRawTransaction(blockchain: Blockchain, txRawData: string):
     try {
         if (rawBuffer[0] === 2) {
             // EIP-1559 Transaction
-            console.log(`[${now()}][decodeTx] 🆕 Transaction EIP-1559 détectée.`);
+            console.log(`[${now()}][decodeRawTransaction] 🆕 Transaction EIP-1559 détectée.`);
             tx = ethereumjsTx.FeeMarketEIP1559Transaction.fromSerializedTx(rawBuffer) as ethereumjsTx.FeeMarketEIP1559Transaction;
 
         } else {
             // Legacy Transaction
-            console.log(`[${now()}][decodeTx] 🔄 Transaction Legacy détectée.`);
+            console.log(`[${now()}][decodeRawTransaction] 🔄 Transaction Legacy détectée.`);
             tx = ethereumjsTx.LegacyTransaction.fromSerializedTx(rawBuffer) as ethereumjsTx.LegacyTransaction;
         }
 
     } catch (err: any) {
-        console.error(`[${now()}][decodeTx] ❌ Impossible de décoder la transaction:`, err);
-        throw new Error(`[decodeTx] Invalid transaction format`);
+        console.error(`[${now()}][decodeRawTransaction] ❌ Impossible de décoder la transaction:`, err);
+        throw new Error(`[decodeRawTransaction] Invalid transaction format`);
     }
 
 
@@ -221,6 +223,7 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
     let txFees: bigint = 0n;
     let amountUsed: bigint = 0n;
     let createdContractAddress: AccountAddress | null = null;
+    let error: string | null = null;
 
 
     // Vérifie le hash de la transaction
@@ -278,20 +281,24 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
                 contractAccount.memory = contractMemory;
 
 
-                amountUsed += instruction.value ?? 0n;
-
                 txFees += 1000n; // 1000 microcoins for token creation
+                amountUsed += instruction.amount ?? 0n;
 
 
             } else if (instruction.type === 'execute') {
                 // Execute script
 
+                if (instruction.amount) {
+                    blockchain.transfer(tx.from, instruction.contractAddress, instruction.amount, blockchain.memoryState);
+                }
+
                 // Load source code
-                const { vmResult, vmMonitor, vmError } = await execVm(blockchain, tx.from, instruction.contractAddress, instruction.className, instruction.methodName, instruction.methodArgs, blockchain.memoryState)
+                const { vmResult, vmMonitor, vmError } = await execVm(blockchain, tx.from, instruction.contractAddress, instruction.className, instruction.methodName, instruction.methodArgs, blockchain.memoryState, instruction.amount);
 
                 if (vmError) {
                     console.log(`[executeTransaction] ❌ Error:`, vmError);
-                    throw new Error(vmError);
+                    //throw new Error(vmError);
+                    error = vmError.message;
 
                 } else {
                     console.log(`[executeTransaction][vmResult] ✅ Résultat:`, vmResult); // pas de résultat attendu pour un sendTransaction
@@ -302,6 +309,7 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
 
                 // Calculate fees
                 txFees += BigInt(Math.ceil(100 * vmMonitor.totalCalls)); // 100 microCoins per call
+                amountUsed += instruction.amount ?? 0n;
 
                 asserts(vmMonitor.totalCalls < 1000, `[executeTransaction] execution limit exceeded`);
 
@@ -311,7 +319,7 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
         }
 
         if (amountUsed !== tx.amount) {
-            throw new Error(`[executeTransaction] amount not fully used`);
+            throw new Error(`[executeTransaction] used amount mismatch. (Found: ${amountUsed} / Expected: ${tx.amount})`);
         }
 
         if (txFees > 0n) {
@@ -335,7 +343,7 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
 
 
     const receipt: TransactionReceipt = {
-        success: true,
+        success: !error,
         fees: txFees,
         //blockHash: block.hash,
         blockHeight: block.blockHeight,

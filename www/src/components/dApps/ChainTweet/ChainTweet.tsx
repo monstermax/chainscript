@@ -3,14 +3,16 @@
 import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
 
-import { ChainTweetAddress } from "../../../config.client";
-import { ChainTweetAbi } from "../../../abi/ChainTweetAbi";
+import { contractsAddresses } from "@frontend/config.client";
+import { ChainTweetAbi } from "@frontend/abi/ChainTweetAbi";
 
-import { callSmartContract, executeSmartContract } from "../../../utils/contractUtils";
-import ConnectWallet from "../../Web3/ConnectWallet";
+import { callSmartContract, executeSmartContract } from "@frontend/utils/contractUtils";
+import ConnectWallet from "@frontend/components/Web3/ConnectWallet";
 
 import type { AccountAddress } from "@backend/types/account.types";
 
+
+const ChainTweetAddress = contractsAddresses.dApps.ChainTweet as AccountAddress;
 
 
 const ChainTweet: React.FC = () => {

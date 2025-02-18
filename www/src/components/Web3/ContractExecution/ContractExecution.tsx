@@ -3,12 +3,13 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
+import { extractAbiMethods } from "@frontend/utils/abiUtils";
+
 import ContractCall from "./ContractCall";
 import ContractExecute from "./ContractExecute";
+import AccountSelectorModal from "../AccountSelectorModal";
 
 import { AccountAddress, CodeAbi } from "@backend/types/account.types";
-import AccountSelectorModal from "../AccountSelectorModal";
-import { extractAbiMethods } from "../../../utils/abiUtils";
 
 
 const ContractExecution: React.FC<{ walletConnected: boolean }> = ({ walletConnected }) => {

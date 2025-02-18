@@ -3,16 +3,19 @@
 import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
 
-import { LPPairAddress } from "../../../config.client";
-import { divideBigInt } from "../../../utils/numberUtils";
-import { callSmartContract, executeSmartContract } from "../../../utils/contractUtils";
+import { contractsAddresses } from "@frontend/config.client";
+import { divideBigInt } from "@frontend/utils/numberUtils";
+import { callSmartContract, executeSmartContract } from "@frontend/utils/contractUtils";
 
-import ConnectWallet from "../../Web3/ConnectWallet";
-import { jsonReviver } from "../../../utils/jsonUtils";
-import { LPPairAbi } from "../../../abi/LPPairAbi";
-import { TokenAbi } from "../../../abi/TokenAbi";
+import ConnectWallet from "@frontend/components/Web3/ConnectWallet";
+import { jsonReviver } from "@frontend/utils/jsonUtils";
+import { LPPairAbi } from "@frontend/abi/LPPairAbi";
+import { TokenAbi } from "@frontend/abi/TokenAbi";
 
 import type { AccountAddress } from "@backend/types/account.types";
+
+
+const LPPairAddress = contractsAddresses.LpPairs.WDEV_ChainCoin as AccountAddress;
 
 
 const LPPair: React.FC = () => {

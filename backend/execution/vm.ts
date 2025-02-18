@@ -11,6 +11,7 @@ import { MemoryState } from "../blockchain/stateManager";
 import type { AccountAddress, CodeAbiClass, CodeAbiClassAttribute, CodeAbiClassMethod, ContractMemory } from "../types/account.types";
 import type { BlockData, BlockHash } from "../types/block.types";
 import { buildAbi, getClassProperties, getFunctionParams } from './abi';
+import { AbiCoder, BytesLike, keccak256, ParamType } from 'ethers';
 
 
 
@@ -33,11 +34,18 @@ export async function execVm(
     methodName: string,
     methodArgs: string[],
     memoryState: MemoryState | null,
+    instructionAmount=0n,
     vmMonitor?: VmMonitor,
 ): Promise<{ vmResult: any | null, vmMonitor: VmMonitor, vmError: any | null }> {
 
     if (!vmMonitor) {
-        vmMonitor = { totalCalls: 0, gasUsed: 0n, callStack: [], execId: Math.round(Math.random()*9999999), context: null };
+        vmMonitor = {
+            totalCalls: 0,
+            gasUsed: 0n,
+            callStack: [],
+            execId: Math.round(Math.random()*9999999),
+            context: null,
+        };
     }
 
     console.log(`[execVm] txSigner = ${caller} | script: ${contractAddress} | class = ${className} | method = ${methodName}`)
@@ -115,7 +123,7 @@ export async function execVm(
 
 
         // Créé un contexte d'exécution sandbox
-        const sandbox = createExecutionSandbox(blockchain, caller, contractAddress, vmMonitor, memoryState);
+        const sandbox = createExecutionSandbox(blockchain, caller, contractAddress, vmMonitor, memoryState, instructionAmount);
 
         const vmContext = createContext( {  ...sandbox, __getInstanceAndMemory: getInstanceAndMemory, __saveInstanceMemory: saveInstanceMemory } )
         //console.log('vmContext:', vmContext)
@@ -153,6 +161,7 @@ __result;
 
 ` : `
 // Appelle la methode demandée avec les parametres fournis
+${hasOpt('--debug-contract') ? "debugger;" : ""}
 const __result = instance.${methodName}(${stringifyParams(methodArgs)});
 
 // Sauvegarde les attributs de l'instance et retourne le resultat
@@ -177,7 +186,7 @@ if (__result instanceof Promise) {
             const debugFilepath = `/tmp/debug_execute_contract_${contractAddress}.js`;
 
             executeCode = `
-${hasOpt('--debug-contract') ? "debugger;" : ""}
+//${hasOpt('--debug-contract') ? "debugger;" : ""}
 
 ${executeCode}
 
@@ -216,24 +225,24 @@ ${executeCode}
 
 
 /** Créé un environnement sandbox pour la VM */
-export function createExecutionSandbox(blockchain: Blockchain, caller: AccountAddress, contractAddress: AccountAddress, vmMonitor: VmMonitor, memoryState: MemoryState | null): { [methodOrVariable: string]: any } {
+export function createExecutionSandbox(blockchain: Blockchain, caller: AccountAddress, contractAddress: AccountAddress, vmMonitor: VmMonitor, memoryState: MemoryState | null, instructionAmount=0n): { [methodOrVariable: string]: any } {
 
     // Prépare le contexte d'exécution
-    const sandboxUtils: { [method: string]: Function } = {
+    const sandboxUtils /* : { [method: string]: Function } */ = {
         log: console.log,
 
         transfer: async (to: AccountAddress, amount: bigint): Promise<void> => {
-            console.log(`[transfer] => from = ${contractAddress} | to = ${to} | amount = ${amount}`)
+            console.log(`[createExecutionSandbox][transfer] => from = ${contractAddress} | to = ${to} | amount = ${amount}`)
             blockchain.transfer(contractAddress, to, amount, memoryState);
         },
 
         call: async (callContractAddress: AccountAddress, callClassName: string, callMethodName: string, callArgs: any[]): Promise<any> => {
             const caller = contractAddress;
-            console.log(`[subcall] => caller = ${caller} | script = ${callContractAddress} | class = ${callClassName} | method = ${callMethodName}`)
+            console.log(`[createExecutionSandbox][subcall] => caller = ${caller} | script = ${callContractAddress} | class = ${callClassName} | method = ${callMethodName}`)
 
             asserts(typeof callContractAddress === 'string' && callContractAddress.startsWith('0x') && callContractAddress.length === 42, `Invalid contract address "${callContractAddress}"`);
 
-            const { vmResult, vmError } = await execVm(blockchain, caller, callContractAddress, callClassName, callMethodName, callArgs, memoryState, vmMonitor);
+            const { vmResult, vmError } = await execVm(blockchain, caller, callContractAddress, callClassName, callMethodName, callArgs, memoryState, 0n, vmMonitor);
 
             if (vmError) {
                 throw new Error(vmError);
@@ -241,17 +250,24 @@ export function createExecutionSandbox(blockchain: Blockchain, caller: AccountAd
             return vmResult;
         },
 
-        balance: (address: AccountAddress) => {
+        balanceOf: (address: AccountAddress) => {
             return blockchain.getAccount(address, memoryState)?.balance ?? 0n;
         },
 
         asserts,
 
-        //emit, // TODO
+        //emit, // TODO: gérer les events/logs
 
         revert: (message?: string) => { throw new Error(message ?? "Reverted") },
 
         hash: computeStrHash,
+
+        keccak256,
+
+        encode: (types: ReadonlyArray<string | ParamType>, values: ReadonlyArray<any>) => {
+            const coder = new AbiCoder();
+            return coder.encode(types, values);
+        },
 
         lower: (str: string): string => str.toLowerCase(),
 
@@ -274,12 +290,14 @@ export function createExecutionSandbox(blockchain: Blockchain, caller: AccountAd
         },
     }
 
-    const sandboxData: { [method: string]: any } = {
+    const sandboxData /* : { [method: string]: any } */ = {
         self: contractAddress,
-        caller,
-        decimals,
-        fullcoin,
-        block: { blockHeight: blockchain.blockHeight },
+        caller, // a déprecier
+        decimals, // a déprecier
+        fullcoin, // a déprecier
+        block: { blockHeight: blockchain.blockHeight, parentBlockHash: blockchain.stateManager.blocksIndex.at(-1) },
+        msg: { value: instructionAmount, sender: caller },
+        chain: { decimals, fullcoin },
     }
 
     const sandboxExecUtils = {
@@ -309,11 +327,11 @@ export function createDeploymentSandbox(caller: AccountAddress, contractAddress:
     const sandboxUtils: { [method: string]: Function } = {
         log: console.log,
 
-        transfer: async (to: any, amount: bigint): Promise<void> => { throw new Error(`Not available`) },
+        transfer: async (to: any, amount: bigint): Promise<void> => { throw new Error(`Not available in deploy`) },
 
-        call: async (callContractAddress: any, callClassName: string, callMethodName: string, callArgs: any[]): Promise<any> => { throw new Error(`Not available`) },
+        call: async (callContractAddress: any, callClassName: string, callMethodName: string, callArgs: any[]): Promise<any> => { throw new Error(`Not available in deploy`) },
 
-        balance: (address: any) => { throw new Error(`Not available`) },
+        balanceOf: (address: any) => { throw new Error(`Not available in deploy`) },
 
         asserts,
 
@@ -321,17 +339,21 @@ export function createDeploymentSandbox(caller: AccountAddress, contractAddress:
 
         hash: computeStrHash,
 
+        keccak256: (_data: BytesLike) => { throw new Error(`Not available in deploy`) },
+
+        encode: (types: ReadonlyArray<string | ParamType>, values: ReadonlyArray<any>) => { throw new Error(`Not available in deploy`) },
+
         lower: (str: string): string => str.toLowerCase(),
 
         upper: (str: string): string => str.toUpperCase(),
 
-        getBlock: (blockHeight: number) => { throw new Error(`Not available`) },
+        getBlock: (blockHeight: number) => { throw new Error(`Not available in deploy`) },
 
-        getBlockHash: (blockHeight: number) => { throw new Error(`Not available`) },
+        getBlockHash: (blockHeight: number) => { throw new Error(`Not available in deploy`) },
 
-        getBlockHeight: (blockHash: any) => { throw new Error(`Not available`) },
+        getBlockHeight: (blockHash: any) => { throw new Error(`Not available in deploy`) },
 
-        getBlockByHash: (blockHash: any) => { throw new Error(`Not available`) },
+        getBlockByHash: (blockHash: any) => { throw new Error(`Not available in deploy`) },
     }
 
     const sandboxData: { [method: string]: any } = {
@@ -339,7 +361,9 @@ export function createDeploymentSandbox(caller: AccountAddress, contractAddress:
         caller,
         decimals: 0,
         fullcoin: 0n,
-        block: { blockHeight: 0 },
+        block: { blockHeight: 0, parentBlockHash: '0x' },
+        msg: { value: 0n, sender: caller },
+        chain: { decimals, fullcoin },
     }
 
     const sandboxDeployUtils = {

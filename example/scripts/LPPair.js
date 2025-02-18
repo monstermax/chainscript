@@ -25,7 +25,7 @@ class LPPair {
 
 
     async addLiquidity(amountA, amountB) /* write */ {
-        const sender = lower(caller);
+        const sender = lower(msg.sender);
         amountA = BigInt(amountA);
         amountB = BigInt(amountB);
 
@@ -100,7 +100,7 @@ class LPPair {
 
 
     async removeLiquidity(liquidityAmount) /* write */ {
-        const sender = lower(caller);
+        const sender = lower(msg.sender);
         liquidityAmount = BigInt(liquidityAmount);
 
         asserts(liquidityAmount > 0n, "Montant invalide");
@@ -149,7 +149,7 @@ class LPPair {
         tokenIn = lower(tokenIn);
         amountIn = BigInt(amountIn);
 
-        const sender = lower(caller); // L'utilisateur qui swap
+        const sender = lower(msg.sender); // L'utilisateur qui swap
 
         // Vérifier que la paire supporte ce token
         asserts(tokenIn === this.tokenA || tokenIn === this.tokenB, "Token invalide");

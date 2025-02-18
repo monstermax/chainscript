@@ -3,15 +3,18 @@
 import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
 
-import { AMMRouterAddress } from "../../../config.client";
-import { AMMRouterAbi } from "../../../abi/AMMRouterAbi";
-import { TokenAbi } from "../../../abi/TokenAbi";
+import { contractsAddresses } from "@frontend/config.client";
+import { AMMRouterAbi } from "@frontend/abi/AMMRouterAbi";
+import { TokenAbi } from "@frontend/abi/TokenAbi";
 
-import { callSmartContract, executeSmartContract } from "../../../utils/contractUtils";
-import ConnectWallet from "../../Web3/ConnectWallet";
-import { jsonReviver } from "../../../utils/jsonUtils";
+import { callSmartContract, executeSmartContract } from "@frontend/utils/contractUtils";
+import ConnectWallet from "@frontend/components/Web3/ConnectWallet";
+import { jsonReviver } from "@frontend/utils/jsonUtils";
 
 import type { AccountAddress } from "@backend/types/account.types";
+
+
+const AMMRouterAddress = contractsAddresses.AmmRouter as AccountAddress;
 
 
 const AMMRouter: React.FC = () => {

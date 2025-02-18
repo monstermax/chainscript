@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+
 import { TransactionHash } from "@backend/types/transaction.types";
 
 
@@ -34,10 +35,10 @@ const Transactions: React.FC = () => {
                     </tr>
                 </thead>
                 <tbody>
-                    {transactions.map((tx) => (
+                    {transactions.map((tx, index) => (
                         <tr key={tx.txHash}>
                             <td>
-                                <a href={`#/transactions/${tx.txHash}`}>{tx.txHash}</a>
+                                {index} <a href={`#/transactions/${tx.txHash}`}>{tx.txHash}</a>
                             </td>
                             <td>
                                 <a href={`#/blocks/${tx.blockHeight}`}>{tx.blockHeight}</a>

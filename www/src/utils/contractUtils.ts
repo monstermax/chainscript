@@ -28,21 +28,23 @@ export async function deployContract(provider: ethers.BrowserProvider, code: str
 }
 
 
-export async function callSmartContract(providerOrSigner: ethers.BrowserProvider | ethers.JsonRpcSigner, contractAddress: AccountAddress, contractAbi: CodeAbi, methodName: string, methodArgs: string[]): Promise<any> {
+export async function callSmartContract(providerOrSigner: ethers.BrowserProvider | ethers.JsonRpcSigner, contractAddress: AccountAddress, contractAbi: CodeAbi, methodName: string, methodArgs: string[], value?: bigint): Promise<any> {
     const ethersAbi = convertCustomAbiToEthersFormat(contractAbi);
     //console.log('ethersAbi', ethersAbi)
 
     const contract = new ethers.Contract(contractAddress, ethersAbi, providerOrSigner);
 
-    const result: any = await contract[methodName](...methodArgs);
+    const params: (string | { value: string })[] = value ? [...methodArgs, { value: value.toString() }] : methodArgs;
+
+    const result: any = await contract[methodName](...params);
     return result;
 }
 
 
-export async function executeSmartContract(provider: ethers.BrowserProvider, contractAddress: AccountAddress, contractAbi: CodeAbi, methodName: string, methodArgs: string[]) {
+export async function executeSmartContract(provider: ethers.BrowserProvider, contractAddress: AccountAddress, contractAbi: CodeAbi, methodName: string, methodArgs: string[], value?: bigint) {
     const signer = await provider.getSigner();
 
-    const tx: ContractTransactionResponse = await callSmartContract(signer, contractAddress, contractAbi, methodName, methodArgs);
+    const tx: ContractTransactionResponse = await callSmartContract(signer, contractAddress, contractAbi, methodName, methodArgs, value);
     console.log('Transaction envoyée:', tx);
 
     const receipt = await tx.wait();

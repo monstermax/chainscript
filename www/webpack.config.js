@@ -1,3 +1,4 @@
+// webpack.config.js
 
 const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
@@ -16,6 +17,10 @@ module.exports = {
     },
     resolve: {
         extensions: [".tsx", ".ts", ".js"],
+        alias: {
+          "@frontend": path.resolve(__dirname, "src"),
+          "@backend": path.resolve(__dirname, "../backend")
+        },
     },
     module: {
         rules: [

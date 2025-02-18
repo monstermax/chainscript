@@ -12,17 +12,11 @@ class NFTToken {
     approvals = {}; // Mapping tokenId => approved address
 
 
-    get name() {
-        return this.name;
+    constructor(name, symbol) {
+        this.name = name || this.name;
+        this.symbol = symbol || this.symbol;
     }
 
-    get symbol() {
-        return this.symbol;
-    }
-
-    totalSupply() {
-        return this.totalSupply;
-    }
 
     ownerOf(tokenId) {
 
@@ -33,9 +27,11 @@ class NFTToken {
         return this.owners[tokenId];
     }
 
+
     balanceOf(owner) {
         return this.balances[lower(owner)] ?? 0n;
     }
+
 
     mint(to, tokenId) /* write */ {
 
@@ -57,7 +53,7 @@ class NFTToken {
         // Transférer un NFT : call(contractAddress, "NFTToken", "transferFrom", ["0x123...", "0x456...", "1"]);
 
         asserts(this.owners[tokenId] === lower(from), "L'expéditeur n'est pas le propriétaire");
-        asserts(from === lower(caller) || this.approvals[tokenId] === lower(caller), "Pas d'autorisation pour ce token");
+        asserts(from === lower(msg.sender) || this.approvals[tokenId] === lower(msg.sender), "Pas d'autorisation pour ce token");
 
         // Transfert
         this.owners[tokenId] = lower(to);
@@ -73,7 +69,7 @@ class NFTToken {
         // Usage:
         // Approuver une adresse pour gérer un NFT : call(contractAddress, "NFTToken", "approve", ["0x789...", "1"]);
 
-        asserts(this.owners[tokenId] === lower(caller), "Seul le propriétaire peut approuver");
+        asserts(this.owners[tokenId] === lower(msg.sender), "Seul le propriétaire peut approuver");
 
         this.approvals[tokenId] = lower(approved);
     }

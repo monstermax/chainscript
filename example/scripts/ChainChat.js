@@ -11,12 +11,12 @@ class ChainChat {
 
         asserts(to.length > 0, "Destinataire vide interdit");
         asserts(message.length > 0, "Message vide interdit");
-        //asserts(to !== caller, "Tu ne peux pas t’envoyer un message !");
+        //asserts(to !== msg.sender, "Tu ne peux pas t’envoyer un message !");
 
         this.inbox[to] = this.inbox[to] || [];
 
         this.inbox[to].push({
-            from: caller,
+            from: msg.sender,
             message,
             timestamp: Date.now()
         });
