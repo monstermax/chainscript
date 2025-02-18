@@ -2,8 +2,14 @@
 
 
 class ChainStore {
+    name;
     collections = {};
     products = {};
+
+
+    constructor(name) {
+        this.name = name || "On-Chain Shopping";
+    }
 
 
     // Ajouter une nouvelle collection
@@ -20,6 +26,7 @@ class ChainStore {
             products: [],
         };
     }
+
 
     // Ajouter un nouveau produit à une collection
     async registerProduct(collectionId, productId, name, description, price, stock) /* write */ {
@@ -46,6 +53,7 @@ class ChainStore {
         this.collections[collectionId].products.push(productId);
     }
 
+
     // Acheter un produit
     async buyProduct(productId, amount) /* payable */ {
         productId = lower(productId);
@@ -68,10 +76,12 @@ class ChainStore {
         await this._recordPurchase(sender, productId, amount);
     }
 
+
     // Enregistrer l'achat (fonction interne)
     async _recordPurchase(buyer, productId, amount) {
         // Future implémentation avec events
     }
+
 
     // Obtenir les informations d'une collection
     async getCollectionInfo(collectionId) {
@@ -101,6 +111,7 @@ class ChainStore {
         };
     }
 
+
     // Obtenir les informations d'un produit
     getProductInfo(productId) {
         productId = lower(productId);
@@ -117,6 +128,7 @@ class ChainStore {
             collectionId: product.collectionId
         };
     }
+
 
     getCollections() {
         const result = {};

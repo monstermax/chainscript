@@ -5,7 +5,7 @@
 
 class TeleScript {
     users = {};  // { address: { chats: [chatId, ...] } }
-    chats = {};  // { chatId: { members: [...], admins: [...], messages: [...], isPublic: true, sessionKeys: {} } }
+    chats = {};  // { chatId: { name: '', members: [...], admins: [...], messages: [...], isPublic: true, sessionKeys: {} } }
 
 
     /** Enregistre un utilisateur */
@@ -59,29 +59,22 @@ class TeleScript {
 
 
     /** Crée un nouveau chat privé ou de groupe */
-    createChat(encryptedSessionKeysList = '', isPublic = '') /* write */ {
+    createChat(encryptedSessionKeysList='', isPublic='', name='') /* write */ {
         const sender = lower(msg.sender);
         asserts(this.users[sender], "Utilisateur non enregistré");
 
-        //const encryptedSessionKeysEntries = encryptedSessionKeysList // Input format: address1:key1,address2:key2,...
-        //    .split(',')
-        //    .map(entry => entry.split(':').map(entry => entry.trim()))
-        //    .filter(entry => entry.length === 2)
-        //    .map(entry => [lower(entry[0]), entry[1]]);
-
-        //const encryptedSessionKeys = Object.fromEntries(encryptedSessionKeysEntries);
         const encryptedSessionKeys = this.parseSessionKeys(encryptedSessionKeysList);
         const members = Object.keys(encryptedSessionKeys);
 
-        // REVERT si le créateur n'a pas sa propre clé de session
         asserts(encryptedSessionKeys[sender], "Le créateur doit avoir sa propre clé de session");
 
 
         const uniqueMembers = [...new Set([...members, sender])]; // Inclus le créateur + Suppression des doublons + normalisation
 
-        const chatId = hash(`${sender}-${Date.now()}`);
+        const chatId = hash(`${sender}-${block.parentBlockHash}-${encryptedSessionKeysList}`);
 
         this.chats[chatId] = {
+            name,
             members: uniqueMembers,
             admins: [sender],
             messages: [],

@@ -524,30 +524,30 @@ class BlockchainRoyale {
         // Placer les objets sur la carte
         for (let i = 0; i < 200; i++) {
             const position = this._getRandomPosition();
-            const itemType = Math.random();
+            const itemType = random();
 
             let item;
             if (itemType < 0.4) { // 40% armes
                 item = {
                     type: "WEAPON",
-                    ...weapons[Math.floor(Math.random() * weapons.length)],
-                    ammo: Math.floor(Math.random() * 30) + 20
+                    ...weapons[Math.floor(random() * weapons.length)],
+                    ammo: Math.floor(random() * 30) + 20
                 };
             } else if (itemType < 0.7) { // 30% soins
                 item = {
                     type: "HEALING",
-                    ...healing[Math.floor(Math.random() * healing.length)]
+                    ...healing[Math.floor(random() * healing.length)]
                 };
             } else if (itemType < 0.9) { // 20% armure
                 item = {
                     type: "ARMOR",
-                    ...armor[Math.floor(Math.random() * armor.length)]
+                    ...armor[Math.floor(random() * armor.length)]
                 };
             } else { // 10% munitions
                 item = {
                     type: "AMMO",
-                    ammoType: ["LIGHT", "HEAVY", "SHELLS"][Math.floor(Math.random() * 3)],
-                    amount: Math.floor(Math.random() * 50) + 20
+                    ammoType: ["LIGHT", "HEAVY", "SHELLS"][Math.floor(random() * 3)],
+                    amount: Math.floor(random() * 50) + 20
                 };
             }
 

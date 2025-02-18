@@ -226,6 +226,9 @@ ${executeCode}
 
 /** Créé un environnement sandbox pour la VM */
 export function createExecutionSandbox(blockchain: Blockchain, caller: AccountAddress, contractAddress: AccountAddress, vmMonitor: VmMonitor, memoryState: MemoryState | null, instructionAmount=0n): { [methodOrVariable: string]: any } {
+    let randomNonce = 0;
+    const parentBlockHash = blockchain.stateManager.blocksIndex.at(-1);
+    const blockHeight = blockchain.blockHeight;
 
     // Prépare le contexte d'exécution
     const sandboxUtils /* : { [method: string]: Function } */ = {
@@ -264,6 +267,11 @@ export function createExecutionSandbox(blockchain: Blockchain, caller: AccountAd
 
         keccak256,
 
+        random: () => {
+            const hash = computeStrHash(`${parentBlockHash}-${vmMonitor.totalCalls}-${randomNonce++}`);
+            return 1 / Math.log(Number(BigInt(hash) % BigInt(Number.MAX_SAFE_INTEGER)))
+        },
+
         encode: (types: ReadonlyArray<string | ParamType>, values: ReadonlyArray<any>) => {
             const coder = new AbiCoder();
             return coder.encode(types, values);
@@ -295,7 +303,7 @@ export function createExecutionSandbox(blockchain: Blockchain, caller: AccountAd
         caller, // a déprecier
         decimals, // a déprecier
         fullcoin, // a déprecier
-        block: { blockHeight: blockchain.blockHeight, parentBlockHash: blockchain.stateManager.blocksIndex.at(-1) },
+        block: { blockHeight, parentBlockHash },
         msg: { value: instructionAmount, sender: caller },
         chain: { decimals, fullcoin },
     }
@@ -340,6 +348,8 @@ export function createDeploymentSandbox(caller: AccountAddress, contractAddress:
         hash: computeStrHash,
 
         keccak256: (_data: BytesLike) => { throw new Error(`Not available in deploy`) },
+
+        random: (): string => { return '' },
 
         encode: (types: ReadonlyArray<string | ParamType>, values: ReadonlyArray<any>) => { throw new Error(`Not available in deploy`) },
 

@@ -4,14 +4,19 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import { jsonReviver } from "../utils/jsonUtils";
+import { getUsDateTime } from "../utils/dateUtils";
 
 import type { BlockData } from "@backend/types/block.types";
 
+
+const ITEMS_PER_PAGE = 10; // Nombre de transactions par page
 
 
 const Block: React.FC = () => {
     const { blockHeight } = useParams<{ blockHeight: string }>();
     const [block, setBlock] = useState<BlockData | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+
 
     useEffect(() => {
         const fetchBlock = async () => {
@@ -29,23 +34,55 @@ const Block: React.FC = () => {
         fetchBlock();
     }, [blockHeight]);
 
+
     if (!block) return <p>Chargement du bloc...</p>;
+
+
+    // Pagination
+    const indexOfLastItem = currentPage * ITEMS_PER_PAGE;
+    const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE;
+    const currentTransactions = block.transactions.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(block.transactions.length / ITEMS_PER_PAGE);
+
+
+    const handlePageChange = (page: number) => {
+        setCurrentPage(page);
+    };
+
 
     return (
         <div className="container mt-4">
             <h2>Bloc #{block.blockHeight}</h2>
+
             <p><strong>Hash :</strong> {block.hash}</p>
-            <p><strong>Miner :</strong> {block.miner}</p>
+            <p><strong>Miner :</strong> <a href={`#/accounts/${block.miner}`}>{block.miner}</a></p>
             <p><strong>Nonce :</strong> {block.nonce}</p>
-            <p><strong>Timestamp :</strong> {new Date(block.timestamp * 1000).toLocaleString()}</p>
+            <p><strong>Timestamp :</strong> {getUsDateTime(new Date(block.timestamp))}</p>
             <p><strong>Transactions :</strong></p>
             <ul>
-                {block.transactions.map(tx => (
+                {currentTransactions.map(tx => (
                     <li key={tx.hash}>
                         <a href={`#/transactions/${tx.hash}`}>{tx.hash}</a>
                     </li>
                 ))}
             </ul>
+
+            {/* Pagination */}
+            <nav>
+                <ul className="pagination">
+                    <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                        <button className="page-link" onClick={() => handlePageChange(currentPage - 1)}>Précédent</button>
+                    </li>
+                    {[...Array(totalPages)].map((_, index) => (
+                        <li key={index} className={`page-item ${currentPage === index + 1 ? 'active' : ''}`}>
+                            <button className="page-link" onClick={() => handlePageChange(index + 1)}>{index + 1}</button>
+                        </li>
+                    ))}
+                    <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+                        <button className="page-link" onClick={() => handlePageChange(currentPage + 1)}>Suivant</button>
+                    </li>
+                </ul>
+            </nav>
         </div>
     );
 };

@@ -80,7 +80,11 @@ function revert(message?: string): never { throw new Error(); };
 /** Calcul le hash d'une chaine */
 function hash(dataToHash: string): string { return ''; };
 
+/** Fonction de hachage */
 function keccak256(_data: BytesLike): string { return '' };
+
+/** Génère un nombre aléatoire */
+function random(): number { return 0 };
 
 function encode(types: ReadonlyArray<string | ParamType>, values: ReadonlyArray<any>): string { return '' };
 

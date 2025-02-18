@@ -8,12 +8,13 @@ import { symbol } from "@frontend/config.client";
 import AccountSelectorModal from "./AccountSelectorModal";
 
 import type { AccountAddress } from "@backend/types/account.types";
+import { formatAmountEtherSafe } from "@frontend/utils/numberUtils";
 
 
 const Balance: React.FC<{ walletConnected: boolean }> = ({ walletConnected }) => {
-    const [balance, setBalance] = useState<string | null>(null);
+    const [balance, setBalance] = useState<bigint | null>(null);
     const [recipient, setRecipient] = useState<AccountAddress>("0x0000000000000000000000000000000000000030");
-    const [amount, setAmount] = useState<string>("10");
+    const [amountEther, setAmountEther] = useState<string>("10");
     const [showModal, setShowModal] = useState(false);
 
     const getBalance = async () => {
@@ -23,7 +24,7 @@ const Balance: React.FC<{ walletConnected: boolean }> = ({ walletConnected }) =>
         const signer = await provider.getSigner();
 
         const balance = await provider.getBalance(await signer.getAddress());
-        setBalance(formatEther(balance));
+        setBalance(balance);
     };
 
     const transfer = async () => {
@@ -32,16 +33,25 @@ const Balance: React.FC<{ walletConnected: boolean }> = ({ walletConnected }) =>
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
 
+        const value = parseEther(amountEther);
+
         await signer.sendTransaction({
             to: recipient,
-            value: parseEther(amount),
+            value,
         });
     };
+
+    const setAmountEtherSafe = (value: string) => {
+        const valueSafe: string | null = formatAmountEtherSafe(value);
+        if (valueSafe === null) return;
+        setAmountEther(valueSafe);
+    }
+
 
     return (
         <div className="card p-4">
             <h3>💰 Balance</h3>
-            <p>Solde actuel : {balance ? `${balance} ${symbol}` : "N/A"}</p>
+            <p>Solde actuel : {balance ? `${formatEther(balance)} ${symbol}` : "N/A"}</p>
             <button className="btn btn-primary" disabled={!walletConnected} onClick={getBalance}>Récupérer le solde</button>
 
             <h4 className="mt-4">Envoyer des fonds</h4>
@@ -66,7 +76,17 @@ const Balance: React.FC<{ walletConnected: boolean }> = ({ walletConnected }) =>
 
                 <div className="mb-2">
                     <label className="form-label">Montant</label>
-                    <input type="text" className="form-control" value={amount} onChange={(e) => setAmount(e.target.value)} />
+
+                    <div className="input-group">
+                        <input
+                            type="text"
+                            className="form-control"
+                            value={amountEther || "0"}
+                            onChange={(e) => setAmountEtherSafe(e.target.value)}
+                            />
+
+                        <span className="input-group-text">{symbol}</span>
+                    </div>
                 </div>
                 <button className="btn btn-success mt-2" disabled={!walletConnected} onClick={transfer}>Envoyer</button>
             </form>
