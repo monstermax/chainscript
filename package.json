@@ -2,55 +2,40 @@
   "name": "chainscript",
   "version": "1.0.0",
   "scripts": {
-    "node": "ts-node backend/src/chainscript.ts --listen --mine",
-    "web-dev": "webpack --config www/webpack.config.js --mode development --watch",
-    "web-build": "webpack --config www/webpack.config.js --mode production",
-    "web-build-clean": "rm -rf www/dist",
-    "mobile-dev": "cd mobile && npx react-native start",
-    "mobile-build": "cd mobile && npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res"
+    "backend":        "npm -w @chainscript/backend run start",
+    "frontend":       "npm -w @chainscript/www run dev ",
+    "frontend:build": "npm -w @chainscript/www run build",
+    "frontend:clean": "npm -w @chainscript/www run clean",
+    "mobile":         "cd mobile; react-native start",
+    "mobile:android": "cd mobile; react-native run-android",
+    "mobile:ios":     "cd mobile; react-native run-ios"
   },
-  "author": "",
-  "license": "ISC",
+  "workspaces": [
+    "backend",
+    "www",
+    "mobile"
+  ],
   "description": "",
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
-    "@ethereumjs/tx": "^5.4.0",
-    "@types/react": "^18.3.18",
+    "acorn": "^8.14.0",
+    "acorn-walk": "^8.3.4",
     "axios": "^1.7.9",
-    "body-parser": "^1.20.3",
     "bootstrap": "^5.3.3",
-    "cors": "^2.8.5",
     "ethers": "^6.13.5",
-    "express": "^4.21.2",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-native": "^0.77.1",
-    "react-router-dom": "^7.2.0",
     "ts-node": "^10.9.2",
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.1",
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.26.9",
-    "@babel/preset-env": "^7.26.9",
-    "@babel/preset-react": "^7.26.3",
     "@metamask/providers": "^20.0.0",
     "@types/axios": "^0.9.36",
-    "@types/cors": "^2.8.17",
-    "@types/express": "^5.0.0",
     "@types/node": "^22.13.1",
-    "@types/react-dom": "^18.3.5",
-    "@types/react-router-dom": "^5.3.3",
     "@types/ws": "^8.5.14",
-    "babel-loader": "^9.2.1",
-    "css-loader": "^7.1.2",
-    "html-webpack-plugin": "^5.6.3",
-    "style-loader": "^4.0.0",
-    "ts-loader": "^9.5.2",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.7.3",
-    "webpack": "^5.98.0",
-    "webpack-cli": "^6.0.1",
-    "webpack-dev-server": "^5.2.0"
+    "typescript": "^5.7.3"
   }
 }

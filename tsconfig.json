@@ -1,3 +1,4 @@
+// tsconfig ROOT
 {
   "compilerOptions": {
     "target": "es2020",                                  /* Set the JavaScript language version for emitted JavaScript and include compatible library declarations. */
@@ -15,11 +16,6 @@
       "@mobile/*": ["mobile/src/*"]
     }
   },
-  "include": [
-    "backend/src",
-    "www/src",
-    "mobile/src"
-  ],
   "exclude": ["example/"],
   "ts-node": {
     // Do not forget to `npm i -D tsconfig-paths`
