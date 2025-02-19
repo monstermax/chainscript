@@ -10,9 +10,19 @@
     "jsx": "react-jsx",
     "baseUrl": "./",
     "paths": {
-      "@backend/*": ["backend/*"],
-      "@frontend/*": ["www/src/*"]
+      "@backend/*": ["backend/src/*"],
+      "@frontend/*": ["www/src/*"],
+      "@mobile/*": ["mobile/src/*"]
     }
   },
+  "include": [
+    "backend/src",
+    "www/src",
+    "mobile/src"
+  ],
   "exclude": ["example/"],
+  "ts-node": {
+    // Do not forget to `npm i -D tsconfig-paths`
+    "require": ["tsconfig-paths/register"]
+  }
 }

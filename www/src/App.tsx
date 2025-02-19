@@ -1,6 +1,6 @@
 // App.tsx
 
-import React, { ReactNode } from "react";
+import React from "react";
 import { HashRouter, Routes, Route, Link } from "react-router-dom";
 import { MetaMaskInpageProvider } from "@metamask/providers";
 

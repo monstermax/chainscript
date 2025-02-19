@@ -57,9 +57,9 @@ const Home: React.FC = () => {
                 <h4>🌐 Informations sur la blockchain</h4>
 
                 <ul className="list-group text-start">
-                    <li className="list-group-item"><strong>Réseau :</strong> DEV (Localhost)</li>
-                    <li className="list-group-item"><strong>Chain ID :</strong> 9999999999</li>
-                    <li className="list-group-item"><strong>Monnaie native :</strong> DEV</li>
+                    <li className="list-group-item"><strong>Réseau :</strong> {chainName}</li>
+                    <li className="list-group-item"><strong>Chain ID :</strong> {chainId}</li>
+                    <li className="list-group-item"><strong>Monnaie native :</strong> {symbol}</li>
                     <li className="list-group-item"><strong>Explorateur :</strong> <a href={`http://${rpcHost}`} target="_blank">Explorer Local</a></li>
                 </ul>
 

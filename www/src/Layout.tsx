@@ -1,7 +1,7 @@
 // Layout.tsx
 
 import React, { ReactNode } from "react";
-import { Link, Outlet } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 import { useWeb3 } from "./components/Web3Provider";
 

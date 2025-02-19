@@ -48,7 +48,7 @@ const Transaction: React.FC = () => {
                 <strong>De :</strong> {transaction.from}
             </p>
             <p>
-                <strong>Nonce :</strong> {transaction.nonce}
+                <strong>Nonce :</strong> {transaction.nonce?.toString()}
             </p>
             <p>
                 <strong>Valeur :</strong> {divideBigInt(transaction.value, 10n ** BigInt(decimals))}

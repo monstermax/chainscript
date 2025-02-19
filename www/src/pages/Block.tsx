@@ -56,7 +56,7 @@ const Block: React.FC = () => {
 
             <p><strong>Hash :</strong> {block.hash}</p>
             <p><strong>Miner :</strong> <a href={`#/accounts/${block.miner}`}>{block.miner}</a></p>
-            <p><strong>Nonce :</strong> {block.nonce}</p>
+            <p><strong>Nonce :</strong> {block.nonce.toString()}</p>
             <p><strong>Timestamp :</strong> {getUsDateTime(new Date(block.timestamp))}</p>
             <p><strong>Transactions :</strong></p>
             <ul>
