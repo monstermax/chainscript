@@ -2,13 +2,13 @@
   "name": "chainscript",
   "version": "1.0.0",
   "scripts": {
-    "backend":        "npm -w @chainscript/backend run start",
-    "frontend":       "npm -w @chainscript/www run dev ",
+    "backend": "npm -w @chainscript/backend run start",
+    "frontend": "npm -w @chainscript/www run dev ",
     "frontend:build": "npm -w @chainscript/www run build",
     "frontend:clean": "npm -w @chainscript/www run clean",
-    "mobile":         "cd mobile; react-native start",
+    "mobile": "cd mobile; react-native start",
     "mobile:android": "cd mobile; react-native run-android",
-    "mobile:ios":     "cd mobile; react-native run-ios"
+    "mobile:ios": "cd mobile; react-native run-ios"
   },
   "workspaces": [
     "backend",
@@ -35,6 +35,7 @@
     "@types/axios": "^0.9.36",
     "@types/node": "^22.13.1",
     "@types/ws": "^8.5.14",
+    "ajv": "^8.17.1",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.7.3"
   }
