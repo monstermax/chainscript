@@ -6,12 +6,12 @@ import { View, Text } from 'react-native';
 
 //import { MetaMaskInpageProvider } from "@metamask/providers";
 
-
 import { Web3Provider } from "@frontend/components/Web3Provider";
-
 
 // Pages
 import Home from "./pages/Home";
+
+//import "bootstrap/dist/css/bootstrap.min.css"; // Import du CSS Bootstrap
 
 
 

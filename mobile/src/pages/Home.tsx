@@ -1,7 +1,8 @@
 
 import React, { useEffect, useState } from "react";
-import { View, Text, Button, StyleSheet, TextInput, ActivityIndicator, Alert } from "react-native";
-import tw from "twrnc";
+import { View, Text, Button, StyleSheet, TextInput, TouchableOpacity, Alert } from "react-native";
+
+import { bootstrap as bs } from '../styles/bootstrap';
 
 
 import { createEthWallet } from "@frontend/utils/accountsUtils";
@@ -36,32 +37,36 @@ const Home: React.FC = () => {
 
 
     return (
-        <View style={tw`container`}>
-            <Text style={tw`title`}>🚀 Bienvenue sur ChainScript Explorer</Text>
+        <View>
+            <View style={[bs.textCenter, bs.mb3]}>
+                <Text style={bs.h1}>🚀 Bienvenue sur <Text style={{ color: '#007bff' }}>ChainScript Explorer</Text></Text>
+                <Text style={bs.text}>
+                    Votre portail vers une blockchain rapide, légère et modulaire.
+                </Text>
+            </View>
 
-            <Text style={tw`subtitle`}>
-                Votre portail vers une blockchain rapide, légère et modulaire.
-            </Text>
+            <View style={bs.card}>
+                <Text style={[bs.h2, bs.textCenter]}>🌐 Informations sur la blockchain</Text>
 
-            <View style={tw`card`}>
-                <Text style={tw`sectionTitle`}>🌐 Informations sur la blockchain</Text>
-
-                <View style={tw`infoList`}>
-                    <Text style={tw`infoItem`}>Réseau : DEV (Localhost)</Text>
-                    <Text style={tw`infoItem`}>Chain ID : {chainId}</Text>
-                    <Text style={tw`infoItem`}>Monnaie native : {symbol}</Text>
-                    <Text style={tw`infoItem`}>Explorateur : http://{rpcHost}</Text>
+                <View style={bs.formGroup}>
+                    <Text style={bs.text}>Réseau : ChainScript</Text>
+                    <Text style={bs.text}>Chain ID : {chainId}</Text>
+                    <Text style={bs.text}>Monnaie native : {symbol}</Text>
+                    <Text style={bs.text}>Explorateur : <Text style={{ color: '#007bff' }}>Explorer Local</Text></Text>
                 </View>
 
-                <Button
-                    title={isAdding ? "⏳ Ajout en cours..." : added ? "✅ Réseau ajouté" : "➕ Ajouter à Metamask"}
+                <TouchableOpacity
+                    style={[bs.btn, bs.btnPrimary, bs.mt2]}
                     onPress={addChainToMetamask}
                     disabled={isAdding || added}
-                />
+                >
+                    <Text style={bs.btnText}>
+                        {isAdding ? "⏳ Ajout en cours..." : added ? "✅ Réseau ajouté" : "➕ Ajouter à Metamask"}
+                    </Text>
+                </TouchableOpacity>
             </View>
 
             <CreateWalletComponent />
-
             <FaucetComponent />
         </View>
     );
@@ -91,20 +96,30 @@ const CreateWalletComponent: React.FC = () => {
 
 
     return (
-        <View style={tw`card`}>
-            <Text style={tw`sectionTitle`}>🔑 Créer un Wallet</Text>
+        <View style={bs.card}>
+            <Text style={[bs.h2, bs.textCenter]}>🔑 Créer un Wallet</Text>
 
-            <Button
-                title={loading ? "⏳ Création..." : "🆕 Générer un wallet"}
+            <TouchableOpacity
+                style={[bs.btn, bs.btnPrimary, bs.mt2, bs.mb3]}
                 onPress={createWallet}
                 disabled={loading}
-            />
+            >
+                <Text style={bs.btnText}>
+                    {loading ? "⏳ Création..." : "🆕 Générer un wallet"}
+                </Text>
+            </TouchableOpacity>
 
             {wallet && (
-                <View style={tw`walletInfo`}>
-                    <Text style={tw`walletDetail`}><strong>Adresse :</strong> {wallet.address}</Text>
-                    <Text style={tw`walletDetail`}><strong>Clé privée :</strong> {wallet.privateKey}</Text>
-                    <Text style={tw`walletDetail`}><strong>Seed :</strong> {wallet.mnemonic ?? "-"}</Text>
+                <View style={[bs.card, { backgroundColor: '#f8f9fa' }]}>
+                    <Text style={bs.text}>
+                        <Text style={{ fontWeight: 'bold' }}>Adresse :</Text> {wallet.address}
+                    </Text>
+                    <Text style={bs.text}>
+                        <Text style={{ fontWeight: 'bold' }}>Clé privée :</Text> {wallet.privateKey}
+                    </Text>
+                    <Text style={bs.text}>
+                        <Text style={{ fontWeight: 'bold' }}>Seed :</Text> {wallet.mnemonic ?? "-"}
+                    </Text>
                 </View>
             )}
         </View>
@@ -154,103 +169,32 @@ const FaucetComponent: React.FC = () => {
 
 
     return (
-        <View style={tw`card`}>
-            <Text style={tw`sectionTitle`}>💧 Faucet</Text>
+        <View style={bs.card}>
+            <Text style={[bs.h2, bs.textCenter]}>💧 Faucet</Text>
 
-            <TextInput
-                style={tw`input`}
-                placeholder="Entrez votre adresse"
-                value={address ?? ""}
-                onChangeText={(text) => setAddress(text)}
-            />
+            <View style={bs.formGroup}>
+                <TextInput
+                    style={bs.formControl}
+                    placeholder="Entrez votre adresse"
+                    value={address ?? ""}
+                    onChangeText={(text) => setAddress(text)}
+                />
+            </View>
 
-            <Button
-                title={loading ? "⏳ Demande en cours..." : "🚰 Demander des tokens"}
+            <TouchableOpacity
+                style={[bs.btn, bs.btnPrimary, bs.mt2]}
                 onPress={requestFaucet}
                 disabled={loading || !address}
-            />
+            >
+                <Text style={bs.btnText}>
+                    {loading ? "⏳ Demande en cours..." : "🚰 Demander des tokens"}
+                </Text>
+            </TouchableOpacity>
 
-            {message && <Text style={tw`message`}>{message}</Text>}
+            {message && <Text style={[bs.text, bs.mt2]}>{message}</Text>}
         </View>
     );
 };
-
-
-//const styles = {
-//    card: tw`bg-gray-100 p-4 rounded-lg shadow-lg`,
-//    sectionTitle: tw`text-lg font-bold text-blue-500`,
-//};
-
-
-
-const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      padding: 20,
-      alignItems: "center",
-      justifyContent: "flex-start",
-    },
-    title: {
-      fontSize: 24,
-      fontWeight: "bold",
-      marginBottom: 10,
-    },
-    subtitle: {
-      fontSize: 16,
-      marginBottom: 20,
-    },
-    card: {
-      width: "100%",
-      backgroundColor: "#f9f9f9",
-      borderRadius: 8,
-      padding: 15,
-      marginBottom: 20,
-      // Ombre iOS
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.2,
-      shadowRadius: 3, // Ajout pour un rendu cohérent sur iOS
-      // Ombre Android
-      elevation: 3,
-    },
-    sectionTitle: {
-      fontSize: 18,
-      fontWeight: "bold",
-      marginBottom: 10,
-    },
-    infoList: {
-      marginBottom: 10,
-    },
-    infoItem: {
-      fontSize: 14,
-      marginBottom: 5,
-    },
-    input: {
-      borderWidth: 1,
-      borderColor: "#ccc",
-      borderRadius: 5,
-      padding: 10,
-      marginBottom: 10,
-      width: "100%",
-    },
-    message: {
-      marginTop: 10,
-      textAlign: "center",
-      color: "green",
-    },
-    walletInfo: {
-      marginTop: 10,
-      padding: 10,
-      backgroundColor: "#333",
-      borderRadius: 5,
-    },
-    walletDetail: {
-      color: "#fff",
-      fontSize: 14,
-      marginBottom: 5,
-    },
-});
-
 
 
 export default Home;
