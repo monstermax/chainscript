@@ -21,8 +21,8 @@ export class Transaction {
     public amount: bigint;
     public instructions: TransactionInstruction[] = [];
     public nonce: bigint | null;
-    public blockHeight: number | null = null; // TODO: a deplacer dans les receipts
-    public blockHash: BlockHash | null = null; // TODO: a deplacer dans les receipts
+    public blockHeight: number | null = null;
+    public blockHash: BlockHash | null = null;
     public contractAddress: AccountAddress | null = null;
 
 

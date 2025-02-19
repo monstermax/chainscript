@@ -8,8 +8,9 @@ import { AMMRouterAbi } from "@frontend/abi/AMMRouterAbi";
 import { TokenAbi } from "@frontend/abi/TokenAbi";
 
 import { callSmartContract, executeSmartContract } from "@frontend/utils/contractUtils";
-import ConnectWallet from "@frontend/components/Web3/ConnectWallet";
 import { jsonReviver } from "@frontend/utils/jsonUtils";
+
+import { useWeb3 } from "@frontend/components/Web3Provider";
 
 import type { AccountAddress } from "@backend/types/account.types";
 
@@ -18,7 +19,7 @@ const AMMRouterAddress = contractsAddresses.AmmRouter as AccountAddress;
 
 
 const AMMRouter: React.FC = () => {
-    const [walletAddress, setWalletAddress] = useState<AccountAddress | null>(null);
+    const { walletAddress } = useWeb3();
     const [pairs, setPairs] = useState<{ [pair: AccountAddress]: { tokenA: AccountAddress; tokenB: AccountAddress } }>({});
     const [loading, setLoading] = useState(false);
 
@@ -182,9 +183,6 @@ const AMMRouter: React.FC = () => {
     return (
         <div className="container mt-4">
             <h2 className="mb-3">🌊 AMM Router</h2>
-
-            <ConnectWallet onConnect={setWalletAddress} />
-
 
             {/* Balances & Allowances */}
             <div className="card p-3 mb-3">

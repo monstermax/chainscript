@@ -9,7 +9,7 @@ import { AMMRouterAbi } from "@frontend/abi/AMMRouterAbi";
 import { TokenAbi } from "@frontend/abi/TokenAbi";
 import { callSmartContract, executeSmartContract } from "@frontend/utils/contractUtils";
 
-import ConnectWallet from "@frontend/components/Web3/ConnectWallet";
+import { useWeb3 } from "@frontend/components/Web3Provider";
 import TokenSelectorModal from "./TokenSelectorModal";
 
 import type { AccountAddress } from "@backend/types/account.types";
@@ -19,7 +19,7 @@ const AMMRouterAddress = contractsAddresses.AmmRouter as AccountAddress;
 
 
 const TokensSwap: React.FC = () => {
-    const [walletAddress, setWalletAddress] = useState<AccountAddress | null>(null);
+    const { walletAddress } = useWeb3();
     const [tokenIn, setTokenIn] = useState<AccountAddress | null>(null);
     const [tokenOut, setTokenOut] = useState<AccountAddress | null>(null);
     const [amountIn, setAmountIn] = useState<bigint>(0n);
@@ -137,8 +137,6 @@ const TokensSwap: React.FC = () => {
         <div className="container mt-4 d-flex justify-content-center">
             <div className="card p-4 shadow-lg rounded-lg" style={{ maxWidth: "450px", background: "#1e1e2f", color: "#fff" }}>
                 <h4 className="mb-3 text-center">🔄 Token Swap</h4>
-
-                <ConnectWallet onConnect={setWalletAddress} />
 
                 {/* Zone Token In */}
                 <div className="card p-3 mb-3" style={{ background: "#282845" }}>

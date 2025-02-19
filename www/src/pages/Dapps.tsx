@@ -110,7 +110,7 @@ const Dapps: React.FC = () => {
                     <a href="#/dapps/chainstore" className="text-decoration-none">
                         <div className="card shadow-sm dapp-card">
                             <div className="card-body text-center">
-                                <h5 className="card-title">🔄 chain Store</h5>
+                                <h5 className="card-title">🛍️ chain Store</h5>
                                 <p className="card-text">La boutique on-chain.</p>
                             </div>
                         </div>

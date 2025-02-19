@@ -7,10 +7,11 @@ import { contractsAddresses } from "@frontend/config.client";
 import { divideBigInt } from "@frontend/utils/numberUtils";
 import { callSmartContract, executeSmartContract } from "@frontend/utils/contractUtils";
 
-import ConnectWallet from "@frontend/components/Web3/ConnectWallet";
 import { jsonReviver } from "@frontend/utils/jsonUtils";
 import { LPPairAbi } from "@frontend/abi/LPPairAbi";
 import { TokenAbi } from "@frontend/abi/TokenAbi";
+
+import { useWeb3 } from "@frontend/components/Web3Provider";
 
 import type { AccountAddress } from "@backend/types/account.types";
 
@@ -19,7 +20,7 @@ const LPPairAddress = contractsAddresses.LpPairs.WDEV_ChainCoin as AccountAddres
 
 
 const LPPair: React.FC = () => {
-    const [walletAddress, setWalletAddress] = useState<string | null>(null);
+    const { walletAddress } = useWeb3();
     const [reserves, setReserves] = useState<{ tokenA: AccountAddress, tokenB: AccountAddress, reservesA: string, reservesB: string, totalLiquidity: string } | null>(null);
     const [loading, setLoading] = useState(false);
     const [amountA, setAmountA] = useState<bigint>(0n);
@@ -189,8 +190,6 @@ const LPPair: React.FC = () => {
     return (
         <div className="container mt-4">
             <h2 className="mb-3">💧 LPPair - Liquidity Pool</h2>
-
-            <ConnectWallet onConnect={setWalletAddress} />
 
             {/* Affichage des réserves */}
             {reserves && (

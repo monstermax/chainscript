@@ -6,6 +6,7 @@ import { chainId, chainName, decimals, symbol } from "../config.client";
 import { createEthWallet } from "../utils/accountsUtils";
 
 import { AccountAddress } from "@backend/types/account.types";
+import { useWeb3 } from "@frontend/components/Web3Provider";
 
 
 const rpcHost = window.location.host;
@@ -14,6 +15,7 @@ const rpcHost = window.location.host;
 const Home: React.FC = () => {
     const [isAdding, setIsAdding] = useState(false);
     const [added, setAdded] = useState(false);
+
 
     async function addChainToMetamask() {
         const explorerUrlSsl = `${location.protocol}//${rpcHost}`;
@@ -43,6 +45,7 @@ const Home: React.FC = () => {
 
         setIsAdding(false);
     }
+
 
     return (
         <div className="container mt-5 text-center">
@@ -128,22 +131,16 @@ const CreateWalletComponent: React.FC = () => {
 
 
 const FaucetComponent: React.FC = () => {
+    const { walletAddress } = useWeb3();
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<string | null>(null);
     const [address, setAddress] = useState<AccountAddress | null>(null);
 
+
     useEffect(() => {
-        requestWallet();
-    }, [])
+        setAddress(walletAddress);
+    }, [walletAddress])
 
-    const requestWallet = async () => {
-        if (!window.ethereum) return; // alert("Connectez votre wallet");
-
-        const accounts: AccountAddress[] = await window.ethereum.request({ method: "eth_requestAccounts" }) as AccountAddress[];
-        const address = accounts[0];
-
-        setAddress(address);
-    };
 
     const requestFaucet = async () => {
         if (!window.ethereum) return; // alert("Connectez votre wallet");

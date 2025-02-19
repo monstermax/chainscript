@@ -7,11 +7,13 @@ import naclUtil from "tweetnacl-util";
 // Services et utilitaires
 import * as cryptoService from "@frontend/services/CryptoService";
 import { executeSmartContract, callSmartContract } from "@frontend/utils/contractUtils";
-import ConnectWallet from "@frontend/components/Web3/ConnectWallet";
 
 // Configuration et types
 import { contractsAddresses } from "@frontend/config.client";
 import { TeleScriptAbi } from "@frontend/abi/TeleScriptAbi";
+
+// Composants
+import { useWeb3 } from "@frontend/components/Web3Provider";
 
 import type { AccountAddress } from "@backend/types/account.types";
 
@@ -28,7 +30,7 @@ const TeleScriptAddress = contractsAddresses.dApps.TeleScript as AccountAddress;
 
 const TeleScript: React.FC = () => {
     // États
-    const [walletAddress, setWalletAddress] = useState<AccountAddress | null>(null);
+    const { walletAddress } = useWeb3();
     const [chats, setChats] = useState<string[]>([]);
     const [selectedChat, setSelectedChat] = useState<string | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
@@ -313,7 +315,6 @@ const TeleScript: React.FC = () => {
     return (
         <div className="container mt-4">
             <h2 className="mb-3">💬 TeleScript</h2>
-            <ConnectWallet onConnect={setWalletAddress} />
 
             {/* Enregistrer l'utilisateur */}
             <div className="alert alert-light">

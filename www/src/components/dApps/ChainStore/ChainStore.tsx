@@ -8,7 +8,7 @@ import { ChainStoreAbi } from "@frontend/abi/ChainStoreAbi";
 import { jsonReviver } from "@frontend/utils/jsonUtils";
 import { callSmartContract, executeSmartContract } from "@frontend/utils/contractUtils";
 
-import ConnectWallet from "@frontend/components/Web3/ConnectWallet";
+import { useWeb3 } from "@frontend/components/Web3Provider";
 
 import type { AccountAddress } from "@backend/types/account.types";
 
@@ -51,7 +51,7 @@ const ChainStoreAddress = contractsAddresses.dApps.ChainStore as AccountAddress;
 
 
 const ChainStore: React.FC = () => {
-    const [walletAddress, setWalletAddress] = useState<AccountAddress | null>(null);
+    const { walletAddress } = useWeb3();
     const [collections, setCollections] = useState<Collection[]>([]);
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState("shop");
@@ -112,8 +112,6 @@ const ChainStore: React.FC = () => {
     return (
         <div className="container mt-4">
             <h2 className="mb-3">🛍️ ChainStore - Boutique Décentralisée</h2>
-
-            <ConnectWallet onConnect={setWalletAddress} />
 
             <ul className="nav nav-tabs">
                 <li className="nav-item">

@@ -5,9 +5,10 @@ import { ethers } from "ethers";
 
 import { contractsAddresses } from "@frontend/config.client";
 import { ChainItAbi } from "@frontend/abi/ChainItAbi";
-
 import { callSmartContract, executeSmartContract } from "@frontend/utils/contractUtils";
-import ConnectWallet from "@frontend/components/Web3/ConnectWallet";
+
+import { useWeb3 } from "@frontend/components/Web3Provider";
+
 
 import type { AccountAddress } from "@backend/types/account.types";
 
@@ -16,7 +17,7 @@ const ChainItAddress = contractsAddresses.dApps.ChainIt as AccountAddress;
 
 
 const ChainIt: React.FC = () => {
-    const [walletAddress, setWalletAddress] = useState<AccountAddress | null>(null);
+    const { walletAddress } = useWeb3();
     const [posts, setPosts] = useState<{ id: string; author: AccountAddress; title: string; content: string; timestamp: number; comments: { author: AccountAddress; comment: string; timestamp: number }[] }[]>([]);
     const [title, setTitle] = useState<string>("");
     const [content, setContent] = useState<string>("");
@@ -85,8 +86,6 @@ const ChainIt: React.FC = () => {
     return (
         <div className="container mt-4">
             <h2 className="mb-3">📌 ChainIt - Forum Décentralisé</h2>
-
-            <ConnectWallet onConnect={setWalletAddress} />
 
             {/* Création d'un post */}
             <div className="card p-3 mb-3">

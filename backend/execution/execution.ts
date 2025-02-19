@@ -270,15 +270,23 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
                 asserts(contractAccount.code === null, `[executeTransaction] account "${createdContractAddress}" already exists (code exists)`);
                 asserts(contractAccount.abi === null, `[executeTransaction] account "${createdContractAddress}" already exists (abi exists)`);
 
-                //contractAccount.contructorArgs = instruction.contructorArgs;
-                contractAccount.memory = {};
-                contractAccount.code = instruction.code;
 
-                // Instancie le contrat (et initialize son constructor) puis retourne l'ABI
-                const { abi, contractMemory } = instanciateContractAndGenerateAbi(tx.from, instruction.code, instruction.contractClass, instruction.contructorArgs, createdContractAddress);
-                contractAccount.abi = abi;
+                try {
+                    // Instancie le contrat (et initialize son constructor) puis retourne l'ABI
+                    const { abi, contractMemory } = instanciateContractAndGenerateAbi(tx.from, instruction.code, instruction.contractClass, instruction.contructorArgs, createdContractAddress);
 
-                contractAccount.memory = contractMemory;
+                    contractAccount.abi = abi;
+                    contractAccount.memory = contractMemory;
+                    contractAccount.code = instruction.code;
+                    //contractAccount.contructorArgs = instruction.contructorArgs;
+
+                } catch (err: any) {
+                    console.log(`[executeTransaction] ❌ Error:`, err.message);
+                    //throw new Error(err);
+                    error = err.message;
+
+                    // TODO: delete contractAccount from memoryState
+                }
 
 
                 txFees += 1000n; // 1000 microcoins for token creation

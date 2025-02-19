@@ -29,6 +29,17 @@ const ConnectWallet: React.FC<{ onConnect: (address: AccountAddress) => void }> 
         }
     };
 
+    const copyToClipboard = () => {
+        if (walletAddress) {
+            navigator.clipboard.writeText(walletAddress).then(() => {
+                //alert("Adresse du wallet copiée dans le presse-papier !");
+
+            }).catch(err => {
+                console.error("Erreur lors de la copie de l'adresse :", err);
+            });
+        }
+    };
+
     useEffect(() => {
         if (window.ethereum) {
             connectWallet();
@@ -45,7 +56,13 @@ const ConnectWallet: React.FC<{ onConnect: (address: AccountAddress) => void }> 
     return (
         <div className="d-flex align-items-center mb-3">
             {walletAddress ? (
-                <span className="badge bg-success p-2">✅ Connecté: {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}</span>
+                <div className="d-flex align-items-center">
+                    <span className="badge bg-success p-2 me-2">✅ Connecté: {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}</span>
+
+                    <button className="btn btn-outline-secondary btn-sm" onClick={copyToClipboard} title="Copier l'adresse">
+                        📋
+                    </button>
+                </div>
             ) : (
                 <button className="btn btn-primary" onClick={connectWallet}>
                     🔌 Connecter le wallet
@@ -55,4 +72,4 @@ const ConnectWallet: React.FC<{ onConnect: (address: AccountAddress) => void }> 
     );
 };
 
-export default ConnectWallet;
+//export default ConnectWallet;

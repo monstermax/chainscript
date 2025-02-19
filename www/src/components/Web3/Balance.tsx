@@ -13,7 +13,7 @@ import { formatAmountEtherSafe } from "@frontend/utils/numberUtils";
 
 const Balance: React.FC<{ walletConnected: boolean }> = ({ walletConnected }) => {
     const [balance, setBalance] = useState<bigint | null>(null);
-    const [recipient, setRecipient] = useState<AccountAddress>("0x0000000000000000000000000000000000000030");
+    const [recipient, setRecipient] = useState<AccountAddress>("0x1230000000000000000000000000000000000999");
     const [amountEther, setAmountEther] = useState<string>("10");
     const [showModal, setShowModal] = useState(false);
 

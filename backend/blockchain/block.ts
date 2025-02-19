@@ -24,7 +24,7 @@ export class Block {
     public nonce: bigint = 0n;
     public hash: BlockHash | null = null;
     public timestamp: number | null = null;
-    public transactions: Transaction[] = [];
+    public transactions: Transaction[] = []; // TODO: stocker uniquement les txHash + stocker les transactions dans des fichiers à part
     public receipts: TransactionReceipt[] = [];
     private _blockchainMetadata: BlockchainMetadata | null = null;
     private _blockchainAccounts: Accounts | null = null;

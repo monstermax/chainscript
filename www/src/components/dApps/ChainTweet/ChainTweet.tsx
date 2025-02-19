@@ -5,9 +5,9 @@ import { ethers } from "ethers";
 
 import { contractsAddresses } from "@frontend/config.client";
 import { ChainTweetAbi } from "@frontend/abi/ChainTweetAbi";
-
 import { callSmartContract, executeSmartContract } from "@frontend/utils/contractUtils";
-import ConnectWallet from "@frontend/components/Web3/ConnectWallet";
+
+import { useWeb3 } from "@frontend/components/Web3Provider";
 
 import type { AccountAddress } from "@backend/types/account.types";
 
@@ -16,7 +16,7 @@ const ChainTweetAddress = contractsAddresses.dApps.ChainTweet as AccountAddress;
 
 
 const ChainTweet: React.FC = () => {
-    const [walletAddress, setWalletAddress] = useState<AccountAddress | null>(null);
+    const { walletAddress } = useWeb3();
     const [tweets, setTweets] = useState<{ sender: AccountAddress; content: string; timestamp: number }[]>([]);
     const [tweetContent, setTweetContent] = useState<string>("");
     const [loading, setLoading] = useState(false);
@@ -69,8 +69,6 @@ const ChainTweet: React.FC = () => {
     return (
         <div className="container mt-4">
             <h2 className="mb-3">📝 ChainTweet</h2>
-
-            <ConnectWallet onConnect={setWalletAddress} />
 
             <div className="card p-3 mb-3">
                 <textarea

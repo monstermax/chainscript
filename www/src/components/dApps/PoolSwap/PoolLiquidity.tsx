@@ -10,7 +10,7 @@ import { callSmartContract, executeSmartContract } from "@frontend/utils/contrac
 import { TokenAbi } from "@frontend/abi/TokenAbi";
 import { LPPairAbi } from "@frontend/abi/LPPairAbi";
 
-import ConnectWallet from "@frontend/components/Web3/ConnectWallet";
+import { useWeb3 } from "@frontend/components/Web3Provider";
 import TokenSelectorModal from "./TokenSelectorModal";
 
 import type { AccountAddress } from "@backend/types/account.types";
@@ -20,7 +20,7 @@ const LPPairAddress = contractsAddresses.LpPairs.WDEV_ChainCoin as AccountAddres
 
 
 const PoolLiquidity: React.FC = () => {
-    const [walletAddress, setWalletAddress] = useState<AccountAddress | null>(null);
+    const { walletAddress } = useWeb3();
     const [tokenA, setTokenA] = useState<AccountAddress | null>(null);
     const [tokenB, setTokenB] = useState<AccountAddress | null>(null);
     const [amountA, setAmountA] = useState<bigint>(0n);
@@ -96,7 +96,6 @@ const PoolLiquidity: React.FC = () => {
         <div className="container mt-4 d-flex justify-content-center">
             <div className="card p-4 shadow-lg rounded-lg" style={{ maxWidth: "450px", background: "#1e1e2f", color: "#fff" }}>
                 <h4 className="mb-3 text-center">💧 Pool Liquidity</h4>
-                <ConnectWallet onConnect={setWalletAddress} />
 
                 {/* Sélection des Tokens */}
                 <button className="btn btn-outline-light mb-2" onClick={() => setShowTokenAModal(true)}>

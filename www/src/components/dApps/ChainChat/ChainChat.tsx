@@ -5,9 +5,9 @@ import { ethers } from "ethers";
 
 import { contractsAddresses } from "@frontend/config.client";
 import { ChainChatAbi } from "@frontend/abi/ChainChatAbi";
-
 import { callSmartContract, executeSmartContract } from "@frontend/utils/contractUtils";
-import ConnectWallet from "@frontend/components/Web3/ConnectWallet";
+
+import { useWeb3 } from "@frontend/components/Web3Provider";
 
 import type { AccountAddress } from "@backend/types/account.types";
 
@@ -17,7 +17,7 @@ const ChainChatAddress = contractsAddresses.dApps.ChainChat as AccountAddress;
 
 
 const ChainChat: React.FC = () => {
-    const [walletAddress, setWalletAddress] = useState<AccountAddress | null>(null);
+    const { walletAddress } = useWeb3();
     const [messages, setMessages] = useState<{ from: string; message: string; timestamp: number }[]>([]);
     const [recipient, setRecipient] = useState<AccountAddress | null>(null);
     const [messageContent, setMessageContent] = useState<string>("");
@@ -69,8 +69,6 @@ const ChainChat: React.FC = () => {
     return (
         <div className="container mt-4">
             <h2 className="mb-3">💬 ChainChat</h2>
-
-            <ConnectWallet onConnect={setWalletAddress} />
 
             <div className="card p-3 mb-3">
                 <input

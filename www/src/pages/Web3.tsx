@@ -2,22 +2,20 @@
 
 import React, { useState } from "react";
 
-import Balance from "../components/Web3/Balance";
-import ContractDeployment from "../components/Web3/ContractDeployment/ContractDeployment";
-import ContractExecution from "../components/Web3/ContractExecution/ContractExecution";
-import ConnectWallet from "../components/Web3/ConnectWallet";
+import { useWeb3 } from "@frontend/components/Web3Provider";
+
+import Balance from "@frontend/components/Web3/Balance";
+import ContractDeployment from "@frontend/components/Web3/ContractDeployment/ContractDeployment";
+import ContractExecution from "@frontend/components/Web3/ContractExecution/ContractExecution";
 
 
 const Web3: React.FC = () => {
+    const { walletAddress } = useWeb3();
     const [activeTab, setActiveTab] = useState("balance");
-    const [walletAddress, setWalletAddress] = useState<string | null>(null);
 
     return (
         <div className="container mt-4">
             <h2>Web3 Interaction</h2>
-
-            {/* 🔌 Gestion du Wallet */}
-            <ConnectWallet onConnect={setWalletAddress} />
 
             {/* Onglets Bootstrap */}
             <ul className="nav nav-tabs">
@@ -39,7 +37,7 @@ const Web3: React.FC = () => {
             </ul>
 
             {/* Contenu des onglets */}
-            <div className="tab-content mt-3">
+            <div className="tab-content">
                 {activeTab === "balance" && <Balance walletConnected={!!walletAddress} />}
                 {activeTab === "deploy" && <ContractDeployment walletConnected={!!walletAddress} />}
                 {activeTab === "execute" && <ContractExecution walletConnected={!!walletAddress} />}
