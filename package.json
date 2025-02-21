@@ -2,8 +2,8 @@
   "name": "@chainscript/fullnode",
   "version": "1.0.0",
   "scripts": {
-    "start": "npm -w @chainscript/fullnode-backend run start",
-    "frontend:dev": "npm -w @chainscript/fullnode-frontend run start ",
+    "start":          "npm -w @chainscript/fullnode-backend run start",
+    "frontend:dev":   "npm -w @chainscript/fullnode-frontend run start ",
     "frontend:build": "npm -w @chainscript/fullnode-frontend run build"
   },
   "workspaces": [
