@@ -30,22 +30,22 @@ ChainScript est une blockchain minimaliste et performante, permettant l'exécuti
 
 ### 📌 Initialisation de la blockchain
 ```sh
-ts-node cli.ts --init [--force]  # Initialise la blockchain, y compris le bloc genesis
+ts-node backend/src/chainscript.ts --init [--force]  # Initialise la blockchain, y compris le bloc genesis
 ```
 
 ### 🚀 Démarrage du nœud
 ```sh
-ts-node cli.ts --listen [--mine]  # Écoute les transactions RPC & P2P et mine de nouveaux blocs
+ts-node backend/src/chainscript.ts --listen [--mine]  # Écoute les transactions RPC & P2P et mine de nouveaux blocs
 ```
 
 
 ### ⚙️ Options supplémentaires
 ```sh
-ts-node cli.ts --dir ~/.blockchain-js [...]  # Spécifie un répertoire personnalisé pour la blockchain
+ts-node backend/src/chainscript.ts --dir ~/.blockchain-js [...]  # Spécifie un répertoire personnalisé pour la blockchain
 
-ts-node cli.ts --rpc 8545 [...]              # Définit le port RPC (par défaut 8545)
+ts-node backend/src/chainscript.ts --rpc 8545 [...]              # Définit le port RPC (par défaut 8545)
 
-ts-node cli.ts --p2p 6001 [...]              # Définit le port P2P (par défaut 6001)
+ts-node backend/src/chainscript.ts --p2p 6001 [...]              # Définit le port P2P (par défaut 6001)
 ```
 
 ## Exemple : Déploiement & Interaction avec un smart contract

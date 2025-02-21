@@ -1,4 +1,4 @@
-// cli.ts
+// chainscript.ts
 
 import path from 'path';
 import fs from 'fs';
@@ -19,15 +19,15 @@ import type { AccountAddress } from './types/account.types';
 /*
 
 # Initialization
-ts-node cli.ts --init [--force]        # initiialize the blockchain (including genesis block)
+ts-node chainscript.ts --init [--force]        # initiialize the blockchain (including genesis block)
 
 # Run
-ts-node cli.ts --listen [--mine]       # listen for rpc & p2p transactions + mine new blocks
+ts-node chainscript.ts --listen [--mine]       # listen for rpc & p2p transactions + mine new blocks
 
 # Options
-ts-node cli.ts --dir ~/.blockchain-js [...]
-ts-node cli.ts --rpc 8545 [...]
-ts-node cli.ts --p2p 6001 [...]
+ts-node chainscript.ts --dir ~/.blockchain-js [...]
+ts-node chainscript.ts --rpc 8545 [...]
+ts-node chainscript.ts --p2p 6001 [...]
 
 */
 
