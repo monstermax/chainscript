@@ -1,17 +1,31 @@
 {
-    "name": "@chainscript/backend",
+    "name": "@chainscript/fullnode-backend",
     "version": "1.0.0",
     "scripts": {
-      "start": "ts-node src/chainscript.ts --listen --mine"
-    },
-    "dependencies": {
-        "@ethereumjs/tx": "^5.4.0",
-        "body-parser": "^1.20.3",
-        "cors": "^2.8.5",
-        "express": "^4.21.2"
+        "start": "ts-node src/chainscript.ts --listen --mine"
     },
     "devDependencies": {
         "@types/cors": "^2.8.17",
-        "@types/express": "^5.0.0"
+        "@types/express": "^5.0.0",
+        "@types/node": "^22.13.4",
+        "@types/ws": "^8.5.14",
+        "tsconfig-paths": "^4.2.0",
+        "tslib": "^2.8.1",
+        "typescript": "^5.7.3"
+    },
+    "dependencies": {
+        "@ethereumjs/tx": "^5.4.0",
+        "@metamask/providers": "^20.0.0",
+        "acorn": "^8.14.0",
+        "acorn-walk": "^8.3.4",
+        "body-parser": "^1.20.3",
+        "bootstrap": "^5.3.3",
+        "cors": "^2.8.5",
+        "ethers": "^6.13.5",
+        "express": "^4.21.2",
+        "ts-node": "^10.9.2",
+        "tweetnacl": "^1.0.3",
+        "tweetnacl-util": "^0.15.1",
+        "ws": "^8.18.0"
     }
 }

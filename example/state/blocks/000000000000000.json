@@ -1,0 +1,10 @@
+{
+    "blockHeight": 0,
+    "parentBlockHash": "0x",
+    "miner": "0x",
+    "hash": "0x9e505fd6e2bb837d405447b09aceb0b9e610fcb201160683ef3e7211141b9b23",
+    "timestamp": 1739232518150,
+    "transactions": [],
+    "receipts": [],
+    "nonce": "bigint:0"
+}

@@ -1,0 +1,89 @@
+{
+    "address": "0x2CaeEf4858702aE688142EE9927b95d48a7d2ced",
+    "balance": "bigint:0",
+    "abi": [
+        {
+            "class": "ContractToken1",
+            "methods": {
+                "balanceOf": {
+                    "inputs": [
+                        "address"
+                    ],
+                    "write": false
+                },
+                "transfer": {
+                    "inputs": [
+                        "recipient",
+                        "amount"
+                    ],
+                    "write": true
+                },
+                "approve": {
+                    "inputs": [
+                        "spender",
+                        "amount"
+                    ],
+                    "write": true
+                },
+                "allowance": {
+                    "inputs": [
+                        "owner",
+                        "spender"
+                    ],
+                    "write": false
+                },
+                "transferFrom": {
+                    "inputs": [
+                        "owner",
+                        "recipient",
+                        "amount"
+                    ],
+                    "write": true
+                }
+            },
+            "attributes": {
+                "name": {
+                    "type": "string"
+                },
+                "symbol": {
+                    "type": "string"
+                },
+                "owner": {
+                    "type": "string"
+                },
+                "decimals": {
+                    "type": "number"
+                },
+                "supply": {
+                    "type": "bigint"
+                },
+                "accounts": {
+                    "type": "object"
+                },
+                "allowances": {
+                    "type": "object"
+                }
+            }
+        }
+    ],
+    "code": "// ContractToken1.js\n\n\nclass ContractToken1 {\n    // Main config\n    name = 'Token de Test type ERC20';\n    symbol = 'TOKEN';\n    owner = \"0x\";\n\n    // Supply config\n    decimals = 18;\n    supply = 10_000_000_000n * this.fulltoken;\n\n    // Accounts & Allowances\n    accounts = {};\n    allowances = {};\n\n\n    constructor(name, symbol) {\n        const sender = lower(caller);\n\n        this.name = name || this.name;\n        this.symbol = symbol || this.symbol;\n\n        this.owner = sender;\n        this.accounts[sender] = this.supply;\n    }\n\n\n    get fulltoken() {\n        return 10n ** BigInt(this.decimals);\n    }\n\n\n    #mint(address, amount) {\n        this.supply += amount;\n        this.accounts[address] = (this.accounts[address] ?? 0n) + amount;\n    }\n\n\n    #burn(address, amount) {\n        asserts(this.supply >= amount, `insufficient token supply : ${this.supply} < ${amount}`);\n        asserts(this.accounts[address] ?? 0n >= amount, `insufficient token balance : ${this.accounts[address]} < ${amount}`);\n\n        this.accounts[address] -= amount;\n        this.supply -= amount;\n    }\n\n\n    balanceOf(address) {\n        return this.accounts[lower(address)] ?? 0n;\n    }\n\n\n    transfer(recipient, amount) /* write */ {\n        // Usage:\n        // await token.transfer(\"0x123...\", \"1000\");\n\n        this.#burn(lower(caller), BigInt(amount));\n        this.#mint(lower(recipient), BigInt(amount));\n    }\n\n\n    // Transfert direct (sender → recipient)\n    transfer(recipient, amount) /* write */ {\n        const sender = lower(caller);\n        recipient = lower(recipient);\n        amount = BigInt(amount);\n\n        asserts(this.accounts[sender] ?? 0n >= amount, `[ContractToken1][transferFrom] Insufficient balance`);\n\n        this.accounts[sender] -= amount;\n        this.accounts[recipient] = (this.accounts[recipient] ?? 0n) + amount;\n    }\n\n\n    // Autorisation d’un \"spender\" pour dépenser les tokens du owner\n    approve(spender, amount) /* write */ {\n\n        // Usage: \n        // 1. => await token.approve(\"0xPoolContract\", \"5000\");\n        // 2. => await token.transferFrom(\"0xUser\", \"0xLPContract\", \"5000\");\n\n        const owner = lower(caller);\n        spender = lower(spender);\n        amount = BigInt(amount);\n\n        this.allowances[owner] = this.allowances[owner] || {};\n        this.allowances[owner][spender] = amount;\n    }\n\n\n    // Vérifie combien un \"spender\" peut dépenser depuis \"owner\"\n    allowance(owner, spender) {\n        owner = lower(owner);\n        spender = lower(spender);\n        return this.allowances[owner]?.[spender] ?? 0n;\n    }\n\n\n    // Transfert via autorisation (spender → recipient)\n    transferFrom(owner, recipient, amount) /* write */ {\n\n        // Usage: \n        // 1. => await token.approve(\"0xPoolContract\", \"5000\");\n        // 2. => await token.transferFrom(\"0xUser\", \"0xLPContract\", \"5000\");\n\n        const spender = lower(caller);\n        owner = lower(owner);\n        recipient = lower(recipient);\n        amount = BigInt(amount);\n\n        asserts(this.accounts[owner] ?? 0n >= amount, `[ContractToken1][transferFrom] Insufficient balance for ${owner} : ${this.accounts[owner]} < ${amount}`);\n        asserts(this.allowances[owner], `[ContractToken1][transferFrom] Allowance not set for ${owner}`);\n        asserts(this.allowances[owner][spender] >= amount, `[ContractToken1][transferFrom] Allowance not set for ${owner} to ${spender}`);\n        asserts(this.allowances[owner][spender] ?? 0n >= amount, `[ContractToken1][transferFrom] Allowance exceeded for ${owner} : ${this.allowances[owner][spender]} < ${amount}`);\n\n        // Déduire l'allocation et les tokens du owner\n        this.allowances[owner][spender] -= amount;\n        this.accounts[owner] -= amount;\n\n        // Ajouter les tokens au recipient\n        this.accounts[recipient] = (this.accounts[recipient] ?? 0n) + amount;\n    }\n\n}\n\n",
+    "memory": {
+        "name": "Token de Test type ERC20",
+        "symbol": "TOKEN",
+        "owner": "0xee5392913a7930c233aa711263f715f616114e9b",
+        "decimals": 18,
+        "supply": "bigint:10000000000000000000000000000",
+        "accounts": {
+            "0xee5392913a7930c233aa711263f715f616114e9b": "bigint:9999999999999999999999994000",
+            "0x9352f038834a3ff50c95afde74d46a1bc84477f8": "bigint:6000"
+        },
+        "allowances": {
+            "0xee5392913a7930c233aa711263f715f616114e9b": {
+                "0x9352f038834a3ff50c95afde74d46a1bc84477f8": "bigint:994000"
+            }
+        },
+        "prototype": {}
+    },
+    "transactionsCount": 0,
+    "hash": "0x43184bd88b266b4726bfd3b662261d300fca8bd357dd57617be82b6750e3d838"
+}

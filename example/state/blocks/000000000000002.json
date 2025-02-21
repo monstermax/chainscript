@@ -1,0 +1,56 @@
+{
+    "blockHeight": 2,
+    "parentBlockHash": "0x62db2d4399e3a74144bf5262d4e64d3d4658fd4e8cc154bbeda758752b4416de",
+    "miner": "0xee5392913a7930c233Aa711263f715f616114e9B",
+    "hash": "0xe7d59aa190bfef4de30711be69933797a1192ce753ead46eceb391dcd444bc5a",
+    "timestamp": 1739670007173,
+    "transactions": [
+        {
+            "from": "0xee5392913a7930c233aa711263f715f616114e9b",
+            "nonce": "bigint:0",
+            "value": "bigint:0",
+            "instructions": [
+                {
+                    "type": "create",
+                    "contractAddress": "0x2CaeEf4858702aE688142EE9927b95d48a7d2ced",
+                    "contractClass": "ContractToken1",
+                    "code": "// ContractToken1.js\n\n\nclass ContractToken1 {\n    // Main config\n    name = 'Token de Test type ERC20';\n    symbol = 'TOKEN';\n    owner = \"0x\";\n\n    // Supply config\n    decimals = 18;\n    supply = 10_000_000_000n * this.fulltoken;\n\n    // Accounts & Allowances\n    accounts = {};\n    allowances = {};\n\n\n    constructor(name, symbol) {\n        const sender = lower(caller);\n\n        this.name = name || this.name;\n        this.symbol = symbol || this.symbol;\n\n        this.owner = sender;\n        this.accounts[sender] = this.supply;\n    }\n\n\n    get fulltoken() {\n        return 10n ** BigInt(this.decimals);\n    }\n\n\n    #mint(address, amount) {\n        this.supply += amount;\n        this.accounts[address] = (this.accounts[address] ?? 0n) + amount;\n    }\n\n\n    #burn(address, amount) {\n        asserts(this.supply >= amount, `insufficient token supply : ${this.supply} < ${amount}`);\n        asserts(this.accounts[address] ?? 0n >= amount, `insufficient token balance : ${this.accounts[address]} < ${amount}`);\n\n        this.accounts[address] -= amount;\n        this.supply -= amount;\n    }\n\n\n    balanceOf(address) {\n        return this.accounts[lower(address)] ?? 0n;\n    }\n\n\n    transfer(recipient, amount) /* write */ {\n        // Usage:\n        // await token.transfer(\"0x123...\", \"1000\");\n\n        this.#burn(lower(caller), BigInt(amount));\n        this.#mint(lower(recipient), BigInt(amount));\n    }\n\n\n    // Transfert direct (sender → recipient)\n    transfer(recipient, amount) /* write */ {\n        const sender = lower(caller);\n        recipient = lower(recipient);\n        amount = BigInt(amount);\n\n        asserts(this.accounts[sender] ?? 0n >= amount, `[ContractToken1][transferFrom] Insufficient balance`);\n\n        this.accounts[sender] -= amount;\n        this.accounts[recipient] = (this.accounts[recipient] ?? 0n) + amount;\n    }\n\n\n    // Autorisation d’un \"spender\" pour dépenser les tokens du owner\n    approve(spender, amount) /* write */ {\n\n        // Usage: \n        // 1. => await token.approve(\"0xPoolContract\", \"5000\");\n        // 2. => await token.transferFrom(\"0xUser\", \"0xLPContract\", \"5000\");\n\n        const owner = lower(caller);\n        spender = lower(spender);\n        amount = BigInt(amount);\n\n        this.allowances[owner] = this.allowances[owner] || {};\n        this.allowances[owner][spender] = amount;\n    }\n\n\n    // Vérifie combien un \"spender\" peut dépenser depuis \"owner\"\n    allowance(owner, spender) {\n        owner = lower(owner);\n        spender = lower(spender);\n        return this.allowances[owner]?.[spender] ?? 0n;\n    }\n\n\n    // Transfert via autorisation (spender → recipient)\n    transferFrom(owner, recipient, amount) /* write */ {\n\n        // Usage: \n        // 1. => await token.approve(\"0xPoolContract\", \"5000\");\n        // 2. => await token.transferFrom(\"0xUser\", \"0xLPContract\", \"5000\");\n\n        const spender = lower(caller);\n        owner = lower(owner);\n        recipient = lower(recipient);\n        amount = BigInt(amount);\n\n        asserts(this.accounts[owner] ?? 0n >= amount, `[ContractToken1][transferFrom] Insufficient balance for ${owner} : ${this.accounts[owner]} < ${amount}`);\n        asserts(this.allowances[owner], `[ContractToken1][transferFrom] Allowance not set for ${owner}`);\n        asserts(this.allowances[owner][spender] >= amount, `[ContractToken1][transferFrom] Allowance not set for ${owner} to ${spender}`);\n        asserts(this.allowances[owner][spender] ?? 0n >= amount, `[ContractToken1][transferFrom] Allowance exceeded for ${owner} : ${this.allowances[owner][spender]} < ${amount}`);\n\n        // Déduire l'allocation et les tokens du owner\n        this.allowances[owner][spender] -= amount;\n        this.accounts[owner] -= amount;\n\n        // Ajouter les tokens au recipient\n        this.accounts[recipient] = (this.accounts[recipient] ?? 0n) + amount;\n    }\n\n}\n\n",
+                    "contructorArgs": [
+                        "",
+                        ""
+                    ],
+                    "value": "bigint:0"
+                }
+            ],
+            "hash": "0xe92f312d9d3789b56125e820b1b2244e32e113cea30a5ab384daeef2f6341b05"
+        },
+        {
+            "from": "0x",
+            "nonce": "bigint:1",
+            "value": "bigint:50000000000000001000",
+            "instructions": [
+                {
+                    "type": "mint",
+                    "address": "0xee5392913a7930c233Aa711263f715f616114e9B",
+                    "amount": "bigint:50000000000000001000"
+                }
+            ],
+            "hash": "0x6c3a7383fa94e54a0b409d477953cd4e53b00c3a1122b0c02666a1079fe1d9b1"
+        }
+    ],
+    "receipts": [
+        {
+            "success": true,
+            "fees": "bigint:1000",
+            "blockHeight": 2,
+            "contractAddress": "0x2CaeEf4858702aE688142EE9927b95d48a7d2ced"
+        },
+        {
+            "success": true,
+            "fees": "bigint:0",
+            "blockHeight": 2,
+            "contractAddress": null
+        }
+    ],
+    "nonce": "bigint:0"
+}

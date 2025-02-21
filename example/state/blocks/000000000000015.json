@@ -1,0 +1,55 @@
+{
+    "blockHeight": 15,
+    "parentBlockHash": "0x160091f760e5ea84f0f2bee552e12926cd2bffdd63d326902529c9b4676e2777",
+    "miner": "0xee5392913a7930c233Aa711263f715f616114e9B",
+    "hash": "0xceba13a6ae00d3ebadb62bf3708f0a0f529211161bff056bf22111886e998042",
+    "timestamp": 1739670566912,
+    "transactions": [
+        {
+            "from": "0xee5392913a7930c233aa711263f715f616114e9b",
+            "nonce": "bigint:8",
+            "value": "bigint:0",
+            "instructions": [
+                {
+                    "type": "execute",
+                    "contractAddress": "0x9352f038834a3ff50c95afde74d46a1bc84477f8",
+                    "className": "LPPair",
+                    "methodName": "swap",
+                    "methodArgs": [
+                        "0x2caeef4858702ae688142ee9927b95d48a7d2ced",
+                        "1000"
+                    ]
+                }
+            ],
+            "hash": "0x5128954b947a19e54b78b20596a853490bc89276c219f625864674185c051274"
+        },
+        {
+            "from": "0x",
+            "nonce": "bigint:14",
+            "value": "bigint:50000000000000000300",
+            "instructions": [
+                {
+                    "type": "mint",
+                    "address": "0xee5392913a7930c233Aa711263f715f616114e9B",
+                    "amount": "bigint:50000000000000000300"
+                }
+            ],
+            "hash": "0x6835679ae81ba9da1b93a76c60b628ca00c2d841275fc0473ba4b8cec653ade5"
+        }
+    ],
+    "receipts": [
+        {
+            "success": true,
+            "fees": "bigint:300",
+            "blockHeight": 15,
+            "contractAddress": null
+        },
+        {
+            "success": true,
+            "fees": "bigint:0",
+            "blockHeight": 15,
+            "contractAddress": null
+        }
+    ],
+    "nonce": "bigint:0"
+}

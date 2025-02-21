@@ -1,0 +1,56 @@
+{
+    "blockHeight": 18,
+    "parentBlockHash": "0x9a84a149396e834cf19b71372bf817f140f62fede41d9a8649ff65b428ac0b8c",
+    "miner": "0xee5392913a7930c233Aa711263f715f616114e9B",
+    "hash": "0x8b9697d5d7f053885d23c9fb6b512baeb5b08484064f15403247acc68c8f9e4e",
+    "timestamp": 1739670746999,
+    "transactions": [
+        {
+            "from": "0xee5392913a7930c233aa711263f715f616114e9b",
+            "nonce": "bigint:9",
+            "value": "bigint:0",
+            "instructions": [
+                {
+                    "type": "execute",
+                    "contractAddress": "0x4d0b4807c5aac1ea0760dda1936b99aa63848c49",
+                    "className": "AMMRouter",
+                    "methodName": "registerPair",
+                    "methodArgs": [
+                        "0x9352f038834a3ff50C95Afde74d46a1bC84477F8",
+                        "0x2caeef4858702ae688142ee9927b95d48a7d2ced",
+                        "0x93fd6b09bb59fc60defb8967686a7c3932aaf804"
+                    ]
+                }
+            ],
+            "hash": "0x23c05bb47b5593b2998696a4039b9197df784076db79d1a7a04164d373687787"
+        },
+        {
+            "from": "0x",
+            "nonce": "bigint:17",
+            "value": "bigint:50000000000000000100",
+            "instructions": [
+                {
+                    "type": "mint",
+                    "address": "0xee5392913a7930c233Aa711263f715f616114e9B",
+                    "amount": "bigint:50000000000000000100"
+                }
+            ],
+            "hash": "0x99aa571e93952395efe33899868af69985838b2112fd4bb9f810155a1b6ce7bf"
+        }
+    ],
+    "receipts": [
+        {
+            "success": true,
+            "fees": "bigint:100",
+            "blockHeight": 18,
+            "contractAddress": null
+        },
+        {
+            "success": true,
+            "fees": "bigint:0",
+            "blockHeight": 18,
+            "contractAddress": null
+        }
+    ],
+    "nonce": "bigint:0"
+}

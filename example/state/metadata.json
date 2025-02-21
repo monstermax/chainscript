@@ -1,0 +1,10 @@
+{
+    "totalAccounts": 8,
+    "totalBlocks": 34,
+    "totalTransactions": 45,
+    "blocksHash": "0xcea2c7d83bd61d3154035d37288d4ccd73c6638dff7f4248ad3f8dd736f2ea9d",
+    "accountsHash": "0x76af27e4bfc95db5d60be294ae8e4a31c3686364e6567017d479e423994fdcfe",
+    "transactionsHash": "0x049811fd667e11976b91f1ab08983f4d1a3d7900eeb7d705c947682647d1e5fb",
+    "lastBlockHash": "0x9c285dd5a09f11c76a222ff057b515abd9a11393aa27f21099702fceca74fb67",
+    "totalSupply": "bigint:1650000000000000000000"
+}

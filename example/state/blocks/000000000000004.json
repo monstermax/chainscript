@@ -1,0 +1,56 @@
+{
+    "blockHeight": 4,
+    "parentBlockHash": "0x4679d03dfe891404b88f00d7d5c30c0bc6de5381787db74137aab557550a4aa4",
+    "miner": "0xee5392913a7930c233Aa711263f715f616114e9B",
+    "hash": "0x2462560f9b460255ca8ba8f0eb303a8bb0693c70e0d18af2ea1de1a995a9c999",
+    "timestamp": 1739670057196,
+    "transactions": [
+        {
+            "from": "0xee5392913a7930c233aa711263f715f616114e9b",
+            "nonce": "bigint:2",
+            "value": "bigint:0",
+            "instructions": [
+                {
+                    "type": "create",
+                    "contractAddress": "0xb6f6E8BDA93879EB1a6D16313d951350B245BE68",
+                    "contractClass": "LPPair",
+                    "code": "// LPPair.js\n\n\nclass LPPair {\n    tokenA = null;\n    tokenB = null;\n    reservesA = 0n;\n    reservesB = 0n;\n    totalLiquidity = 0n;\n    liquidityBalances = {};\n    feePercent = 3n; // 0.3% (3 / 1000)\n\n\n    constructor(tokenA, tokenB) /* write */ {\n        tokenA = lower(tokenA);\n        tokenB = lower(tokenB);\n\n        asserts(tokenA, \"tokenA non fourni\");\n        asserts(tokenB, \"tokenB non fourni\");\n        asserts(tokenA !== tokenB, \"Les tokens doivent être différents\");\n\n        this.tokenA = tokenA;\n        this.tokenB = tokenB;\n    }\n\n\n    async addLiquidity(amountA, amountB) /* write */ {\n        const sender = lower(caller);\n        amountA = BigInt(amountA);\n        amountB = BigInt(amountB);\n\n        //log(`[addLiquidity] 🔹 Début - Sender: ${sender}, amountA: ${amountA}, amountB: ${amountB}`);\n\n        asserts(amountA > 0n && amountB > 0n, \"Montants invalides\");\n\n        // Vérifier si les tokens existent\n        asserts(this.tokenA && this.tokenB, \"Paire non initialisée\");\n        log(`[addLiquidity] ✅ Tokens détectés: tokenA = ${this.tokenA}, tokenB = ${this.tokenB}`);\n\n\n        // Vérifier que l'utilisateur a assez de tokens\n        const balanceA = await call(this.tokenA, \"\", \"balanceOf\", [sender]);\n        const balanceB = await call(this.tokenB, \"\", \"balanceOf\", [sender]);\n        log(`[addLiquidity] 📊 Soldes avant: balanceA = ${balanceA}, balanceB = ${balanceB}`);\n\n\n        asserts(balanceA >= amountA, \"Solde insuffisant du tokenA\");\n        asserts(balanceB >= amountB, \"Solde insuffisant du tokenB\");\n\n        // Vérifier que l'utilisateur a approuvé l'utilisation des tokens\n        const allowanceA = await call(this.tokenA, \"\", \"allowance\", [sender, self]);\n        const allowanceB = await call(this.tokenB, \"\", \"allowance\", [sender, self]);\n        log(`[addLiquidity] 🔐 Allowance: allowanceA = ${allowanceA}, allowanceB = ${allowanceB}`);\n\n\n        asserts(allowanceA >= amountA, \"Autorisation insuffisante pour tokenA\");\n        asserts(allowanceB >= amountB, \"Autorisation insuffisante pour tokenB\");\n\n        // Effectuer le transfert des tokens vers la LP pair (depuis sender)\n        await call(this.tokenA, \"\", \"transferFrom\", [sender, self, amountA]);\n        await call(this.tokenB, \"\", \"transferFrom\", [sender, self, amountB]);\n        log(`[addLiquidity] 🔄 Transfert effectué: +${amountA} tokenA, +${amountB} tokenB`);\n\n\n        // 🔹 Cas 1 : Création du pool\n        if (this.totalLiquidity === 0n) {\n            this.reservesA = BigInt(amountA);\n            this.reservesB = BigInt(amountB);\n\n            const liquidity = BigInt(Math.round(Math.sqrt(Number(amountA) * Number(amountB))));\n\n            this.liquidityBalances[sender] = liquidity; // aka LP Tokens\n            this.totalLiquidity = liquidity;\n\n            log(`[addLiquidity] 🚀 Pool créé ! ReservesA: ${this.reservesA}, ReservesB: ${this.reservesB}, Liquidity: ${liquidity}`);\n\n            return liquidity;\n        }\n\n\n        // 🔹 Cas 2 : Ajout de liquidité à un pool existant\n        const optimalAmountB = (BigInt(amountA) * this.reservesB) / this.reservesA;\n        asserts(amountB >= optimalAmountB, \"Déséquilibre de la paire\");\n\n        const liquidity = (BigInt(amountA) * this.totalLiquidity) / this.reservesA;\n\n        // Mise à jour des réserves\n        this.reservesA += BigInt(amountA);\n        this.reservesB += BigInt(amountB);\n        this.liquidityBalances[sender] = (this.liquidityBalances[sender] || 0n) + liquidity;\n        this.totalLiquidity += liquidity;\n\n        asserts(this.reservesA * this.reservesB >= (this.totalLiquidity ** 2n), \"[addLiquidity] Incohérence dans les réserves et la liquidité totale\");\n\n\n        log(`[addLiquidity] ✅ Ajout réussi: ReservesA: ${this.reservesA}, ReservesB: ${this.reservesB}, TotalLiquidity: ${this.totalLiquidity}`);\n\n        return liquidity;\n    }\n\n\n    async removeLiquidity(liquidityAmount) /* write */ {\n        const sender = lower(caller);\n        liquidityAmount = BigInt(liquidityAmount);\n\n        asserts(liquidityAmount > 0n, \"Montant invalide\");\n        asserts(this.liquidityBalances[sender] >= liquidityAmount, \"Fonds insuffisants\");\n\n        // Calcul de la part des réserves à retirer\n        const amountA = (liquidityAmount * this.reservesA) / this.totalLiquidity;\n        const amountB = (liquidityAmount * this.reservesB) / this.totalLiquidity;\n\n        // Mise à jour des réserves et des LP tokens\n        this.reservesA -= amountA;\n        this.reservesB -= amountB;\n        this.totalLiquidity -= liquidityAmount;\n        this.liquidityBalances[sender] -= liquidityAmount;\n\n        asserts(this.reservesA * this.reservesB >= (this.totalLiquidity ** 2n), \"[addLiquidity] Incohérence dans les réserves et la liquidité totale\");\n\n        // Transférer les tokens directement à l'utilisateur\n        await call(this.tokenA, \"\", \"transfer\", [sender, amountA]);\n        await call(this.tokenB, \"\", \"transfer\", [sender, amountB]);\n\n        return { amountA, amountB };\n    }\n\n\n    getAmountOut(amountIn, reserveIn, reserveOut) {\n        amountIn = BigInt(amountIn),\n        reserveIn = BigInt(reserveIn),\n        reserveOut = BigInt(reserveOut),\n\n        asserts(amountIn > 0n, \"Insufficient input amount\");\n        asserts(reserveIn > 0n && reserveOut > 0n, \"Insufficient liquidity\");\n\n        const feePercent = this.feePercent; // Récupère le fee depuis la mémoire (ex: 3 = 0.3%)\n        const feeDenominator = 1000n;\n\n        const amountInWithFee = amountIn * (feeDenominator - feePercent) / feeDenominator;\n        const numerator = amountInWithFee * reserveOut;\n        const denominator = reserveIn + amountInWithFee;\n\n        return numerator / denominator;\n    }\n\n\n    async swap(tokenIn, amountIn) /* write */ {\n        tokenIn = lower(tokenIn);\n        amountIn = BigInt(amountIn);\n\n        const sender = lower(caller); // L'utilisateur qui swap\n\n        // Vérifier que la paire supporte ce token\n        asserts(tokenIn === this.tokenA || tokenIn === this.tokenB, \"Token invalide\");\n\n        // Récupérer les réserves\n        const isTokenA = tokenIn === this.tokenA;\n        const reserveIn = isTokenA ? this.reservesA : this.reservesB;\n        const reserveOut = isTokenA ? this.reservesB : this.reservesA;\n\n        // Calcul du montant de sortie avec `getAmountOut`\n        const amountOut = this.getAmountOut(amountIn, reserveIn, reserveOut);\n        asserts(amountOut > 0n, \"Montant de sortie invalide\");\n\n        // Étape 1 : L'utilisateur envoie `amountIn` à la LP Pair\n        await call(tokenIn, \"\", \"transferFrom\", [sender, self, amountIn]);\n\n        // Étape 2 : La LP Pair envoie `amountOut` à l'utilisateur\n        const tokenOut = isTokenA ? this.tokenB : this.tokenA;\n        await call(tokenOut, \"\", \"transfer\", [sender, amountOut]);\n\n        // Mise à jour des réserves après le swap\n        if (isTokenA) {\n            this.reservesA += amountIn;\n            this.reservesB -= amountOut;\n        } else {\n            this.reservesB += amountIn;\n            this.reservesA -= amountOut;\n        }\n\n        asserts(\n            this.reservesA > 0n && this.reservesB > 0n,\n            \"[swap] Erreur : Réserves invalides après échange\"\n        );\n\n        asserts(\n            this.reservesA * this.reservesB >= (this.totalLiquidity ** 2n),\n            \"[swap] Erreur : Ratio de liquidité incohérent après échange\"\n        );\n\n        return amountOut; // Retourne le montant reçu\n    }\n\n\n    getReserves() {\n        return {\n            tokenA: this.tokenA,\n            tokenB: this.tokenB,\n            reservesA: this.reservesA,\n            reservesB: this.reservesB,\n            totalLiquidity: this.totalLiquidity\n        };\n    }\n}\n\n",
+                    "contructorArgs": [
+                        "0x7DA538B464cDa5271017e0220e3332214805944D",
+                        "0x93FD6B09Bb59fC60defB8967686a7c3932AAF804"
+                    ],
+                    "value": "bigint:0"
+                }
+            ],
+            "hash": "0x56007ffed3ef4fe183540adaf6bfe155956dbc5c770e2f174b0574e272287e98"
+        },
+        {
+            "from": "0x",
+            "nonce": "bigint:3",
+            "value": "bigint:50000000000000001000",
+            "instructions": [
+                {
+                    "type": "mint",
+                    "address": "0xee5392913a7930c233Aa711263f715f616114e9B",
+                    "amount": "bigint:50000000000000001000"
+                }
+            ],
+            "hash": "0x397463ee44f4931e38fedd4258ff473c9f59ebe18ed34b9fb1bb4f9a6b0f748b"
+        }
+    ],
+    "receipts": [
+        {
+            "success": true,
+            "fees": "bigint:1000",
+            "blockHeight": 4,
+            "contractAddress": "0xb6f6E8BDA93879EB1a6D16313d951350B245BE68"
+        },
+        {
+            "success": true,
+            "fees": "bigint:0",
+            "blockHeight": 4,
+            "contractAddress": null
+        }
+    ],
+    "nonce": "bigint:0"
+}

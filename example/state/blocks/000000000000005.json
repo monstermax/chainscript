@@ -1,0 +1,53 @@
+{
+    "blockHeight": 5,
+    "parentBlockHash": "0x2462560f9b460255ca8ba8f0eb303a8bb0693c70e0d18af2ea1de1a995a9c999",
+    "miner": "0xee5392913a7930c233Aa711263f715f616114e9B",
+    "hash": "0xdb11f387930bf5979bac2f15e2b6088bde6823e71aa3fa30dbe392f32917ae5d",
+    "timestamp": 1739670097203,
+    "transactions": [
+        {
+            "from": "0xee5392913a7930c233aa711263f715f616114e9b",
+            "nonce": "bigint:3",
+            "value": "bigint:0",
+            "instructions": [
+                {
+                    "type": "create",
+                    "contractAddress": "0x4d0b4807C5aac1Ea0760ddA1936B99AA63848c49",
+                    "contractClass": "AMMRouter",
+                    "code": "// AMMRouter.js\n\n\n\nclass AMMRouter {\n    pairs = {};\n\n\n    registerPair(pairAddress, tokenA, tokenB) /* write */ {\n        pairAddress = lower(pairAddress);\n        tokenA = lower(tokenA);\n        tokenB = lower(tokenB);\n\n        this.pairs[pairAddress] = { tokenA, tokenB };\n    }\n\n\n    async findBestPair(tokenIn, tokenOut) {\n        tokenIn = lower(tokenIn);\n        tokenOut = lower(tokenOut);\n\n        let bestPair = null;\n        let bestRate = 0n;\n        let bestReserves = null;\n\n        for (const [pairAddress, { tokenA, tokenB }] of Object.entries(this.pairs)) {\n            if ((tokenA === tokenIn && tokenB === tokenOut) || (tokenB === tokenIn && tokenA === tokenOut)) {\n                const pair = await call(pairAddress, \"LPPair\", \"getReserves\", []);\n\n                const reserveIn = tokenA === tokenIn ? pair.reservesA : pair.reservesB;\n                const reserveOut = tokenA === tokenIn ? pair.reservesB : pair.reservesA;\n\n                const rate = reserveOut * 1000n / reserveIn;\n\n                if (rate > bestRate) {\n                    bestRate = rate;\n                    bestPair = pairAddress;\n                    bestReserves = { reserveIn, reserveOut };\n                }\n            }\n        }\n\n        return { bestPair, bestReserves };\n    }\n\n\n    async swap(tokenIn, tokenOut, amountIn) /* write */ {\n        tokenIn = lower(tokenIn);\n        tokenOut = lower(tokenOut);\n        amountIn = BigInt(amountIn);\n\n        const bestPair = await this.findBestPair(tokenIn, tokenOut);\n        asserts(bestPair, \"Aucune paire disponible\");\n\n        return call(bestPair.bestPair, \"LPPair\", \"swap\", [tokenIn, amountIn]);\n    }\n\n\n    getAmountsOut(amountIn, pathList) {\n\n        // Usage:\n        // 1. Cas simple   (swap direct A → B)      => getAmountsOut(1000, [\"TokenA\", \"TokenB\"]);  // => Retourne : [1000, 980] (avec 2% de frais)\n        // 2. Cas complexe (multi-paires A → B → C) => getAmountsOut(1000, [\"TokenA\", \"TokenB\", \"TokenC\"]); // Retourne : [1000, 980, 950]\n\n        const path = pathList.split(',').map(address => address.trim()).filter(address => address);\n        asserts(path.length >= 2, \"Path invalide\");\n\n        let amounts = [amountIn];\n\n        for (let i = 0; i < path.length - 1; i++) {\n            const tokenIn = path[i];\n            const tokenOut = path[i + 1];\n\n            const pair = findPair(tokenIn, tokenOut);\n            asserts(pair, \"Paire introuvable\");\n\n            const amountOut = pair.getAmountOut(amounts[i]); // Utilisation de `getAmountOut` dans la paire\n            amounts.push(amountOut);\n        }\n\n        return amounts;\n    }\n\n\n    async swapExactTokensForTokens(amountIn, amountOutMin, pathList) /* write */ {\n\n        // Usage\n        // 1. Cas simple (swap direct A → B)     => ammRouter.swapExactTokensForTokens(1000, 900, [\"TokenA\", \"TokenB\"]);\n        // 2. Cas complexe (multi-hop A → B → C) => ammRouter.swapExactTokensForTokens(1000, 850, [\"TokenA\", \"TokenB\", \"TokenC\"]);\n\n        amountIn = BigInt(amountIn);\n        amountIn = BigInt(amountOutMin);\n\n        const path = pathList.split(',').map(address => address.trim()).filter(address => address);\n        asserts(path.length >= 2, \"Path invalide\");\n\n        // 1️⃣ Calcul des montants à chaque étape\n        const amounts = this.getAmountsOut(amountIn, path);\n        const amountOutFinal = amounts[amounts.length - 1];\n\n        // 2️⃣ Vérification du slippage\n        asserts(amountOutFinal >= amountOutMin, \"Slippage trop élevé\");\n\n        // 3️⃣ Exécution des swaps sur chaque paire du chemin\n        for (let i = 0; i < path.length - 1; i++) {\n            const tokenIn = path[i];\n            const tokenOut = path[i + 1];\n\n            const { bestPair } = await this.findBestPair(tokenIn, tokenOut);\n            asserts(bestPair, \"Paire introuvable\");\n\n            const swapAmountOut = await call(bestPair, \"LPPair\", \"swap\", [tokenIn, amounts[i]]); // ⚡ Exécution du swap\n        }\n\n        return amounts[amounts.length - 1]; // Montant final reçu\n    }\n\n}\n",
+                    "contructorArgs": [],
+                    "value": "bigint:0"
+                }
+            ],
+            "hash": "0xbaaff09048de96f8490f89251c1c261d1fbcced9adac7cecc1ad0ef5c91d5c9c"
+        },
+        {
+            "from": "0x",
+            "nonce": "bigint:4",
+            "value": "bigint:50000000000000001000",
+            "instructions": [
+                {
+                    "type": "mint",
+                    "address": "0xee5392913a7930c233Aa711263f715f616114e9B",
+                    "amount": "bigint:50000000000000001000"
+                }
+            ],
+            "hash": "0x50a1db161fc3a963844724cfa6d1b357c519c8657040402cabadcf4a7dd5ee26"
+        }
+    ],
+    "receipts": [
+        {
+            "success": true,
+            "fees": "bigint:1000",
+            "blockHeight": 5,
+            "contractAddress": "0x4d0b4807C5aac1Ea0760ddA1936B99AA63848c49"
+        },
+        {
+            "success": true,
+            "fees": "bigint:0",
+            "blockHeight": 5,
+            "contractAddress": null
+        }
+    ],
+    "nonce": "bigint:0"
+}

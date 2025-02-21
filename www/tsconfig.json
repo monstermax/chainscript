@@ -1,5 +1,0 @@
-// tsconfig WWW
-{
-    "extends": "../tsconfig.json",
-    "include": ["src"]
-}

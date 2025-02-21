@@ -1,0 +1,55 @@
+{
+    "blockHeight": 13,
+    "parentBlockHash": "0x9e01ac2732eada5ba9f2ddea6e1119df2a3c9d5767aec50c3cc8288b93fcd84a",
+    "miner": "0xee5392913a7930c233Aa711263f715f616114e9B",
+    "hash": "0xca6c0d5b09480763f1958869f2174565ba7d6e8a0af98655a7840a1b0c46d39c",
+    "timestamp": 1739670496889,
+    "transactions": [
+        {
+            "from": "0xee5392913a7930c233aa711263f715f616114e9b",
+            "nonce": "bigint:6",
+            "value": "bigint:0",
+            "instructions": [
+                {
+                    "type": "execute",
+                    "contractAddress": "0x93fd6b09bb59fc60defb8967686a7c3932aaf804",
+                    "className": "ContractToken2",
+                    "methodName": "approve",
+                    "methodArgs": [
+                        "0x9352f038834a3ff50C95Afde74d46a1bC84477F8",
+                        "1000000"
+                    ]
+                }
+            ],
+            "hash": "0x929e359216c50a08974136512796893a457838ea9bcc6fa10e7c634c1e83435e"
+        },
+        {
+            "from": "0x",
+            "nonce": "bigint:12",
+            "value": "bigint:50000000000000000100",
+            "instructions": [
+                {
+                    "type": "mint",
+                    "address": "0xee5392913a7930c233Aa711263f715f616114e9B",
+                    "amount": "bigint:50000000000000000100"
+                }
+            ],
+            "hash": "0x4e93b513dd8ce56cc19e0a69a7e001095cbdc6701a6c48c5493b23d9c55978cb"
+        }
+    ],
+    "receipts": [
+        {
+            "success": true,
+            "fees": "bigint:100",
+            "blockHeight": 13,
+            "contractAddress": null
+        },
+        {
+            "success": true,
+            "fees": "bigint:0",
+            "blockHeight": 13,
+            "contractAddress": null
+        }
+    ],
+    "nonce": "bigint:0"
+}

@@ -1,42 +1,23 @@
 {
-  "name": "chainscript",
+  "name": "@chainscript/fullnode",
   "version": "1.0.0",
   "scripts": {
-    "backend": "npm -w @chainscript/backend run start",
-    "frontend": "npm -w @chainscript/www run dev ",
-    "frontend:build": "npm -w @chainscript/www run build",
-    "frontend:clean": "npm -w @chainscript/www run clean",
-    "mobile": "cd mobile; react-native start",
-    "mobile:android": "cd mobile; react-native run-android",
-    "mobile:ios": "cd mobile; react-native run-ios"
+    "start": "npm -w @chainscript/fullnode-backend run start",
+    "frontend:dev": "npm -w @chainscript/fullnode-frontend run start ",
+    "frontend:build": "npm -w @chainscript/fullnode-frontend run build"
   },
   "workspaces": [
     "backend",
-    "www",
-    "mobile"
+    "frontend"
   ],
   "description": "",
   "engines": {
     "node": ">=18"
   },
-  "dependencies": {
-    "acorn": "^8.14.0",
-    "acorn-walk": "^8.3.4",
-    "axios": "^1.7.9",
-    "bootstrap": "^5.3.3",
-    "ethers": "^6.13.5",
-    "ts-node": "^10.9.2",
-    "tweetnacl": "^1.0.3",
-    "tweetnacl-util": "^0.15.1",
-    "ws": "^8.18.0"
-  },
   "devDependencies": {
-    "@metamask/providers": "^20.0.0",
-    "@types/axios": "^0.9.36",
-    "@types/node": "^22.13.1",
-    "@types/ws": "^8.5.14",
-    "ajv": "^8.17.1",
+    "@types/node": "^22.13.4",
     "tsconfig-paths": "^4.2.0",
+    "tslib": "^2.8.1",
     "typescript": "^5.7.3"
   }
 }

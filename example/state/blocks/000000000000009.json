@@ -1,0 +1,31 @@
+{
+    "blockHeight": 9,
+    "parentBlockHash": "0x3df0e1ce9352c0f95527d71fa6891de1f3b55f39ef95103f07578076becbbdc0",
+    "miner": "0xee5392913a7930c233Aa711263f715f616114e9B",
+    "hash": "0xd97281df29bb80ef8f8ec56794c8f5af4f111c672cef28ab844d1f25e9182f9f",
+    "timestamp": 1739670344037,
+    "transactions": [
+        {
+            "from": "0x",
+            "nonce": "bigint:8",
+            "value": "bigint:50000000000000000000",
+            "instructions": [
+                {
+                    "type": "mint",
+                    "address": "0xee5392913a7930c233Aa711263f715f616114e9B",
+                    "amount": "bigint:50000000000000000000"
+                }
+            ],
+            "hash": "0x29e17e9c0c79a9284fa4de1c20a24854442e9f5ca27d040ca62b1b6e14a15b59"
+        }
+    ],
+    "receipts": [
+        {
+            "success": true,
+            "fees": "bigint:0",
+            "blockHeight": 9,
+            "contractAddress": null
+        }
+    ],
+    "nonce": "bigint:0"
+}
