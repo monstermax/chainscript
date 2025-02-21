@@ -6,7 +6,7 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 
-import { ROOT_DIR } from '@backend/config';
+import { FULLNODE_DIR } from '@backend/config';
 import { Blockchain } from "@backend/blockchain/blockchain";
 import { handleRpcRequests } from './rpc';
 import { Account } from '@backend/blockchain/account';
@@ -19,7 +19,7 @@ import type { TransactionHash } from '@backend/types/transaction.types';
 
 /* ######################################################### */
 
-const CONTRACTS_DIR = path.resolve(ROOT_DIR, "example/scripts");
+const CONTRACTS_DIR = path.resolve(FULLNODE_DIR, "example/scripts");
 
 
 /* ######################################################### */
@@ -52,7 +52,7 @@ function handleHttpRequests(blockchain: Blockchain, app: express.Express) {
     // Gestion des requêtes GET (ex: Explorer blockchain, voir un contrat, etc.)
 
     // Contenu static pour react
-    app.use(express.static(`${ROOT_DIR}/www/dist`));
+    app.use(express.static(`${FULLNODE_DIR}/frontend/dist`));
 
     app.get('/', (req, res) => routeHomepage(blockchain, req, res));
 
@@ -80,7 +80,7 @@ function handleHttpRequests(blockchain: Blockchain, app: express.Express) {
 
 async function routeHomepage(blockchain: Blockchain, req: express.Request, res: express.Response): Promise<void> {
     // React App
-    res.sendFile(`${ROOT_DIR}/www/dist/index.html`);
+    res.sendFile(`${FULLNODE_DIR}/frontend/dist/index.html`);
 }
 
 

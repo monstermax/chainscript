@@ -5,7 +5,7 @@ import fs from 'fs';
 import { ethers, resolveProperties, Transaction, TransactionResponse } from 'ethers';
 
 import { deployContract, executeSmartContract } from '@backend/helpers/contractUtils';
-import { defaultRpcPort, devPrivateKey, ROOT_DIR } from '@backend/config';
+import { defaultRpcPort, devPrivateKey, FULLNODE_DIR } from '@backend/config';
 
 import { AMMRouterAbi } from '@frontend/abi/AMMRouterAbi';
 import { contractsAddresses } from '@frontend/config.client';
@@ -18,7 +18,7 @@ type Addresses = Awaited<ReturnType<typeof deployContracts>>;
 /* ######################################################### */
 
 
-const CONTRACTS_DIR = path.resolve(ROOT_DIR, "example/scripts");
+const CONTRACTS_DIR = path.resolve(FULLNODE_DIR, "example/scripts");
 
 let nonce = 0n;
 

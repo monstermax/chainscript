@@ -80,5 +80,5 @@ export const MAX_MEMORY_ACCOUNTS = 5_000; // Nb maximum de comptes à conserver 
 //export const MAX_MEMORY_TRANSACTIONS = 10_000; // Nb maximum de transactions à conserver en mémoire dans le cachee LRU => à implémenter
 
 
-export const ROOT_DIR = path.resolve(__dirname, "../..");
+export const FULLNODE_DIR = path.resolve(__dirname, "../..");
 

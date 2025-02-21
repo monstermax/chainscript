@@ -3,7 +3,7 @@
 import path from 'path';
 import fs from 'fs';
 
-import { defaultStateDir, fullcoin, defaultP2pPort, defaultRpcPort, ROOT_DIR } from '@backend/config';
+import { defaultStateDir, fullcoin, defaultP2pPort, defaultRpcPort, FULLNODE_DIR } from '@backend/config';
 import { asserts, ensureDirectory, getOpt, hasOpt, now } from "@backend/helpers/utils";
 import { Blockchain } from "@backend/blockchain/blockchain";
 import { Transaction } from "@backend/blockchain/transaction";
@@ -306,7 +306,7 @@ async function testsTransactions(blockchain: Blockchain) {
 
 function loadScriptCode(scriptName: string) {
     // Load source code
-    const execScriptFile = `${ROOT_DIR}/example/scripts/${scriptName}.js`;
+    const execScriptFile = `${FULLNODE_DIR}/example/scripts/${scriptName}.js`;
     asserts(fs.existsSync(execScriptFile), "[loadScriptCode] script file not found");
 
     const execScriptCode = fs.readFileSync(execScriptFile).toString();
