@@ -12,9 +12,11 @@ import { execVm } from './vm';
 import { findMethodAbi, instanciateContractAndGenerateAbi } from './abi';
 
 import type { AbiSearchResult, AccountAddress } from '@backend/types/account.types';
-import type { TransactionData, TransactionHash, TransactionInstruction, TransactionInstructionExecute, TransactionInstructionCreate, TransactionInstructionTransfer, TransactionReceipt } from '@backend/types/transaction.types';
+import type { TransactionData, TransactionHash, TransactionInstruction, TransactionInstructionExecute, TransactionInstructionCreate, TransactionInstructionTransfer, TransactionReceiptData } from '@backend/types/transaction.types';
 import type { HexNumber } from '@backend/types/types';
 import type { callTxParams, sendTxParams as SendTxParams } from '@backend/types/rpc.types';
+import { TransactionReceipt } from '@backend/blockchain/receipt';
+import { emptyAddress } from '@backend/config';
 
 
 
@@ -167,6 +169,10 @@ export function transcodeTx(blockchain: Blockchain, txParams: SendTxParams): Tra
 
     // Création de l'objet `TransactionData`
     const txData: TransactionData = {
+        hash: null,
+        blockHash: null,
+        blockHeight: null,
+        transactionIndex: null,
         from: txParams.from,
         nonce,
         value,
@@ -240,7 +246,7 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
             if (instruction.type === 'mint') {
                 // Mint value
 
-                asserts(tx.from === '0x', `[executeTransaction] invalid emitter for mint. Expected: "0x" / Found: ${tx.from}`);
+                asserts(tx.from === emptyAddress, `[executeTransaction] invalid emitter for mint. Expected: "${emptyAddress}" / Found: ${tx.from}`);
 
                 const minerAccount = blockchain.getAccount(instruction.address, blockchain.memoryState);
                 asserts(minerAccount, `[executeTransaction] minerAccount "${instruction.address}" not found`);
@@ -335,7 +341,7 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
             blockchain.burn(emitterAccount, txFees);
 
         } else {
-            asserts(tx.from === '0x', `[executeTransaction] invalid emitter for transaction without fees. Expected: "0x" / Found: ${tx.from}`);
+            asserts(tx.from === emptyAddress, `[executeTransaction] invalid emitter for transaction without fees. Expected: "${emptyAddress}" / Found: ${tx.from}`);
 
             // TODO: gérer les annulations de transactions (pas de fees ?)
         }
@@ -350,14 +356,19 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
     }
 
 
-    const receipt: TransactionReceipt = {
+    const receiptData: TransactionReceiptData = {
+        transactionHash: tx.hash,
+        transactionIndex: tx.transactionIndex ?? 0,
         success: !error,
         fees: txFees,
-        //blockHash: block.hash,
         blockHeight: block.blockHeight,
+        blockHash: block.hash ?? '0x',
         contractAddress: createdContractAddress,
-        //logs,
+        logs: [],
     }
+
+
+    const receipt = TransactionReceipt.from(receiptData);
 
     return receipt;
 }

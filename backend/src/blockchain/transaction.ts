@@ -1,6 +1,7 @@
 // transaction.ts
 
 import fs from 'fs';
+import { encodeRlp, keccak256, concat, toBeArray } from 'ethers';
 
 import { chainId } from '@backend/config';
 import { asserts, computeHash, jsonReplacer, now, toHex } from '@backend/helpers/utils';
@@ -8,7 +9,7 @@ import { Block } from './block';
 import { predictContractAddress } from './account';
 
 import type { AccountAddress } from '@backend/types/account.types';
-import type { TransactionData, TransactionHash, TransactionInstruction, TransactionInstructionExecute, TransactionInstructionCreate, TransactionInstructionMint, TransactionInstructionTransfer, TransactionReceipt, TransactionReceiptData, TransactionReceiptRpc, TransactionRpc } from '@backend/types/transaction.types';
+import type { TransactionData, TransactionHash, TransactionInstruction, TransactionInstructionExecute, TransactionInstructionCreate, TransactionInstructionMint, TransactionInstructionTransfer, TransactionReceiptData, TransactionReceiptRpc, TransactionRpc } from '@backend/types/transaction.types';
 import type { BlockHash } from '@backend/types/block.types';
 
 
@@ -23,14 +24,16 @@ export class Transaction {
     public nonce: bigint | null;
     public blockHeight: number | null = null;
     public blockHash: BlockHash | null = null;
+    public transactionIndex: number | null = null;
     public contractAddress: AccountAddress | null = null;
 
 
-    constructor(from: AccountAddress, amount: bigint=0n, nonce?: bigint | null) {
+    constructor(from: AccountAddress, amount: bigint = 0n, nonce?: bigint | null) {
         this.from = from;
         this.amount = amount;
         this.nonce = nonce ?? null;
     }
+
 
     static from(txData: TransactionData) {
         const tx = new Transaction(txData.from, txData.value, txData.nonce);
@@ -65,7 +68,7 @@ export class Transaction {
     }
 
 
-    public create(code: string, contractClass: string, contructorArgs?: string[], amount=0n): this {
+    public create(code: string, contractClass: string, contructorArgs?: string[], amount = 0n): this {
         asserts(this.nonce, `[Transaction][create] missing transaction nonce`);
         const contractAddress: AccountAddress = predictContractAddress(this.from, this.nonce)
         console.log(`[${now()}][Transaction][create] Adresse du contrat à créer :`, contractAddress);
@@ -85,7 +88,7 @@ export class Transaction {
     }
 
 
-    public execute(contractAddress: AccountAddress, className: string, methodName: string, args: any[]=[], amount=0n): this {
+    public execute(contractAddress: AccountAddress, className: string, methodName: string, args: any[] = [], amount = 0n): this {
         const instruction: TransactionInstructionExecute = {
             type: 'execute',
             contractAddress,
@@ -107,7 +110,7 @@ export class Transaction {
         asserts(tx.nonce === null || ['bigint', 'undefined'].includes(typeof tx.nonce), `[Transaction][toData] invalid transaction nonce "${tx.nonce}"`);
         asserts(typeof tx.from === 'string', `[Transaction][toData] invalid transaction emitter type "${tx.from}"`);
         asserts(tx.from.startsWith('0x'), `[Transaction][toData] invalid transaction emitter "${tx.nonce}"`);
-        asserts(tx.from === '0x' || tx.from.length === 42, `[Transaction][toData] invalid transaction emitter "${tx.nonce}"`);
+        asserts(tx.from.length === 42, `[Transaction][toData] invalid transaction emitter "${tx.nonce}"`);
 
         const transactionData: TransactionData = {
             from: tx.from,
@@ -115,6 +118,9 @@ export class Transaction {
             value: tx.amount,
             instructions: tx.instructions,
             hash: tx.hash,
+            transactionIndex: tx.transactionIndex,
+            blockHash: tx.blockHash,
+            blockHeight: tx.blockHeight,
             //to: tx.to ?? null,
             //gasPrice: 0n,
             //gasLimit: 0n,
@@ -130,37 +136,34 @@ export class Transaction {
     }
 
 
-    static formatForRpc(block: Block, tx: Transaction): TransactionRpc {
+    static formatForRpc(tx: Transaction): TransactionRpc {
         // Doc: https://docs.metamask.io/services/reference/ethereum/json-rpc-methods/eth_gettransactionbyhash/
 
-        asserts(block.hash, `[Transaction.formatForRpc] missing block hash`);
-        asserts(tx.hash, `[Transaction.formatForRpc] missing transaction hash`);
+        //asserts(tx.blockHash, `[Transaction.formatForRpc] missing block hash`);
+        //asserts(tx.hash, `[Transaction.formatForRpc] missing transaction hash`);
 
         const to: AccountAddress | null = tx.instructions.filter(instruction => instruction.type === 'transfer').at(0)?.recipient
             ?? tx.instructions.filter(instruction => instruction.type === 'mint').at(0)?.address
             ?? null;
         //asserts(to, `[Transaction.formatForRpc] invalid recipient`);
 
-        const transactionIndex = block.transactions.findIndex(_tx => _tx.hash === tx.hash);
-        asserts(transactionIndex > -1, `[Transaction.formatForRpc] transaction not found`);
-
         const transactionRpc: TransactionRpc = {
             accessList: [],
-            blockHash: block.hash,
-            blockNumber: toHex(block.blockHeight),
+            blockHash: tx.blockHash ?? null,
+            blockNumber: tx.blockHeight === null ? null : toHex(tx.blockHeight),
             chainId: toHex(chainId),
             from: tx.from,
-            gas: "0x1",
-            gasPrice: "0x1",
-            hash: tx.hash,
-            input: "0x",
-            maxFeePerGas: "0x1",
-            maxPriorityFeePerGas: "0x1",
+            gas: "0x01",
+            gasPrice: "0x02",
+            hash: tx.hash ?? null,
+            input: "0x03",
+            maxFeePerGas: "0x04",
+            maxPriorityFeePerGas: "0x05",
             nonce: toHex(tx.nonce ?? 0),
-            r: "0x",
-            s: "0x",
+            r: "0x6",
+            s: "0x7",
             to: to,
-            transactionIndex: toHex(transactionIndex),
+            transactionIndex: tx.transactionIndex === null ? null : toHex(tx.transactionIndex),
             type: "0x2",
             v: "0x1",
             value: toHex(tx.amount),
@@ -171,58 +174,131 @@ export class Transaction {
     }
 
 
-    static toReceiptData(tx: Transaction, receipt: TransactionReceipt): TransactionReceiptData {
-        return receipt;
-        /*
-        const receiptData: TransactionReceiptData = {
-            success: receipt.success,
-            fees: receipt.fees,
-            blockHash: receipt.blockHash,
-            blockHeight: receipt.blockHeight,
-            contractAddress: receipt.contractAddress,
-        };
-
-        return receiptData;
-        */
-    }
-
-
-    static formatReceiptForRpc(block: Block, tx: Transaction): TransactionReceiptRpc {
-
-        asserts(block.hash, `[Transaction.formatForRpc] missing block hash`);
-        asserts(tx.hash, `[Transaction.formatForRpc] missing transaction hash`);
-
-        const to: AccountAddress | null = tx.instructions.filter(instruction => instruction.type === 'transfer').at(0)?.recipient ?? null;
-        //asserts(to, `[Transaction.formatForRpc] invalid recipient`);
-
-        const transactionIndex = block.transactions.findIndex(_tx => _tx.hash === tx.hash);
-        asserts(transactionIndex > -1, `[Transaction.formatForRpc] transaction not found`);
-
-        const receipt = block.getTransactionReceipt(tx.hash);
-
-        const receiptRpc: TransactionReceiptRpc = {
-            blockHash: block.hash,
-            blockNumber: toHex(block.blockHeight),
-            contractAddress: tx.contractAddress,
-            cumulativeGasUsed: "0x00",
-            effectiveGasPrice: "0x01",
-            from: tx.from,
-            gasUsed: "0x00",
-            logs: [],
-            logsBloom: "0x",
-            status: receipt?.success ? "0x1" : "0x0",
-            to: to,
-            transactionHash: tx.hash,
-            transactionIndex: toHex(transactionIndex),
-            type: "0x2"
-        };
-
-        return receiptRpc;
-    }
-
-
     computeHash(): TransactionHash {
+        // Récupérer les données de la transaction formatées pour RPC
+        const txData = Transaction.formatForRpc(this);
+        //const txData = this.toData();
+
+        // Déterminer le type de transaction (0=legacy, 1=EIP-2930, 2=EIP-1559, 3=EIP-4844)
+        const type = txData.type ? parseInt(txData.type.substring(2), 16) : 0;
+
+        // Construire les champs à encoder en RLP selon le type de transaction
+        let fields = [];
+        let encodedTx;
+
+        if (type === 0) {
+            // Transaction legacy
+            fields = [
+                toBeArray(txData.nonce ? BigInt(txData.nonce) : 0n),
+                toBeArray(txData.gasPrice ? BigInt(txData.gasPrice) : 0n),
+                toBeArray(txData.gas ? BigInt(txData.gas) : 0n),
+                txData.to || '0x',
+                toBeArray(txData.value ? BigInt(txData.value) : 0n),
+                txData.input || '0x',
+            ];
+
+            // Ajouter les champs de signature si présents
+            if (txData.v && txData.r && txData.s) {
+                fields.push(toBeArray(BigInt(txData.v)));
+                fields.push(toBeArray(BigInt(txData.r)));
+                fields.push(toBeArray(BigInt(txData.s)));
+            } else {
+                // Ajouter chainId pour les transactions non signées (EIP-155)
+                const chainId = txData.chainId ? BigInt(txData.chainId) : 0n;
+                if (chainId !== 0n) {
+                    fields.push(toBeArray(chainId));
+                    fields.push('0x');
+                    fields.push('0x');
+                }
+            }
+
+            // Encoder en RLP
+            encodedTx = encodeRlp(fields);
+
+        } else {
+            // Transactions EIP-2718 (typed transactions)
+            if (type === 1) {
+                // EIP-2930 (Berlin)
+                fields = [
+                    toBeArray(BigInt(txData.chainId || '0x1')),
+                    toBeArray(BigInt(txData.nonce || '0x0')),
+                    toBeArray(BigInt(txData.gasPrice || '0x0')),
+                    toBeArray(BigInt(txData.gas || '0x0')),
+                    txData.to || '0x',
+                    toBeArray(BigInt(txData.value || '0x0')),
+                    txData.input || '0x',
+                    txData.accessList || []
+                ];
+
+                if (txData.v && txData.r && txData.s) {
+                    fields.push(toBeArray(BigInt(txData.v) % 2n)); // yParity
+                    fields.push(toBeArray(BigInt(txData.r)));
+                    fields.push(toBeArray(BigInt(txData.s)));
+                }
+
+                // Encoder avec le type
+                encodedTx = concat(['0x01', encodeRlp(fields)]);
+
+            } else if (type === 2) {
+                // EIP-1559 (London)
+                fields = [
+                    toBeArray(BigInt(txData.chainId || '0x1')),
+                    toBeArray(BigInt(txData.nonce || '0x0')),
+                    toBeArray(BigInt(txData.maxPriorityFeePerGas || '0x0')),
+                    toBeArray(BigInt(txData.maxFeePerGas || '0x0')),
+                    toBeArray(BigInt(txData.gas || '0x0')),
+                    txData.to || '0x',
+                    toBeArray(BigInt(txData.value || '0x0')),
+                    txData.input || '0x',
+                    txData.accessList || []
+                ];
+
+                if (txData.v && txData.r && txData.s) {
+                    fields.push(toBeArray(BigInt(txData.v) % 2n)); // yParity
+                    fields.push(toBeArray(BigInt(txData.r)));
+                    fields.push(toBeArray(BigInt(txData.s)));
+                }
+
+                // Encoder avec le type
+                encodedTx = concat(['0x02', encodeRlp(fields)]);
+
+            } else {
+                // Type non supporté, retour à la méthode d'origine
+                const transactionFormatted: TransactionData = this.toData();
+                delete transactionFormatted.transactionIndex;
+                delete transactionFormatted.blockHash;
+                delete transactionFormatted.blockHeight;
+                return this.computeHash_OLD();
+            }
+        }
+
+        // Calculer le hash avec keccak256
+        const transactionHash: TransactionHash = keccak256(encodedTx) as TransactionHash;
+
+        // Éventuellement, enregistrer les données de débogage
+        if (fs.existsSync('/tmp/blockchain-js-debug')) {
+            const debugFile = `/tmp/blockchain-js-debug/tx-${Date.now()}-${transactionHash}.json`;
+            fs.writeFileSync(debugFile, JSON.stringify({
+                original: this.toData(),
+                formatted: txData,
+                type,
+                encodedFields: fields.map(f => typeof f === 'string' ? f : '0x' + Buffer.from(f).toString('hex')),
+                encodedTx,
+                resultHash: transactionHash
+            }, jsonReplacer, 4));
+        }
+
+        return transactionHash;
+    }
+
+
+    computeHash_OLD(): TransactionHash {
         const transactionFormatted: TransactionData = this.toData();
+
+        delete transactionFormatted.transactionIndex;
+        delete transactionFormatted.blockHash;
+        delete transactionFormatted.blockHeight;
+
         const transactionHash: TransactionHash = computeHash(transactionFormatted);
 
         if (true && fs.existsSync('/tmp/blockchain-js-debug')) {

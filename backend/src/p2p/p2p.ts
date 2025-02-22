@@ -40,6 +40,7 @@ export type PeerMetadata = {
 
 export type Peers = {[nodeId: string]: Peer};
 
+export type NewBlockData = { blockData: BlockData, blockTransactionsData: TransactionData[] };
 
 /* ######################################################### */
 
@@ -177,7 +178,7 @@ export class P2PNode {
 
                 case 'REQUEST_BLOCK':
                     const blockHeight = Number(data);
-                    this.sendBlock(ws, blockHeight);
+                    await this.sendBlock(ws, blockHeight);
                     break;
 
                 default:
@@ -319,9 +320,20 @@ export class P2PNode {
 
 
     /** Diffuse un nouveau block */
-    broadcastBlock(block: Block) {
+    broadcastBlock(block: Block, blockTransactions: Transaction[]) {
         console.log(`[${now()}][P2P][broadcastBlock] 📢 Diffusion d'un nouveau block`);
-        this.broadcast({ type: 'NEW_BLOCK', data: block.toData() });
+
+        const newBlockData: NewBlockData = {
+            blockTransactionsData: blockTransactions.map(tx => tx.toData()),
+            blockData: block.toData(),
+        }
+
+        const message: P2PMessage = {
+            type: 'NEW_BLOCK',
+            data: newBlockData,
+        };
+
+        this.broadcast(message);
     }
 
 
@@ -339,8 +351,9 @@ export class P2PNode {
 
 
     /** Gère la réception d'un nouveau block */
-    private async handleNewBlock(blockData: BlockData) {
+    private async handleNewBlock(newBlockData: NewBlockData) {
         const localHeight = this.blockchain.blockHeight;
+        const { blockData, blockTransactionsData } = newBlockData;
 
         //console.log('blockData:', blockData)
 
@@ -353,7 +366,12 @@ export class P2PNode {
         if (block.blockHeight === localHeight + 1) {
             // Ajout direct du block suivant
             console.log(`[${now()}][P2P] 📥 Ajout immédiat du block`);
-            const blockReceipt: BlockReceipt = await this.blockchain.addExistingBlock(block);
+
+            // conversion des transactions
+            const blockTransactions = blockTransactionsData.map(txData => Transaction.from(txData));
+
+            // execution et ajout du block
+            const blockReceipt: BlockReceipt = await this.blockchain.addExistingBlock(block, blockTransactions);
 
             this.activeRequests.delete(block.blockHeight);
             this.processBlockSyncQueue();
@@ -410,15 +428,22 @@ export class P2PNode {
 
 
     /** Envoie un block à un peer */
-    private sendBlock(ws: WebSocket, blockHeight: number) {
+    private async sendBlock(ws: WebSocket, blockHeight: number) {
         const block = this.blockchain.getBlock(blockHeight);
         if (!block) return;
 
         console.log(`[${now()}][P2P][sendBlock] 📤 Envoi du block ${blockHeight} à un peer`);
 
+        const blockTransactions = await block.getTransactions(this.blockchain);
+
+        const newBlockData: NewBlockData = {
+            blockTransactionsData: blockTransactions.map(tx => tx.toData()),
+            blockData: block.toData(),
+        }
+
         const message: P2PMessage = {
             type: 'NEW_BLOCK',
-            data: block.toData()
+            data: newBlockData,
         };
 
         ws.send(JSON.stringify(message, jsonReplacer));

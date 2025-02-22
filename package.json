@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "start":          "npm -w @chainscript/fullnode-backend run start",
-    "frontend:dev":   "npm -w @chainscript/fullnode-frontend run start ",
+    "frontend:dev":   "npm -w @chainscript/fullnode-frontend run dev ",
     "frontend:build": "npm -w @chainscript/fullnode-frontend run build"
   },
   "workspaces": [

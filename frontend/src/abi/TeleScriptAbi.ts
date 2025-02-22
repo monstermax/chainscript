@@ -25,7 +25,8 @@ export const TeleScriptAbi: CodeAbi = [
             "createChat": {
                 "inputs": [
                     "encryptedSessionKeysList",
-                    "isPublic"
+                    "isPublic",
+                    "name"
                 ],
                 "write": true
             },

@@ -215,7 +215,7 @@ export function handleTransactionsRoutes(blockchain: Blockchain, app: express.Ex
             const blockHeight = tx?.blockHeight ?? blockchain.stateManager.transactionsIndex[txHash];
             const block = blockchain.getBlock(blockHeight);
 
-            const receipt = block?.getTransactionReceipt(txHash);
+            const receipt = blockchain.getTransactionReceipt(txHash);
 
             if (!tx) {
                 res.status(404).json({ error: "Transaction non trouvée" });

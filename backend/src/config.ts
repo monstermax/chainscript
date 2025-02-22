@@ -41,7 +41,7 @@ export const initialPeers = [
 
 
 // Mining config
-export const blockDelayMin =  3_000; // pas plus d'un bloc toutes les N secondes
+export const blockDelayMin = 10_000; // pas plus d'un bloc toutes les N secondes
 export const blockDelayMax = 60_000; // au moins un bloc toutes les N secondes
 export const blockMinTransactions = 1; // au moins N transactions par block (sauf si blockDelayMax atteint)
 export const blockMaxTransactions = 10; // pas plus de N transactions par block
@@ -75,10 +75,12 @@ export const faucetAddress = "0xee5392913a7930c233Aa711263f715f616114e9B";
 export const defaultStateDir = `/home/${process.env.USER}/.blockchain-js`;
 
 
-export const MAX_MEMORY_BLOCKS = 1000; // Nb maximum de blocks à conserver en mémoire dans le cachee LRU
-export const MAX_MEMORY_ACCOUNTS = 5_000; // Nb maximum de comptes à conserver en mémoire dans le cachee LRU
-//export const MAX_MEMORY_TRANSACTIONS = 10_000; // Nb maximum de transactions à conserver en mémoire dans le cachee LRU => à implémenter
+export const MAX_MEMORY_BLOCKS = 1000; // Nb maximum de blocks à conserver en mémoire dans le cache LRU
+export const MAX_MEMORY_ACCOUNTS = 5_000; // Nb maximum de comptes à conserver en mémoire dans le cache LRU
+export const MAX_MEMORY_TRANSACTIONS = 15_000; // Nb maximum de transactions à conserver en mémoire dans le cache LRU
+export const MAX_MEMORY_RECEIPTS = 10_000; // Nb maximum de receipts à conserver en mémoire dans le cache LRU
 
 
 export const FULLNODE_DIR = path.resolve(__dirname, "../..");
 
+export const emptyAddress = "0x0000000000000000000000000000000000000000";

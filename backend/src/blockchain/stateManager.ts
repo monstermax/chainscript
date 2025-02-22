@@ -8,12 +8,14 @@ import { asserts, divideBigInt, ensureDirectory, jsonReplacer, jsonReviver, now 
 import { Blockchain } from './blockchain';
 import { Block } from './block';
 import { Account } from './account';
+import { Transaction } from './transaction';
 
 import type { HexNumber } from '@backend/types/types';
 import type { AccountAddress, AccountData, AccountHash, Accounts, AccountsIndex, ContractMemory } from '@backend/types/account.types';
 import type { BlockData, BlockHash, Blocks, BlocksIndex } from '@backend/types/block.types';
 import type { BlockchainMetadata } from '@backend/types/blockchain.types';
-import type { TransactionHash, TransactionsIndex } from '@backend/types/transaction.types';
+import type { TransactionData, TransactionHash, TransactionReceiptData, Transactions, TransactionsIndex, TransactionsReceipts } from '@backend/types/transaction.types';
+import { TransactionReceipt } from './receipt';
 
 
 /* ######################################################### */
@@ -42,14 +44,21 @@ export class StateManager {
 
         this.paths.BLOCKS_DIR = path.join(blockchain.stateDir, 'blocks');
         this.paths.ACCOUNTS_DIR = path.join(blockchain.stateDir, 'accounts');
+        this.paths.TRANSACTIONS_DIR = path.join(blockchain.stateDir, 'transactions');
+        this.paths.RECEIPTS_DIR = path.join(blockchain.stateDir, 'receipts');
         this.paths.MEMPOOL_DIR = path.join(blockchain.stateDir, 'mempool');
+
         this.paths.METADATA_FILE = path.join(blockchain.stateDir, 'metadata.json');
+
         this.paths.BLOCKS_INDEX_FILE = path.join(blockchain.stateDir, 'blocksIndex.json');
         this.paths.ACCOUNTS_INDEX_FILE = path.join(blockchain.stateDir, 'accountsIndex.json');
         this.paths.TRANSACTIONS_INDEX_FILE = path.join(blockchain.stateDir, 'transactionsIndex.json');
+        //this.paths.RECEIPTS_INDEX_FILE = path.join(blockchain.stateDir, 'receiptsIndex.json');
 
         ensureDirectory(this.paths.BLOCKS_DIR);
         ensureDirectory(this.paths.ACCOUNTS_DIR);
+        ensureDirectory(this.paths.TRANSACTIONS_DIR);
+        ensureDirectory(this.paths.RECEIPTS_DIR);
         ensureDirectory(this.paths.MEMPOOL_DIR);
     }
 
@@ -203,24 +212,12 @@ export class StateManager {
         const computedBlockHash: BlockHash = block.computeHash();
 
         if (computedBlockHash !== indexedBlockHash) {
-            debugger;
             console.warn(`[${now()}][State.loadBlock] ⚠️ Intégrité compromise pour le block ${blockHeight}. (Expected: "${indexedBlockHash}" / Found: "${computedBlockHash}")`);
             throw new Error(`[State.loadBlock] invalid block hash`);
         }
 
 
         return block;
-    }
-
-
-    deleteMempoolTransaction(txHash: TransactionHash): void {
-        //console.log(`[${now()}][State.deleteMempoolTransaction]`, txHash);
-
-        const txPath = path.join(this.paths.MEMPOOL_DIR, `${txHash}.json`);
-
-        if (fs.existsSync(txPath)) {
-            fs.unlinkSync(txPath);
-        }
     }
 
 
@@ -271,7 +268,10 @@ export class StateManager {
         asserts(fs.existsSync(accountPath), `address "${address}" not found in database`);
         //if (!fs.existsSync(accountPath)) return null;
 
+        // Charge le account depuis le disque
         const raw = fs.readFileSync(accountPath, 'utf-8');
+
+        // Parse le account encodé en JSON
         const accountData: AccountData = JSON.parse(raw, jsonReviver);
 
         const accountHash = this.accountsIndex[addressLower];
@@ -311,6 +311,120 @@ export class StateManager {
         fs.writeFileSync(accountPath, accountJson);
     }
 
+
+    loadTransaction(txHash: TransactionHash): Transaction | null {
+        //console.log(`[${now()}][State.loadTransaction]`, address);
+
+        const txHashLower = txHash.toLowerCase() as TransactionHash;
+
+        const transactionPath = path.join(this.paths.TRANSACTIONS_DIR, `${txHashLower}.json`);
+        asserts(fs.existsSync(transactionPath), `transaction "${txHashLower}" not found in database`);
+        //if (!fs.existsSync(transactionPath)) return null;
+
+        // Charge la transaction depuis le disque
+        const raw = fs.readFileSync(transactionPath, 'utf-8');
+
+        // Parse la transaction encodée en JSON
+        const txData: TransactionData = JSON.parse(raw, jsonReviver);
+
+
+        // Création d'un nouvel objet Transaction
+        const tx = Transaction.from(txData);
+
+        const transactionChecksumHash = this.transactionsIndex[txHash];
+        asserts(transactionChecksumHash, `transaction "${txHash}" not found in transactionsIndex`);
+
+        const blockHeight: number = this.transactionsIndex[txHash];
+
+        // Vérifier la présence & cohérence du champ `hash`
+        if (!tx.hash) {
+            console.warn(`[${now()}][State.loadTransaction] ⚠️ Transaction ${txHash} ne contient pas de hash`);
+            throw new Error(`[State.loadTransaction] ⚠️ Transaction ${txHash} ne contient pas de hash`);
+        }
+
+        if (tx.hash !== txHash) {
+            console.warn(`[${now()}][State.loadTransaction] ⚠️ Transaction ${txHash} contient un hash incoherent. (Expected: "${txHash}" / Found: "${tx.hash}")`);
+            throw new Error(`[State.loadTransaction] ⚠️ Transaction ${txHash} contient un hash incoherent. (Expected: "${txHash}" / Found: "${tx.hash}")`);
+        }
+
+
+        // Vérifier l'intégrité de la transaction
+        const computedTransactionHash: TransactionHash = tx.computeHash();
+
+        if (computedTransactionHash !== txHash) {
+            console.warn(`[${now()}][State.loadTransaction] ⚠️ Intégrité compromise pour la transaction ${txHash}. (Expected: "${txHash}" / Found: "${computedTransactionHash}")`);
+            throw new Error(`[State.loadTransaction] invalid transaction hash`);
+        }
+
+
+        return tx;
+    }
+
+
+    saveTransaction(transaction: Transaction): void {
+        //console.log(`[${now()}][State.saveTransaction]`, transaction.hash);
+        asserts(transaction.hash, `[${now()}][State.saveTransaction] transaction has no hash`);
+
+        const txHashLower = transaction.hash.toLowerCase() as TransactionHash;
+        const transactionPath = path.join(this.paths.TRANSACTIONS_DIR, `${txHashLower.toLowerCase()}.json`);
+
+        // Sauvegarde du compte sur le disque
+        const transactionJson: string = transaction.toJSON();
+        fs.writeFileSync(transactionPath, transactionJson);
+    }
+
+
+    loadTransactionReceipt(txHash: TransactionHash): TransactionReceipt | null {
+        //console.log(`[${now()}][State.loadTransactionReceipt]`, address);
+
+        const txHashLower = txHash.toLowerCase() as TransactionHash;
+
+        const receiptPath = path.join(this.paths.RECEIPTS_DIR, `${txHashLower}.json`);
+        asserts(fs.existsSync(receiptPath), `receipt "${txHashLower}" not found in database`);
+        //if (!fs.existsSync(receiptPath)) return null;
+
+
+        // Charge le receipt depuis le disque
+        const raw = fs.readFileSync(receiptPath, 'utf-8');
+
+        // Parse le receipt encodé en JSON
+        const receiptData: TransactionReceiptData = JSON.parse(raw, jsonReviver);
+
+        asserts(receiptData.transactionHash === txHash, `receipt hash mismatch`);
+
+
+        // Création d'un nouvel objet Transaction
+        const receipt = TransactionReceipt.from(receiptData);
+
+        const transactionChecksumHash = this.transactionsIndex[txHash];
+        asserts(transactionChecksumHash, `receipt "${txHash}" not found in transactionsIndex`);
+
+        return receipt;
+    }
+
+
+    saveReceipt(receipt: TransactionReceipt): void {
+        //console.log(`[${now()}][State.saveTransaction]`, transaction.hash);
+        asserts(receipt.transactionHash, `[${now()}][State.saveTransaction] transaction has no hash`);
+
+        const txHashLower = receipt.transactionHash.toLowerCase() as TransactionHash;
+        const transactionPath = path.join(this.paths.RECEIPTS_DIR, `${txHashLower.toLowerCase()}.json`);
+
+        // Sauvegarde du compte sur le disque
+        const transactionJson: string = receipt.toJSON();
+        fs.writeFileSync(transactionPath, transactionJson);
+    }
+
+
+    deleteMempoolTransaction(txHash: TransactionHash): void {
+        //console.log(`[${now()}][State.deleteMempoolTransaction]`, txHash);
+
+        const txPath = path.join(this.paths.MEMPOOL_DIR, `${txHash}.json`);
+
+        if (fs.existsSync(txPath)) {
+            fs.unlinkSync(txPath);
+        }
+    }
 
     dumpAccountsBalances(asFullCoin = false): { [address: string]: bigint | string } {
         const accounts: Accounts = Object.fromEntries(
@@ -363,6 +477,8 @@ export class StateManager {
 export class MemoryState {
     public accounts: Accounts = {}; // TODO: à remplacer par un Map ou un LRU
     public blocks: Blocks = {}; // TODO: à remplacer par un Map ou un LRU
+    public transactions: Transactions = {}; // TODO: à remplacer par un Map ou un LRU
+    public receipts: TransactionsReceipts = {}; // TODO: à remplacer par un Map ou un LRU
 
 
     dumpAccountsBalances(asFullCoin = false): { [address: string]: bigint | string } {

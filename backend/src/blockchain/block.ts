@@ -9,8 +9,10 @@ import { executeTransaction } from '@backend/execution/execution';
 
 import type { BlockData, BlockHash, BlockRpc } from '@backend/types/block.types';
 import type { AccountAddress, Accounts } from '@backend/types/account.types';
-import type { TransactionHash, TransactionReceipt } from '@backend/types/transaction.types';
+import type { TransactionHash, TransactionRpc } from '@backend/types/transaction.types';
 import type { BlockchainMetadata } from '@backend/types/blockchain.types';
+import { TransactionReceipt } from './receipt';
+import { emptyAddress } from '@backend/config';
 
 
 /* ######################################################### */
@@ -20,14 +22,14 @@ import type { BlockchainMetadata } from '@backend/types/blockchain.types';
 export class Block {
     public blockHeight: number;
     public parentBlockHash: BlockHash;
-    public miner: AccountAddress = '0x';
-    public nonce: bigint = 0n;
+    public miner: AccountAddress = emptyAddress;
+    public nonce: bigint = 42n;
     public hash: BlockHash | null = null;
     public timestamp: number | null = null;
-    public transactions: Transaction[] = []; // TODO: stocker uniquement les txHash + stocker les transactions dans des fichiers à part
-    public receipts: TransactionReceipt[] = [];
-    private _blockchainMetadata: BlockchainMetadata | null = null;
-    private _blockchainAccounts: Accounts | null = null;
+    public transactions: TransactionHash[] = [];
+    //public receipts: TransactionReceipt[] = [];
+    private blockchainMetadata: BlockchainMetadata | null = null;
+    private updatedAccounts: Accounts | null = null;
     //public updatedAccounts: Accounts = {}; // TODO: stocker les accounts modifiés (avec le diff) dans le contenu de chaque block respectif (si on veut retourner au block n-1)
     //public lastBlockchainState: BlockchainMetadata | null = null; // TODO: permet de recuperer un etat precedent de la blockchain (si on veut retourner au block n-1)
 
@@ -42,9 +44,23 @@ export class Block {
         const block = new Block(blockData.blockHeight, blockData.parentBlockHash);
         Object.assign(block, blockData);
 
-        block.transactions = blockData.transactions.map(txData => Transaction.from(txData));
+        //block.transactions = blockData.transactions.map(txData => Transaction.from(txData));
 
         return block;
+    }
+
+
+    async getTransactions(blockchain: Blockchain): Promise<Transaction[]> {
+        const transactions: Transaction[] = [];
+
+        for (const txHash of this.transactions) {
+            const transaction: Transaction | null = blockchain.getTransaction(txHash);
+            asserts(transaction, `[${now()}][Block.getTransactions] transaction not found`);
+
+            transactions.push(transaction);
+        }
+
+        return transactions;
     }
 
 
@@ -71,11 +87,13 @@ export class Block {
             miner: block.miner,
             hash: block.hash,
             timestamp: block.timestamp ?? 0,
-            transactions: block.transactions.map(tx => tx.toData()),
-            receipts: block.transactions.map((tx, idx) => Transaction.toReceiptData(tx, block.receipts[idx])),
+            transactions: block.transactions, //.map(tx => tx.toData()),
+            //receipts: block.transactions.map((txHash, idx) => blockchain.), // TransactionReceipt.toData(txHash)
             nonce: block.nonce,
-            _blockchainMetadata: block._blockchainMetadata,
-            _blockchainAccounts: block._blockchainAccounts,
+            _metadata: {
+                blockchainMetadata: block.blockchainMetadata,
+                updatedAccounts: block.updatedAccounts,
+            },
         };
 
         return blockData;
@@ -89,29 +107,37 @@ export class Block {
     }
 
 
-    static formatForRpc(block: Block, showTransactionsDetails?: boolean): BlockRpc {
+    static formatForRpc(blockchain: Blockchain, block: Block, showTransactionsDetails?: boolean): BlockRpc {
+
+        const transactions: TransactionHash[] | TransactionRpc[] = showTransactionsDetails
+            ? block.transactions
+            : block.transactions.map(txHash => {
+                    const tx = blockchain.getTransaction(txHash) ?? new Transaction(emptyAddress);
+                    return Transaction.formatForRpc(tx);
+                });
+
         const blockRpc: BlockRpc = {
-            baseFeePerGas: '0x00',
-            difficulty: '0x00',
-            extraData: '0x',
+            baseFeePerGas: '0x01',
+            difficulty: '0x02',
+            extraData: '0x03',
             gasLimit: '0xf4240', // 1_000_000
-            gasUsed: '0x01', // TODO: a gérer dans la VM
+            gasUsed: '0x04', // TODO: a gérer dans la VM
             hash: block.hash,
-            logsBloom: '0x',
+            logsBloom: '0x05',
             miner: block.miner,
-            mixHash: '0x',
-            nonce: '0x01', //toHex(block.nonce),
+            mixHash: '0x06',
+            nonce: toHex(block.nonce),
             number: toHex(block.blockHeight),
             parentHash: block.parentBlockHash,
             receiptsRoot: null, //'0x',
-            sha3Uncles: '0x',
-            size: '0x00',
+            sha3Uncles: '0x07',
+            size: '0x08',
             stateRoot: null, //'0x0',
             prevRandao: null, //'0x0',
             timestamp: toHex(block.timestamp ?? 0),
-            totalDifficulty: '0x00',
-            transactions: block.transactions.map(tx => showTransactionsDetails ? Transaction.formatForRpc(block, tx) : tx.hash),
-            transactionsRoot: '0x',
+            totalDifficulty: '0x09',
+            transactions,
+            transactionsRoot: '0x0a',
             uncles: [],
         };
 
@@ -119,23 +145,20 @@ export class Block {
     }
 
 
-    getTransaction(txHash: TransactionHash) {
-        const transactionIndex = this.transactions.findIndex(_tx => _tx.hash === txHash);
-        return this.transactions[transactionIndex];
+    getTransaction(blockchain: Blockchain, txHash: TransactionHash) {
+        return blockchain.getTransaction(txHash);
     }
 
 
-    getTransactionReceipt(txHash: TransactionHash) {
-        const transactionIndex = this.transactions.findIndex(_tx => _tx.hash === txHash);
-        return this.receipts[transactionIndex];
+    getTransactionReceipt(blockchain: Blockchain, txHash: TransactionHash) {
+        return blockchain.getTransactionReceipt(txHash);
     }
 
 
     computeHash(): BlockHash {
         const blockFormatted: BlockData = this.toData();
 
-        delete blockFormatted._blockchainMetadata;
-        delete blockFormatted._blockchainAccounts;
+        delete blockFormatted._metadata;
 
         const blockHash: BlockHash = computeHash(blockFormatted);
 
@@ -150,11 +173,12 @@ export class Block {
 
 
     setBlockchainMetadata(metadata: BlockchainMetadata) {
-        this._blockchainMetadata = metadata;
+        this.blockchainMetadata = metadata;
     }
 
-    setBlockchainAccounts(accounts: Accounts) {
-        this._blockchainAccounts = accounts;
+
+    setUpdatedAccounts(accounts: Accounts) {
+        this.updatedAccounts = accounts;
     }
 }
 

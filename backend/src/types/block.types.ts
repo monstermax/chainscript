@@ -4,8 +4,9 @@ import { Block } from "@backend/blockchain/block";
 
 import type { HexNumber } from "./types";
 import type { AccountAddress, Accounts } from "./account.types";
-import type { TransactionData, TransactionReceipt } from "./transaction.types";
-import { BlockchainMetadata } from "./blockchain.types";
+import type { TransactionData, TransactionHash } from "./transaction.types";
+import type { BlockchainMetadata } from "./blockchain.types";
+import { TransactionReceipt } from "@backend/blockchain/receipt";
 
 
 /* ######################################################### */
@@ -25,13 +26,15 @@ export type BlockData = {
     miner: AccountAddress;
     hash: BlockHash | null;
     timestamp: number;
-    transactions: TransactionData[];
-    receipts: TransactionReceipt[];
+    transactions: TransactionHash[];
+    //receipts: TransactionReceipt[];
     //updatedAccounts: Accounts; // TODO: permet de recuperer un etat precedent des accounts
     //lastBlockchainState: BlockchainMetadata; // TODO: permet de recuperer un etat precedent de la blockchain (si on veut retourner au block n-1)
     nonce: bigint,
-    _blockchainMetadata?: BlockchainMetadata | null;
-    _blockchainAccounts?: Accounts | null;
+    _metadata?: {
+        blockchainMetadata: BlockchainMetadata | null;
+        updatedAccounts: Accounts | null;
+    },
 }
 
 export type BlockRpc = {

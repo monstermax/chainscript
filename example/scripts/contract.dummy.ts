@@ -44,7 +44,7 @@ const self: AccountAddress = '0x0000000000000000000000000000000000000000';
 }
 
 /** Message informationnel contenant l'emetteur de la transaction et la valeur monetaire */
-const msg: { sender: AccountAddress, value: bigint } = { sender: '0x', value: 0n };
+const msg: { sender: AccountAddress, value: bigint } = { sender: '0x0000000000000000000000000000000000000000', value: 0n };
 
 /** Message informationnel contenant les informations sur le block en construction */
 const block: { blockHeight: number, parentBlockHash: HexNumber } = { blockHeight: 0, parentBlockHash: '0x' };

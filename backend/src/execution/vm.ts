@@ -61,7 +61,7 @@ export async function execVm(
 
 
     // Vérifications standard
-    asserts(contractAddress && contractAddress.startsWith('0x'), "[execVm] missing contract address");
+    asserts(contractAddress && contractAddress.startsWith('0x') && contractAddress.length === 42, "[execVm] missing contract address");
 
     const contractAccount = blockchain.getAccount(contractAddress, memoryState);
     asserts(contractAccount.abi, `[execVm] L'account ${contractAddress} n'est pas un smart contract !`);
@@ -329,8 +329,7 @@ export function createExecutionSandbox(blockchain: Blockchain, caller: AccountAd
 
 
 /** Ce mock sert uniquement lors du déploiement du contrat, pour générer l'Abi */
-export function createDeploymentSandbox(caller: AccountAddress, contractAddress: AccountAddress = '0x'): { [methodOrVariable: string]: any } {
-    const account = { memory: {} };
+export function createDeploymentSandbox(caller: AccountAddress, contractAddress?: AccountAddress): { [methodOrVariable: string]: any } {
 
     const sandboxUtils: { [method: string]: Function } = {
         log: console.log,

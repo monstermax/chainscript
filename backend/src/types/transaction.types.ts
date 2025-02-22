@@ -3,6 +3,8 @@
 import type { HexNumber } from "./types";
 import type { AccountAddress, CodeAbi } from "./account.types";
 import type { BlockHash } from "./block.types";
+import type { Transaction } from "@backend/blockchain/transaction";
+import { TransactionReceipt } from "@backend/blockchain/receipt";
 
 
 /* ######################################################### */
@@ -12,13 +14,18 @@ export type TransactionHash = HexNumber;
 
 export type TransactionsIndex = Record<TransactionHash, number>; // blockHeight
 
+export type Transactions = { [txHash: TransactionHash]: Transaction };
+
 
 export type TransactionData = {
+    blockHash?: BlockHash | null; // null when it's pending
+    blockHeight?: number | null; // null when it's pending
     from: AccountAddress;
     nonce?: bigint;
     value: bigint;
     instructions: TransactionInstruction[];
     hash?: TransactionHash | null;
+    transactionIndex?: number | null; // null when it's pending
     //callData?: string | null;
     //to: AccountAddress;
     //gasPrice: bigint;
@@ -29,21 +36,21 @@ export type TransactionData = {
 // Doc: https://docs.metamask.io/services/reference/ethereum/json-rpc-methods/eth_gettransactionbyhash/
 export type TransactionRpc = {
     accessList: any[];
-    blockHash: BlockHash;
-    blockNumber: HexNumber;
+    blockHash: BlockHash | null; // null when it's pending
+    blockNumber: HexNumber | null; // null when it's pending
     chainId: HexNumber;
     from: AccountAddress;
     gas: HexNumber;
     gasPrice: HexNumber;
-    hash: TransactionHash;
+    hash: TransactionHash | null;
     input: HexNumber;
     maxFeePerGas?: HexNumber;
     maxPriorityFeePerGas: HexNumber;
     nonce: HexNumber;
-    r: HexNumber;
+    r: HexNumber | null;
     s: HexNumber;
     to: AccountAddress | null;
-    transactionIndex: HexNumber;
+    transactionIndex: HexNumber | null; // null when it's pending
     type: HexNumber;
     v: HexNumber;
     value: HexNumber;
@@ -53,16 +60,19 @@ export type TransactionRpc = {
 
 
 
-export type TransactionReceipt = TransactionReceiptData;
+export type TransactionsReceipts = { [txHash: TransactionHash]: TransactionReceipt };
 
+//export type TransactionReceipt = TransactionReceiptData;
 
 export type TransactionReceiptData = {
+    transactionHash: TransactionHash;
+    transactionIndex: number;
     success: boolean;
     fees: bigint;
     blockHeight: number;
-    //blockHash?: BlockHash;
+    blockHash: BlockHash;
     contractAddress: AccountAddress | null;
-    //logs: any[], // TODO
+    logs: TransactionLog[];
 }
 
 
@@ -74,17 +84,7 @@ export type TransactionReceiptRpc = {
     effectiveGasPrice: HexNumber;
     from: AccountAddress;
     gasUsed: HexNumber;
-    logs: Array<{
-        address: AccountAddress;
-        blockHash: BlockHash;
-        blockNumber: HexNumber;
-        data: HexNumber;
-        logIndex: HexNumber;
-        removed: boolean;
-        topics: HexNumber[];
-        transactionHash: TransactionHash;
-        transactionIndex: HexNumber;
-    }>;
+    logs: TransactionReceiptLogRpc[];
     logsBloom: HexNumber;
     status: HexNumber;
     to: AccountAddress | null;
@@ -93,6 +93,22 @@ export type TransactionReceiptRpc = {
     type: HexNumber;
 };
 
+
+
+export type TransactionLog = any; // TODO
+
+
+export type TransactionReceiptLogRpc = {
+    address: AccountAddress;
+    blockHash: BlockHash;
+    blockNumber: HexNumber;
+    data: HexNumber;
+    logIndex: HexNumber;
+    removed: boolean;
+    topics: HexNumber[];
+    transactionHash: TransactionHash;
+    transactionIndex: HexNumber;
+};
 
 
 

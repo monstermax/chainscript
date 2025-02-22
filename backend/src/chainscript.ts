@@ -165,8 +165,8 @@ function handleErrors(onClose: () => void) {
 function lockDb(stateDir: string): boolean {
     const lockFile = `${stateDir}/state.lock`;
 
-    if (fs.existsSync(lockFile) && ! hasOpt('--force')) {
-        console.log(`Warning: lock file exists : ${lockFile} => Use --force option to ignore`);
+    if (fs.existsSync(lockFile) && ! hasOpt('--unlock')) {
+        console.log(`Warning: lock file exists : ${lockFile} => Use --unlock option to ignore`);
         return false;
     }
 

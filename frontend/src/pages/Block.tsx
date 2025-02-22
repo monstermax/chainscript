@@ -60,9 +60,9 @@ const Block: React.FC = () => {
             <p><strong>Timestamp :</strong> {getUsDateTime(new Date(block.timestamp))}</p>
             <p><strong>Transactions :</strong></p>
             <ul>
-                {currentTransactions.map(tx => (
-                    <li key={tx.hash}>
-                        <a href={`#/transactions/${tx.hash}`}>{tx.hash}</a>
+                {currentTransactions.map(txHash => (
+                    <li key={txHash}>
+                        <a href={`#/transactions/${txHash}`}>{txHash}</a>
                     </li>
                 ))}
             </ul>

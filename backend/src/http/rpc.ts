@@ -16,6 +16,7 @@ import type { TransactionData, TransactionHash } from '@backend/types/transactio
 import type { BlockHash, BlockParameter } from '@backend/types/block.types';
 import type { AccountAddress } from '@backend/types/account.types';
 import type { RpcMessageError, RpcMessageResult, callTxParams, sendTxParams } from '@backend/types/rpc.types';
+import { TransactionReceipt } from '@backend/blockchain/receipt';
 
 
 /* ######################################################### */
@@ -30,12 +31,15 @@ export function handleRpcRequests(blockchain: Blockchain, app: express.Express) 
 
 
 export async function handleRpcRequest(blockchain: Blockchain, req: express.Request, res: express.Response): Promise<void> {
+    let _method = null;
+
     try {
         const { jsonrpc, id, method, params } = req.body;
         console.log(`[${now()}][RPC] 📩 Requête RPC "${id}" reçue: ${method}`, (typeof params === 'string') ? params.slice(0, 512) : JSON.stringify(params).slice(0, 512));
 
 
         let result: string | object | null | boolean = null;
+        _method = method;
 
         switch (method) {
             case 'eth_chainId': {
@@ -74,7 +78,7 @@ export async function handleRpcRequest(blockchain: Blockchain, req: express.Requ
                     const block: Block | null = blockchain.getBlock(blockHeight);
                     asserts(block, `[RPC][eth_getBlockByNumber] block "${blockParameter}" not found`)
 
-                    result = Block.formatForRpc(block, showTransactionsDetails);
+                    result = Block.formatForRpc(blockchain, block, showTransactionsDetails);
 
                 } else {
                     asserts(blockParameter === 'latest', `[RPC][eth_getBlockByNumber] blockParameter "${blockParameter}" not implemented`);
@@ -82,7 +86,7 @@ export async function handleRpcRequest(blockchain: Blockchain, req: express.Requ
                     const block: Block | null = blockchain.getBlock(blockchain.blockHeight);
                     asserts(block, `[RPC][eth_getBlockByNumber] block "${blockParameter}" not found`)
 
-                    result = Block.formatForRpc(block, showTransactionsDetails) as object;
+                    result = Block.formatForRpc(blockchain, block, showTransactionsDetails) as object;
                 }
                 break;
             }
@@ -102,7 +106,7 @@ export async function handleRpcRequest(blockchain: Blockchain, req: express.Requ
                 const block = blockchain.getBlockByHash(blockHash);
                 asserts(block, `[RPC][eth_getBlockByHash] block not found for block "${blockHash}"`);
 
-                result = Block.formatForRpc(block) as object;
+                result = Block.formatForRpc(blockchain, block) as object;
 
                 break;
             }
@@ -114,10 +118,13 @@ export async function handleRpcRequest(blockchain: Blockchain, req: express.Requ
                 const block = blockchain.getBlock(blockHeight);
                 asserts(block, `[RPC][eth_getTransactionByBlockNumberAndIndex] block not found for transaction "${transactionIndex}" of block "${blockHeight}"`);
 
-                const tx = block.transactions[transactionIndex];
+                const txHash = block.transactions[transactionIndex];
+                asserts(txHash, `[RPC][eth_getTransactionByBlockNumberAndIndex] tx not found for transaction "${transactionIndex}" of block "${blockHeight}"`);
+
+                const tx = blockchain.getTransaction(txHash);
                 asserts(tx, `[RPC][eth_getTransactionByBlockNumberAndIndex] transaction "${transactionIndex}" of block "${blockHeight}" not found`);
 
-                result = Transaction.formatForRpc(block, tx) as object;
+                result = Transaction.formatForRpc(tx) as object;
             }
 
             case 'eth_getTransactionByBlockHashAndIndex': {
@@ -127,10 +134,13 @@ export async function handleRpcRequest(blockchain: Blockchain, req: express.Requ
                 const block = blockchain.getBlockByHash(blockHash);
                 asserts(block, `[RPC][eth_getTransactionByBlockHashAndIndex] block not found for transaction "${transactionIndex}" of block "${blockHash}"`);
 
-                const tx = block.transactions[transactionIndex];
+                const txHash = block.transactions[transactionIndex];
+                asserts(txHash, `[RPC][eth_getTransactionByBlockNumberAndIndex] tx not found for transaction "${transactionIndex}" of block "${blockHash}"`);
+
+                const tx = blockchain.getTransaction(txHash);
                 asserts(tx, `[RPC][eth_getTransactionByBlockHashAndIndex] transaction "${transactionIndex}" of block "${blockHash}" not found`);
 
-                result = Transaction.formatForRpc(block, tx) as object;
+                result = Transaction.formatForRpc(tx) as object;
             }
 
             case 'eth_getTransactionByHash': {
@@ -156,7 +166,7 @@ export async function handleRpcRequest(blockchain: Blockchain, req: express.Requ
                     const block = blockchain.getBlock(tx.blockHeight);
                     asserts(block, `[RPC][eth_getTransactionByHash] block not found for transaction "${txHash}"`);
 
-                    result = Transaction.formatForRpc(block, tx) as object;
+                    result = Transaction.formatForRpc(tx) as object;
                 }
                 break;
             }
@@ -169,16 +179,14 @@ export async function handleRpcRequest(blockchain: Blockchain, req: express.Requ
 
                 //asserts(typeof blockHeight === 'number', `transaction "${txHash}" has no blockHeight`);
 
-                if (txHash in blockchain.stateManager.transactionsIndex) {
-                    const blockHeight = blockchain.stateManager.transactionsIndex[txHash];
+                const receipt = blockchain.getTransactionReceipt(txHash);
 
-                    const tx = blockchain.getTransactionByHash(txHash);
-                    asserts(tx, `[RPC][eth_getTransactionReceipt] transaction "${txHash}" not found`);
+                if (receipt?.blockHash) {
+                    const tx = blockchain.getTransaction(txHash);
 
-                    const block = blockchain.getBlock(blockHeight);
-                    asserts(block, `[RPC][eth_getTransactionReceipt] block "${blockHeight}" not found`)
-
-                    result = Transaction.formatReceiptForRpc(block, tx) as object;
+                    if (tx) {
+                        result = TransactionReceipt.formatForRpc(tx, receipt);
+                    }
 
                 } else {
                     result = null;
@@ -344,7 +352,7 @@ export async function handleRpcRequest(blockchain: Blockchain, req: express.Requ
         const message: RpcMessageError = {
             jsonrpc: "2.0",
             id: null,
-            error: "Method Not Allowed"
+            error: `Method Not Allowed "${_method}" or ${err.message}`,
         };
 
         const json = JSON.stringify(message, jsonReplacerForRpc);

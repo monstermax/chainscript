@@ -9,7 +9,7 @@ export const TokenAbi: CodeAbi = [
         "methods": {
             "balanceOf": {
                 "inputs": [
-                    "_address"
+                    "address"
                 ],
                 "write": false
             },
@@ -45,10 +45,10 @@ export const TokenAbi: CodeAbi = [
         },
         "attributes": {
             "name": {
-                "type": "undefined"
+                "type": "string"
             },
             "symbol": {
-                "type": "undefined"
+                "type": "string"
             },
             "owner": {
                 "type": "string"

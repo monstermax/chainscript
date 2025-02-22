@@ -23,6 +23,7 @@ export async function deployContract(signer: ethers.Wallet, code: string, classN
 
     if (typeof nonce !== 'bigint') {
         nonce = BigInt(await signer.getNonce());
+        console.log('NONCE AUTOMATIC :', nonce)
     }
 
     try {
@@ -35,11 +36,12 @@ export async function deployContract(signer: ethers.Wallet, code: string, classN
         }
 
         if (true) {
-            const tx = await factory.getDeployTransaction();
+            const tx = await factory.getDeployTransaction( {from: signer.address, nonce: Number(nonce)} );
             if (!tx) throw new Error("no tx");
             if (!factory.runner) throw new Error("no factory.runner");
             if (!factory.runner.sendTransaction) throw new Error("no factory.runner.sendTransaction");
-            tx.nonce = Number(nonce);
+            //tx.nonce = Number(nonce);
+            //tx.from = signer.address;
 
             const contractAddress: AccountAddress = getCreateAddress({ from: signer.address, nonce }) as AccountAddress;
             console.log('contractAddress (prev):', contractAddress);
@@ -47,6 +49,12 @@ export async function deployContract(signer: ethers.Wallet, code: string, classN
             const sentTx = await factory.runner.sendTransaction(tx); // ERROR: the returned hash did not match (mais le contrat est déployé)
             //const sentTx = await signer.sendTransaction(tx); // ERROR: the returned hash did not match (mais le contrat est déployé)
             if (!sentTx) throw new Error("no sentTx");
+            //console.log('Transaction envoyée:', sentTx);
+            console.log(`Transaction ${sentTx.hash} envoyée (nonce = ${nonce})`);
+
+            const receipt = await sentTx.wait(1, 15_000);
+            //console.log('Transaction confirmée:', receipt);
+            console.log(`Transaction ${sentTx.hash} confirmée (nonce = ${nonce})`);
 
             //const contractAddress: AccountAddress = getCreateAddress(sentTx) as AccountAddress;
             console.log('contractAddress:', contractAddress);
@@ -59,7 +67,7 @@ export async function deployContract(signer: ethers.Wallet, code: string, classN
 
         console.log('ERROR:', err.message)
 
-        return '0x';
+        throw err;
     }
 }
 
@@ -70,7 +78,12 @@ export async function callSmartContract(providerOrSigner: ethers.JsonRpcProvider
 
     const contract = new ethers.Contract(contractAddress, ethersAbi, providerOrSigner);
 
-    const params: (string | { value: string, nonce?: bigint })[] = value ? [...methodArgs, { value: value.toString(), nonce: nonce }] : methodArgs;
+    const txParams = {
+        value: value?.toString() ?? '0',
+        nonce,
+    };
+
+    const params: (string | { value: string, nonce?: bigint })[] = (value || nonce) ? [...methodArgs, txParams] : methodArgs;
 
     const result: any = await contract[methodName](...params);
     return result;
@@ -78,17 +91,22 @@ export async function callSmartContract(providerOrSigner: ethers.JsonRpcProvider
 
 
 export async function executeSmartContract(signer: ethers.Wallet, contractAddress: AccountAddress, contractAbi: CodeAbi, methodName: string, methodArgs: string[], value?: bigint, nonce?: bigint) {
+
+    console.log(`Execution en cours contrat "${contractAddress}" methode "${methodName}" (nonce=${nonce}) ...`);
+
     if (typeof nonce !== 'bigint') {
         nonce = BigInt(await signer.getNonce());
     }
 
-    const tx: ethers.ContractTransactionResponse = await callSmartContract(signer, contractAddress, contractAbi, methodName, methodArgs);
-    console.log('Transaction envoyée:', tx);
+    const sentTx: ethers.ContractTransactionResponse = await callSmartContract(signer, contractAddress, contractAbi, methodName, methodArgs, value, nonce);
+    //console.log('Transaction envoyée:', tx);
+    console.log(`Transaction ${sentTx.hash} envoyée (nonce = ${nonce})`);
 
-    const receipt = await tx.wait(1, 10_000);
-    console.log('Transaction confirmée:', receipt);
+    const receipt = await sentTx.wait(1, 15_000);
+    //console.log('Transaction confirmée:', receipt);
+    console.log(`Transaction ${sentTx.hash} confirmée (nonce = ${nonce})`);
 
-    return { tx, receipt };
+    return { tx: sentTx, receipt };
 }
 
 

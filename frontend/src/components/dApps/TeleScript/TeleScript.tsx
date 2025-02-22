@@ -168,6 +168,8 @@ const TeleScript: React.FC = () => {
     const createChat = async () => {
         if (!walletAddress || !keyPair || !window.ethereum) return;
 
+        const chatName = ""; // TODO
+
         try {
             // Générer une clé de canal
             const channelKey = cryptoService.generateChannelKey();
@@ -208,7 +210,7 @@ const TeleScript: React.FC = () => {
                 TeleScriptAddress,
                 TeleScriptAbi,
                 "createChat",
-                [encryptedKeys, "true"]
+                [encryptedKeys, "true", chatName]
             );
 
 
