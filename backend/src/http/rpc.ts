@@ -200,7 +200,7 @@ export async function handleRpcRequest(blockchain: Blockchain, req: express.Requ
 
                 const account = blockchain.getAccount(address, null);
 
-                result = toHex(account.transactionsCount) as HexNumber;
+                result = toHex(account.transactionsCount()) as HexNumber;
                 break;
             }
 

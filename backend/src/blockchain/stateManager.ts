@@ -277,15 +277,17 @@ export class StateManager {
         const accountHash = this.accountsIndex[addressLower];
         asserts(accountHash, `address "${address}" not found in accountsIndex`);
 
-        const account = new Account(
-            accountData.address,
-            accountData.balance,
-            accountData.abi,
-            accountData.code,
-            accountData.transactionsCount,
-            accountData.memory,
-            accountData.hash,
-        );
+        //const account = new Account(
+        //    accountData.address,
+        //    accountData.balance,
+        //    accountData.abi,
+        //    accountData.code,
+        //    accountData.transactionsCount,
+        //    accountData.memory,
+        //    accountData.hash,
+        //);
+
+        const account = Account.from(accountData);
 
         // Vérifier l'intégrité du compte
         const expectedHash: AccountHash = account.computeHash();

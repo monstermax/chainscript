@@ -34,12 +34,14 @@ export class Mempool {
         const emitterAccount = this.blockchain.getAccount(tx.from, null);
         asserts(emitterAccount, `[Mempool][addTransaction] emitter account not found`);
 
+        const emitterTransactionsCount = emitterAccount.transactionsCount();
+
         if (typeof tx.nonce === 'bigint') {
-            asserts(tx.nonce >= BigInt(emitterAccount.transactionsCount), `[Mempool][addTransaction] invalid nonce. (Found: ${tx.nonce} / Expected: ${emitterAccount.transactionsCount})`);
+            asserts(tx.nonce >= BigInt(emitterTransactionsCount), `[Mempool][addTransaction] invalid nonce. (Found: ${tx.nonce} / Expected: ${emitterTransactionsCount})`);
 
         } else {
             // nonce non fourni, on le force
-            tx.nonce = BigInt(emitterAccount.transactionsCount);
+            tx.nonce = BigInt(emitterTransactionsCount);
         }
 
 

@@ -5,7 +5,9 @@ import { encodeRlp, getAddress, keccak256 } from 'ethers';
 import { asserts, computeHash, encodeBigintRLP, jsonReplacer } from '@backend/helpers/utils';
 
 import type { AccountAddress, AccountData, AccountHash, CodeAbi, ContractMemory } from '@backend/types/account.types';
-import type { TransactionsIndex } from '@backend/types/transaction.types';
+import type { TransactionHash, TransactionsIndex } from '@backend/types/transaction.types';
+import { Transaction } from './transaction';
+import { Block } from './block';
 
 
 /* ######################################################### */
@@ -17,23 +19,35 @@ export class Account {
     public abi: CodeAbi | null = null;
     public code: string | null = null;
     public memory: ContractMemory | null = null;
-    public transactionsCount: number = 0;
     public hash: AccountHash | null = null;
-    private transactionsIndex: TransactionsIndex = {}; // TODO: lister les transactions de chaque compte et l'enregistrer dans le fichier JSON
+    public transactionsIndex: TransactionsIndex = {}; // TODO: lister les transactions de chaque compte et l'enregistrer dans le fichier JSON
 
 
-    constructor(address: AccountAddress, balance=0n, abi: CodeAbi | null=null, code: string | null=null, transactionsCount=0, memory: ContractMemory | null=null, hash: AccountHash | null=null) {
+    constructor(address: AccountAddress) {
         this.address = address;
-        this.balance = balance;
-        this.abi = abi;
-        this.code = abi ? code : null;
-        this.transactionsCount = transactionsCount;
-        this.memory = memory;
-        this.hash = hash;
+        //this.balance = balance;
+        //this.abi = abi;
+        //this.code = abi ? code : null;
+        //this.transactionsCount = transactionsCount;
+        //this.memory = memory;
+        //this.hash = hash;
 
-        if (abi && !memory) {
-            this.memory = {};
-        }
+        //if (abi && !memory) {
+        //    this.memory = {};
+        //}
+    }
+
+
+    static from(accountData: AccountData) {
+        const account = new Account(accountData.address);
+        Object.assign(account, accountData);
+
+        return account;
+    }
+
+
+    transactionsCount() {
+        return Object.keys(this.transactionsIndex).length;
     }
 
 
@@ -43,13 +57,19 @@ export class Account {
         this.balance -= amount;
     }
 
+
     public mint(amount: bigint) {
         asserts(amount > 0, `[Account.mint] invalid amount`);
         this.balance += amount;
     }
 
-    public incrementTransactions() {
-        this.transactionsCount++;
+
+    public addTransaction(tx: Transaction) {
+        asserts(tx.hash, `[Account.addTransaction] missing tx hash`);
+        asserts(tx.blockHeight, `[Account.addTransaction] missing tx blockHeight`);
+
+        const txHash = tx.hash as TransactionHash;
+        this.transactionsIndex[txHash] = tx.blockHeight;
     }
 
 
@@ -62,7 +82,7 @@ export class Account {
             abi: account.abi,
             code: account.code,
             memory: account.memory,
-            transactionsCount: account.transactionsCount,
+            transactionsIndex: account.transactionsIndex,
             hash: account.hash,
             //lastBlockUpdate: Math.max(...Object.values(account.transactionsIndex)),
         };

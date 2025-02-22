@@ -234,11 +234,11 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
 
     // Vérifie le hash de la transaction
     const computedTxHash = tx.computeHash();
-    asserts(computedTxHash === tx.hash, `[executeTransaction] transaction hash mismatch. (Found: ${tx.hash} / Computed: ${computedTxHash})`);
+    asserts(computedTxHash === tx.hash, `[${now()}][executeTransaction] transaction hash mismatch. (Found: ${tx.hash} / Computed: ${computedTxHash})`);
 
 
     const emitterAccount = blockchain.getAccount(tx.from, blockchain.memoryState);
-    asserts(emitterAccount, `[executeTransaction] emitterAccount "${tx.from}" not found`);
+    asserts(emitterAccount, `[${now()}][executeTransaction] emitterAccount "${tx.from}" not found`);
 
 
     try {
@@ -246,10 +246,10 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
             if (instruction.type === 'mint') {
                 // Mint value
 
-                asserts(tx.from === emptyAddress, `[executeTransaction] invalid emitter for mint. Expected: "${emptyAddress}" / Found: ${tx.from}`);
+                asserts(tx.from === emptyAddress, `[${now()}][executeTransaction] invalid emitter for mint. Expected: "${emptyAddress}" / Found: ${tx.from}`);
 
                 const minerAccount = blockchain.getAccount(instruction.address, blockchain.memoryState);
-                asserts(minerAccount, `[executeTransaction] minerAccount "${instruction.address}" not found`);
+                asserts(minerAccount, `[${now()}][executeTransaction] minerAccount "${instruction.address}" not found`);
 
                 blockchain.mint(minerAccount, instruction.amount);
                 amountUsed += instruction.amount;
@@ -272,9 +272,9 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
                 }
 
                 const contractAccount = blockchain.getAccount(createdContractAddress, blockchain.memoryState);
-                asserts(contractAccount.balance === 0n, `[executeTransaction] account "${createdContractAddress}" already exists (balance > 0)`);
-                asserts(contractAccount.code === null, `[executeTransaction] account "${createdContractAddress}" already exists (code exists)`);
-                asserts(contractAccount.abi === null, `[executeTransaction] account "${createdContractAddress}" already exists (abi exists)`);
+                asserts(contractAccount.balance === 0n, `[${now()}][executeTransaction] account "${createdContractAddress}" already exists (balance > 0)`);
+                asserts(contractAccount.code === null, `[${now()}][executeTransaction] account "${createdContractAddress}" already exists (code exists)`);
+                asserts(contractAccount.abi === null, `[${now()}][executeTransaction] account "${createdContractAddress}" already exists (abi exists)`);
 
 
                 try {
@@ -287,7 +287,7 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
                     //contractAccount.contructorArgs = instruction.contructorArgs;
 
                 } catch (err: any) {
-                    console.log(`[executeTransaction] ❌ Error:`, err.message);
+                    console.log(`[${now()}][executeTransaction] ❌ Error:`, err.message);
                     //throw new Error(err);
                     error = err.message;
 
@@ -310,30 +310,30 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
                 const { vmResult, vmMonitor, vmError } = await execVm(blockchain, tx.from, instruction.contractAddress, instruction.className, instruction.methodName, instruction.methodArgs, blockchain.memoryState, instruction.amount);
 
                 if (vmError) {
-                    console.log(`[executeTransaction] ❌ Error:`, vmError);
+                    console.log(`[${now()}][executeTransaction] ❌ Error:`, vmError);
                     //throw new Error(vmError);
                     error = vmError.message;
 
                 } else {
-                    console.log(`[executeTransaction][vmResult] ✅ Résultat:`, vmResult); // pas de résultat attendu pour un sendTransaction
+                    console.log(`[${now()}][executeTransaction][vmResult] ✅ Résultat:`, vmResult); // pas de résultat attendu pour un sendTransaction
                 }
 
-                console.log(`[executeTransaction][vmResult] 🔍 Nombre total de calls:`, vmMonitor.totalCalls);
-                console.log(`[executeTransaction][vmResult] 📜 Stack des calls:`, vmMonitor.callStack.join(" -> "));
+                console.log(`[${now()}][executeTransaction][vmResult] 🔍 Nombre total de calls:`, vmMonitor.totalCalls);
+                console.log(`[${now()}][executeTransaction][vmResult] 📜 Stack des calls:`, vmMonitor.callStack.join(" -> "));
 
                 // Calculate fees
                 txFees += BigInt(Math.ceil(100 * vmMonitor.totalCalls)); // 100 microCoins per call
                 amountUsed += instruction.amount ?? 0n;
 
-                asserts(vmMonitor.totalCalls < 1000, `[executeTransaction] execution limit exceeded`);
+                asserts(vmMonitor.totalCalls < 1000, `[${now()}][executeTransaction] execution limit exceeded`);
 
             } else {
-                throw new Error(`[executeTransaction] unknown instruction type`);
+                throw new Error(`[${now()}][executeTransaction] unknown instruction type`);
             }
         }
 
         if (amountUsed !== tx.amount) {
-            throw new Error(`[executeTransaction] used amount mismatch. (Found: ${amountUsed} / Expected: ${tx.amount})`);
+            throw new Error(`[${now()}][executeTransaction] used amount mismatch. (Found: ${amountUsed} / Expected: ${tx.amount})`);
         }
 
         if (txFees > 0n) {
@@ -341,19 +341,26 @@ export async function executeTransaction(blockchain: Blockchain, block: Block, t
             blockchain.burn(emitterAccount, txFees);
 
         } else {
-            asserts(tx.from === emptyAddress, `[executeTransaction] invalid emitter for transaction without fees. Expected: "${emptyAddress}" / Found: ${tx.from}`);
+            asserts(tx.from === emptyAddress, `[${now()}][executeTransaction] invalid emitter for transaction without fees. Expected: "${emptyAddress}" / Found: ${tx.from}`);
 
             // TODO: gérer les annulations de transactions (pas de fees ?)
         }
 
-        // Increment account transactions count
-        emitterAccount.incrementTransactions();
+
+        // Assignation du blockHeight
+        asserts(!tx.blockHeight || tx.blockHeight === block.blockHeight, `[${now()}][executeTransaction] blockHeight mistmatch`)
+        tx.blockHeight = block.blockHeight;
+
+
+        // Ajout aux transactions du compte
+        emitterAccount.addTransaction(tx);
 
     } catch (err: any) {
         console.warn(`[${now()}][executeTransaction] ERROR. ${err.message}`);
         err.fees = txFees;
         throw err;
     }
+
 
 
     const receiptData: TransactionReceiptData = {

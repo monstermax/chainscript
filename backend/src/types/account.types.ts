@@ -3,6 +3,7 @@
 import { Account } from "@backend/blockchain/account";
 
 import type { HexNumber, JsType } from "./types";
+import { TransactionsIndex } from "./transaction.types";
 
 
 /* ######################################################### */
@@ -23,7 +24,8 @@ export type AccountData = {
     abi: CodeAbi | null;
     code: string | null;
     memory: ContractMemory | null;
-    transactionsCount: number;
+    //transactionsCount: number;
+    transactionsIndex: TransactionsIndex;
     hash: AccountHash | null;
     lastBlockUpdate?: number;
 }
