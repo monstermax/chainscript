@@ -45,7 +45,7 @@ const Account: React.FC = () => {
             <div className="card mb-4">
                 <div className="card-body">
                     <p><strong>💰 Solde :</strong> {divideBigInt(account.balance, BigInt(10 ** decimals))} {symbol}</p>
-                    <p><strong>🔄 Transactions :</strong> {account.transactionsCount}</p>
+                    <p><strong>🔄 Transactions :</strong> {Object.keys(account.transactionsIndex).length}</p>
                     <p><strong>🔗 Hash :</strong> {account.hash}</p>
                 </div>
             </div>

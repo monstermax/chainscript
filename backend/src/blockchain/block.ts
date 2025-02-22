@@ -27,11 +27,9 @@ export class Block {
     public hash: BlockHash | null = null;
     public timestamp: number | null = null;
     public transactions: TransactionHash[] = [];
-    //public receipts: TransactionReceipt[] = [];
+    //public fees: bigint | null; // TODO: ajouter fees et/ou reward
     private blockchainMetadata: BlockchainMetadata | null = null;
     private updatedAccounts: Accounts | null = null;
-    //public updatedAccounts: Accounts = {}; // TODO: stocker les accounts modifiés (avec le diff) dans le contenu de chaque block respectif (si on veut retourner au block n-1)
-    //public lastBlockchainState: BlockchainMetadata | null = null; // TODO: permet de recuperer un etat precedent de la blockchain (si on veut retourner au block n-1)
 
 
     constructor(blockHeight: number, parentBlockHash: BlockHash) {
